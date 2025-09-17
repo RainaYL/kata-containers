@@ -1671,6 +1671,7 @@ mod tests {
         let kernel_temp_file = vmm_sys_util::tempfile::TempFile::new().unwrap();
         let kernel_file = kernel_temp_file.into_file();
         let mut cmdline = crate::vm::KernelConfigInfo::new(
+            None,
             kernel_file,
             None,
             linux_loader::cmdline::Cmdline::new(0x1000).unwrap(),

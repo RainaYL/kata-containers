@@ -19,6 +19,7 @@ pub mod tests {
         let kernel_file = TempFile::new().unwrap();
         let cmd_line = Cmdline::new(64).unwrap();
         vm.set_kernel_config(KernelConfigInfo::new(
+            None,
             kernel_file.into_file(),
             None,
             cmd_line,

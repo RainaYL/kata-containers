@@ -405,6 +405,12 @@ impl Vm {
             AddressManagerError::GuestMemoryNotInitialized,
         ))
     }
+
+    pub(crate) fn is_tdx_enabled(&self) -> bool {
+        let shared_info = self.shared_info.read()
+            .expect("Failed to determine if instance is initialized because shared info couldn't be read due to poisoned lock");
+        shared_info.is_tdx_enabled()
+    }
 }
 
 impl Vm {
@@ -1041,6 +1047,7 @@ pub mod tests {
         let cmd_line = Cmdline::new(64).unwrap();
 
         vm.set_kernel_config(KernelConfigInfo::new(
+            None,
             kernel_file.into_file(),
             None,
             cmd_line,

@@ -5,6 +5,8 @@ use std::fs::File;
 
 /// Structure to hold guest kernel configuration information.
 pub struct KernelConfigInfo {
+    /// The descriptor to the tdshim file.
+    pub tdshim_file: Option<File>,
     /// The descriptor to the kernel file.
     kernel_file: File,
     /// The descriptor to the initrd file, if there is one
@@ -16,11 +18,13 @@ pub struct KernelConfigInfo {
 impl KernelConfigInfo {
     /// Create a KernelConfigInfo instance.
     pub fn new(
+        tdshim_file: Option<File>,
         kernel_file: File,
         initrd_file: Option<File>,
         cmdline: linux_loader::cmdline::Cmdline,
     ) -> Self {
         KernelConfigInfo {
+            tdshim_file,
             kernel_file,
             initrd_file,
             cmdline,
@@ -64,7 +68,7 @@ mod tests {
         let initrd = TempFile::new().unwrap();
         let mut cmdline = linux_loader::cmdline::Cmdline::new(1024).unwrap();
         cmdline.insert_str("ro").unwrap();
-        let mut info = KernelConfigInfo::new(kernel.into_file(), Some(initrd.into_file()), cmdline);
+        let mut info = KernelConfigInfo::new(None, kernel.into_file(), Some(initrd.into_file()), cmdline);
 
         assert_eq!(info.cmdline.as_cstring().unwrap().as_bytes(), b"ro");
         assert!(info.initrd_file_mut().is_some());
