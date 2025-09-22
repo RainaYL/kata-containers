@@ -25,6 +25,8 @@ use crate::hypervisor_metrics::get_hypervisor_metrics;
 use self::VmConfigError::*;
 use self::VmmActionError::MachineConfig;
 
+
+
 #[cfg(feature = "virtio-balloon")]
 pub use crate::device_manager::balloon_dev_mgr::{BalloonDeviceConfigInfo, BalloonDeviceError};
 #[cfg(any(feature = "virtio-blk", feature = "vhost-user-blk"))]
@@ -615,6 +617,10 @@ impl VmmService {
         config.serial_path = machine_config.serial_path;
 
         config.pci_hotplug_enabled = machine_config.pci_hotplug_enabled;
+
+        // TODO: Add feature attribute to this line
+        config.tdx_enabled = machine_config.tdx_enabled;
+
 
         vm.set_vm_config(config.clone());
         self.machine_config = config;
