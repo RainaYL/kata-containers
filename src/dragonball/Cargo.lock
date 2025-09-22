@@ -344,20 +344,26 @@ name = "dbs-pci"
 version = "0.1.0"
 dependencies = [
  "byteorder",
+ "dbs-address-space",
  "dbs-allocator",
  "dbs-arch",
  "dbs-boot",
  "dbs-device",
  "dbs-interrupt",
+ "dbs-utils",
+ "dbs-virtio-devices",
  "downcast-rs",
  "kvm-bindings",
  "kvm-ioctls",
  "libc",
  "log",
+ "serde",
  "thiserror 1.0.48",
  "vfio-bindings",
  "vfio-ioctls",
+ "virtio-queue",
  "vm-memory",
+ "vmm-sys-util",
 ]
 
 [[package]]

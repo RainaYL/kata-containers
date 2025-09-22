@@ -41,6 +41,8 @@ pub mod tests {
             },
             vpmu_feature: 0,
             pci_hotplug_enabled: false,
+            #[cfg(feature = "tdx")]
+            tdx_enabled: false,
         };
         vm.set_vm_config(vm_config);
         vm.init_guest_memory().unwrap();

@@ -5,6 +5,7 @@ use std::fs::File;
 
 /// Structure to hold guest kernel configuration information.
 pub struct KernelConfigInfo {
+    #[cfg(feature = "tdx")]
     /// The descriptor to the tdshim file.
     pub tdshim_file: Option<File>,
     /// The descriptor to the kernel file.
@@ -18,12 +19,14 @@ pub struct KernelConfigInfo {
 impl KernelConfigInfo {
     /// Create a KernelConfigInfo instance.
     pub fn new(
+        #[cfg(feature = "tdx")]
         tdshim_file: Option<File>,
         kernel_file: File,
         initrd_file: Option<File>,
         cmdline: linux_loader::cmdline::Cmdline,
     ) -> Self {
         KernelConfigInfo {
+            #[cfg(feature = "tdx")]
             tdshim_file,
             kernel_file,
             initrd_file,

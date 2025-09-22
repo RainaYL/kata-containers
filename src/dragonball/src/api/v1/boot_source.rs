@@ -21,6 +21,7 @@ pub const DEFAULT_KERNEL_CMDLINE: &str = "reboot=k panic=1 pci=off nomodules 825
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct BootSourceConfig {
+    #[cfg(feature = "tdx")]
     /// Path of the tdshim image.
     pub tdshim_image_path: Option<String>,
     /// Path of the kernel image.
@@ -37,19 +38,22 @@ pub struct BootSourceConfig {
 /// Errors associated with actions on `BootSourceConfig`.
 #[derive(Debug, thiserror::Error)]
 pub enum BootSourceConfigError {
+    #[cfg(feature = "tdx")]
     /// The tdshim file cannot be opened.
     #[error(
         "the tdshim file cannot be opened due to invalid tdshim path or invalid permissions: {0}"
     )]
     InvalidTdshimPath(#[source] std::io::Error),
+    #[cfg(feature = "tdx")]
      /// The tdshim file is unexpected.
     #[error(
-        "the tdshim file is only expected for TDX or SEV instances"
+        "the tdshim file is only expected for TDX instances"
     )]
     UnexpectedTdshimPath,
+    #[cfg(feature = "tdx")]
     /// The tdshim file is expected.
     #[error(
-        "the tdshim file is expected for TDX or SEV instances"
+        "the tdshim file is expected for TDX instances"
     )]
     MissingTdshimPath,
     /// The kernel file cannot be opened.

@@ -442,9 +442,10 @@ impl VmmService {
     ) -> VmmRequestResult {
         use super::BootSourceConfigError::{
             InvalidInitrdPath, InvalidKernelCommandLine, InvalidKernelPath,
-            UpdateNotAllowedPostBoot, InvalidTdshimPath, MissingTdshimPath,
-            UnexpectedTdshimPath,
+            UpdateNotAllowedPostBoot,
         };
+        #[cfg(feature = "tdx")]
+        use super::BootSourceConfigError::{InvalidTdshimPath, MissingTdshimPath, UnexpectedTdshimPath};
         use super::VmmActionError::BootSource;
 
         let vm = vmm.get_vm_mut().ok_or(VmmActionError::InvalidVMID)?;
@@ -452,18 +453,22 @@ impl VmmService {
             return Err(BootSource(UpdateNotAllowedPostBoot));
         }
 
-        let tdshim_file = match boot_source_config.tdshim_image_path {
-            None => {
-                if vm.is_tdx_enabled() {
-                    return Err(BootSource(MissingTdshimPath));
+        #[cfg(feature = "tdx")]
+        let tdshim_file = {
+                let tdx_enabled = vm.vm_config().tdx_enabled;
+                match boot_source_config.tdshim_image_path {
+                None => {
+                    if tdx_enabled {
+                        return Err(BootSource(MissingTdshimPath));
+                    }
+                    None
                 }
-                None
-            }
-            Some(ref path) => {
-                if !vm.is_tdx_enabled() {
-                    return Err(BootSource(UnexpectedTdshimPath))
+                Some(ref path) => {
+                    if !tdx_enabled {
+                        return Err(BootSource(UnexpectedTdshimPath))
+                    }
+                    Some(File::open(path).map_err(|e| BootSource(InvalidTdshimPath(e)))?)
                 }
-                Some(File::open(path).map_err(|e| BootSource(InvalidTdshimPath(e)))?)
             }
         };
 
@@ -484,7 +489,13 @@ impl VmmService {
             .insert_str(boot_args)
             .map_err(|e| BootSource(InvalidKernelCommandLine(e)))?;
 
-        let kernel_config = KernelConfigInfo::new(tdshim_file, kernel_file, initrd_file, cmdline);
+        let kernel_config = KernelConfigInfo::new(
+            #[cfg(feature = "tdx")]
+            tdshim_file,
+            kernel_file,
+            initrd_file,
+            cmdline
+        );
         vm.set_kernel_config(kernel_config);
 
         Ok(VmmData::Empty)

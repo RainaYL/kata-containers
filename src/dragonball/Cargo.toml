@@ -133,6 +133,7 @@ vhost-user-fs = ["dbs-virtio-devices/vhost-user-fs"]
 vhost-user-net = ["dbs-virtio-devices/vhost-user-net"]
 vhost-user-blk = ["dbs-virtio-devices/vhost-user-blk"]
 host-device = ["dep:vfio-bindings", "dep:vfio-ioctls", "dep:dbs-pci"]
+tdx = []
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = [

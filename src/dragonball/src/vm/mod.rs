@@ -141,6 +141,10 @@ pub struct VmConfigInfo {
 
     /// Enable PCI device hotplug or not
     pub pci_hotplug_enabled: bool,
+
+    #[cfg(feature = "tdx")]
+    /// Enable TDX or not
+    pub tdx_enabled: bool,
 }
 
 impl Default for VmConfigInfo {
@@ -161,6 +165,8 @@ impl Default for VmConfigInfo {
             mem_size_mib: 128,
             serial_path: None,
             pci_hotplug_enabled: false,
+            #[cfg(feature = "tdx")]
+            tdx_enabled: false,
         }
     }
 }
@@ -404,12 +410,6 @@ impl Vm {
         Err(StartMicroVmError::AddressManagerError(
             AddressManagerError::GuestMemoryNotInitialized,
         ))
-    }
-
-    pub(crate) fn is_tdx_enabled(&self) -> bool {
-        let shared_info = self.shared_info.read()
-            .expect("Failed to determine if instance is initialized because shared info couldn't be read due to poisoned lock");
-        shared_info.is_tdx_enabled()
     }
 }
 
@@ -945,6 +945,8 @@ pub mod tests {
             },
             vpmu_feature: 0,
             pci_hotplug_enabled: false,
+            #[cfg(feature = "tdx")]
+            tdx_enabled: false,
         };
 
         let mut vm = create_vm_instance();
@@ -978,6 +980,8 @@ pub mod tests {
             },
             vpmu_feature: 0,
             pci_hotplug_enabled: false,
+            #[cfg(feature = "tdx")]
+            tdx_enabled: false,
         };
         vm.set_vm_config(vm_config);
         assert!(vm.init_guest_memory().is_ok());
@@ -1027,6 +1031,8 @@ pub mod tests {
             },
             vpmu_feature: 0,
             pci_hotplug_enabled: false,
+            #[cfg(feature = "tdx")]
+            tdx_enabled: false,
         };
 
         vm.set_vm_config(vm_config);
@@ -1105,6 +1111,8 @@ pub mod tests {
             },
             vpmu_feature: 0,
             pci_hotplug_enabled: false,
+            #[cfg(feature = "tdx")]
+            tdx_enabled: false,
         };
 
         vm.set_vm_config(vm_config);
