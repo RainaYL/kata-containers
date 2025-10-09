@@ -83,4 +83,8 @@ pub enum VmConfigError {
     /// NUMA region vCPU count is invalid
     #[error("Max id of vCPUs in NUMA regions: {0}, should matches max vcpu count in config")]
     InvalidNumaRegionCpuMaxId(u16),
+
+    /// TDX is not supported
+    #[error("TDX is not supported for the machine")]
+    TdxNotSupported,
 }

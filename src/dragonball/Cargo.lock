@@ -530,6 +530,7 @@ dependencies = [
  "dbs-interrupt",
  "dbs-legacy-devices",
  "dbs-pci",
+ "dbs-tdx",
  "dbs-upcall",
  "dbs-utils",
  "dbs-virtio-devices",

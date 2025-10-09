@@ -25,8 +25,6 @@ use crate::hypervisor_metrics::get_hypervisor_metrics;
 use self::VmConfigError::*;
 use self::VmmActionError::MachineConfig;
 
-
-
 #[cfg(feature = "virtio-balloon")]
 pub use crate::device_manager::balloon_dev_mgr::{BalloonDeviceConfigInfo, BalloonDeviceError};
 #[cfg(any(feature = "virtio-blk", feature = "vhost-user-blk"))]
@@ -447,7 +445,9 @@ impl VmmService {
             UpdateNotAllowedPostBoot,
         };
         #[cfg(feature = "tdx")]
-        use super::BootSourceConfigError::{InvalidTdshimPath, MissingTdshimPath, UnexpectedTdshimPath};
+        use super::BootSourceConfigError::{
+            InvalidTdshimPath, MissingTdshimPath, UnexpectedTdshimPath,
+        };
         use super::VmmActionError::BootSource;
 
         let vm = vmm.get_vm_mut().ok_or(VmmActionError::InvalidVMID)?;
@@ -457,8 +457,8 @@ impl VmmService {
 
         #[cfg(feature = "tdx")]
         let tdshim_file = {
-                let tdx_enabled = vm.vm_config().tdx_enabled;
-                match boot_source_config.tdshim_image_path {
+            let tdx_enabled = vm.vm_config().tdx_enabled;
+            match boot_source_config.tdshim_image_path {
                 None => {
                     if tdx_enabled {
                         return Err(BootSource(MissingTdshimPath));
@@ -467,7 +467,7 @@ impl VmmService {
                 }
                 Some(ref path) => {
                     if !tdx_enabled {
-                        return Err(BootSource(UnexpectedTdshimPath))
+                        return Err(BootSource(UnexpectedTdshimPath));
                     }
                     Some(File::open(path).map_err(|e| BootSource(InvalidTdshimPath(e)))?)
                 }
@@ -496,7 +496,7 @@ impl VmmService {
             tdshim_file,
             kernel_file,
             initrd_file,
-            cmdline
+            cmdline,
         );
         vm.set_kernel_config(kernel_config);
 
@@ -618,9 +618,18 @@ impl VmmService {
 
         config.pci_hotplug_enabled = machine_config.pci_hotplug_enabled;
 
-        // TODO: Add feature attribute to this line
-        config.tdx_enabled = machine_config.tdx_enabled;
+        #[cfg(feature = "tdx")]
+        {
+            let tdx_enabled = machine_config.tdx_enabled;
+            if tdx_enabled {
+                let tdx_supported = false;
+                if !tdx_supported {
+                    return Err(VmmActionError::MachineConfig(VmConfigError::TdxNotSupported));
+                }
+            }
 
+            config.tdx_enabled = tdx_enabled;
+        }
 
         vm.set_vm_config(config.clone());
         self.machine_config = config;

@@ -1673,6 +1673,7 @@ mod tests {
         let kernel_temp_file = vmm_sys_util::tempfile::TempFile::new().unwrap();
         let kernel_file = kernel_temp_file.into_file();
         let mut cmdline = crate::vm::KernelConfigInfo::new(
+            #[cfg(feature = "tdx")]
             None,
             kernel_file,
             None,

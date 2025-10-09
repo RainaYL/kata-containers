@@ -70,6 +70,11 @@ impl KvmContext {
         self.kvm.create_vm().map_err(Error::Kvm)
     }
 
+    /// Create a virtual machine object with VM type specified.
+    pub fn create_vm_with_type(&self, vm_type: u64) -> Result<VmFd> {
+        self.kvm.create_vm_with_type(vm_type).map_err(Error::Kvm)
+    }
+
     /// Get the max vcpu count supported by kvm
     pub fn get_max_vcpus(&self) -> usize {
         self.kvm.get_max_vcpus()

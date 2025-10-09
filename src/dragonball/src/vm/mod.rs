@@ -13,6 +13,8 @@ use dbs_arch::gic::GICDevice;
 #[cfg(target_arch = "aarch64")]
 use dbs_arch::pmu::PmuError;
 use dbs_boot::InitrdConfig;
+#[cfg(feature = "tdx")]
+use dbs_tdx::KVM_X86_TDX_VM;
 use dbs_utils::epoll_manager::EpollManager;
 use dbs_utils::time::TimestampUs;
 use kvm_ioctls::VmFd;
@@ -226,7 +228,10 @@ impl Vm {
         let id = api_shared_info.read().unwrap().id.clone();
         let logger = slog_scope::logger().new(slog::o!("id" => id));
         let kvm = KvmContext::new(kvm_fd)?;
+        #[cfg(not(feature = "tdx"))]
         let vm_fd = Arc::new(kvm.create_vm()?);
+        #[cfg(feature = "tdx")]
+        let vm_fd = Arc::new(kvm.create_vm_with_type(KVM_X86_TDX_VM)?);
         let resource_manager = Arc::new(ResourceManager::new(Some(kvm.max_memslots())));
         let device_manager = DeviceManager::new(
             vm_fd.clone(),

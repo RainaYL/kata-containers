@@ -5,3 +5,6 @@
 pub mod tdx_ioctls;
 
 pub mod td_shim;
+
+/// TDX VM Type.
+pub const KVM_X86_TDX_VM: u64 = 5;
