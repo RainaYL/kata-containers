@@ -405,6 +405,13 @@ impl Vm {
             AddressManagerError::GuestMemoryNotInitialized,
         ))
     }
+
+    /// Check whether TDX is enabled
+    pub fn is_tdx_enabled(&self) -> bool {
+        let shared_info = self.shared_info.read()
+            .expect("Failed to determine if TDX is enabled because shared info couldn't be read due to poisoned lock");
+        shared_info.tdx_enabled
+    }
 }
 
 impl Vm {
@@ -1041,6 +1048,8 @@ pub mod tests {
         let cmd_line = Cmdline::new(64).unwrap();
 
         vm.set_kernel_config(KernelConfigInfo::new(
+            #[cfg(feature = "tdx")]
+            None,
             kernel_file.into_file(),
             None,
             cmd_line,

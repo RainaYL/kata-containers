@@ -445,11 +445,34 @@ impl VmmService {
             UpdateNotAllowedPostBoot,
         };
         use super::VmmActionError::BootSource;
+        #[cfg(feature = "tdx")]
+        use super::BootSourceConfigError::{
+            InvalidTdshimPath, MissingTdshimPath, UnexpectedTdshimPath,
+        };
 
         let vm = vmm.get_vm_mut().ok_or(VmmActionError::InvalidVMID)?;
         if vm.is_vm_initialized() {
             return Err(BootSource(UpdateNotAllowedPostBoot));
         }
+
+        #[cfg(feature = "tdx")]
+        let tdshim_file = {
+            let tdx_enabled = vm.is_tdx_enabled();
+            match boot_source_config.tdshim_image_path {
+                None => {
+                    if tdx_enabled {
+                        return Err(BootSource(MissingTdshimPath));
+                    }
+                    None
+                },
+                Some(ref path) => {
+                    if !tdx_enabled {
+                        return Err(BootSource(UnexpectedTdshimPath));
+                    }
+                    Some(File::open(path).map_err(|e| BootSource(InvalidTdshimPath(e)))?)
+                },
+            }
+        };
 
         let kernel_file = File::open(&boot_source_config.kernel_path)
             .map_err(|e| BootSource(InvalidKernelPath(e)))?;
@@ -468,7 +491,13 @@ impl VmmService {
             .insert_str(boot_args)
             .map_err(|e| BootSource(InvalidKernelCommandLine(e)))?;
 
-        let kernel_config = KernelConfigInfo::new(kernel_file, initrd_file, cmdline);
+        let kernel_config = KernelConfigInfo::new(
+            #[cfg(feature = "tdx")]
+            tdshim_file,
+            kernel_file,
+            initrd_file,
+            cmdline
+        );
         vm.set_kernel_config(kernel_config);
 
         Ok(VmmData::Empty)
