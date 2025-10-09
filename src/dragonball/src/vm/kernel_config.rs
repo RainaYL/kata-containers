@@ -26,6 +26,7 @@ impl KernelConfigInfo {
         cmdline: linux_loader::cmdline::Cmdline,
     ) -> Self {
         KernelConfigInfo {
+            #[cfg(feature = "tdx")]
             tdshim_file,
             kernel_file,
             initrd_file,
@@ -33,6 +34,7 @@ impl KernelConfigInfo {
         }
     }
 
+    #[cfg(feature = "tdx")]
     /// Get a mutable reference to the tdshim file.
     pub fn tdshim_file_mut(&mut self) -> Option<&mut File> {
         self.tdshim_file.as_mut()

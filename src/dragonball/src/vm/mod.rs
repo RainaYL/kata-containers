@@ -406,6 +406,7 @@ impl Vm {
         ))
     }
 
+    #[cfg(feature = "tdx")]
     /// Check whether TDX is enabled
     pub fn is_tdx_enabled(&self) -> bool {
         let shared_info = self.shared_info.read()

@@ -58,6 +58,7 @@ pub struct InstanceInfo {
     pub tids: Vec<(u8, u32)>,
     /// Last instance downtime
     pub last_instance_downtime: u64,
+    #[cfg(feature = "tdx")]
     /// Whether TDX is enabled for the microVM
     pub tdx_enabled: bool,
 }
