@@ -193,10 +193,11 @@ fn vec_with_fam_field<T: Default, F>(count: usize) -> Vec<T> {
     v
 }
 
+#[derive(Clone)]
 pub struct TdxCapabilities {
     pub supported_attrs: u64,
     pub supported_xfam: u64,
-    pub cpu_id: Vec<kvm_cpuid_entry2>,
+    pub cpu_id: CpuId,
 }
 
 /// Get TDX capabilities
@@ -220,16 +221,22 @@ pub fn tdx_get_caps(vm_fd: &RawFd) -> std::result::Result<TdxCapabilities, TdxIo
         0,
     )
     .map_err(TdxIoctlError::TdxCapabilities)?;
+    let mut cpu_id = unsafe {
+        CpuId::from_entries(caps[0].cpuid.entries.as_slice(caps[0].cpuid.nent as usize)).map_err(
+            |e| {
+                TdxIoctlError::TdxCapabilities(std::io::Error::new(
+                    std::io::ErrorKind::OutOfMemory,
+                    e,
+                ))
+            },
+        )?
+    };
+    cpu_id.as_mut_fam_struct().nent = caps[0].cpuid.nent;
+    cpu_id.as_mut_fam_struct().padding = 0;
     Ok(TdxCapabilities {
         supported_attrs: caps[0].supported_attrs,
         supported_xfam: caps[0].supported_xfam,
-        cpu_id: unsafe {
-            caps[0]
-                .cpuid
-                .entries
-                .as_slice(caps[0].cpuid.nent as usize)
-                .to_vec()
-        },
+        cpu_id,
     })
 }
 

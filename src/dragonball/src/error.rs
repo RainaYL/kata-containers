@@ -81,6 +81,16 @@ pub enum Error {
     /// Fail to create device manager system
     #[error("failed to create device manager system: {0}")]
     DeviceMgrError(#[source] device_manager::DeviceMgrError),
+
+    #[cfg(feature = "tdx")]
+    /// TDX ioctl related error
+    #[error("TDX ioctl related error: {0}")]
+    TdxIoctlError(#[source] dbs_tdx::TdxIoctlError),
+
+    #[cfg(feature = "tdx")]
+    /// TDX not supported for the machine
+    #[error("TDX not supported")]
+    TdxNotSupported,
 }
 
 /// Errors associated with starting the instance.

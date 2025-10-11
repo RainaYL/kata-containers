@@ -3,7 +3,7 @@
 
 use std::io::{self, Read, Seek, SeekFrom};
 use std::ops::Deref;
-use std::os::unix::io::RawFd;
+use std::os::unix::io::{AsRawFd, RawFd};
 
 use std::sync::{Arc, Mutex, RwLock};
 
@@ -13,6 +13,8 @@ use dbs_arch::gic::GICDevice;
 #[cfg(target_arch = "aarch64")]
 use dbs_arch::pmu::PmuError;
 use dbs_boot::InitrdConfig;
+#[cfg(feature = "tdx")]
+use dbs_tdx::{tdx_get_caps, TdxCapabilities, KVM_X86_TDX_VM};
 use dbs_utils::epoll_manager::EpollManager;
 use dbs_utils::time::TimestampUs;
 use kvm_ioctls::VmFd;
@@ -208,6 +210,9 @@ pub struct Vm {
 
     #[cfg(all(feature = "hotplug", feature = "dbs-upcall"))]
     upcall_client: Option<Arc<UpcallClient<DevMgrService>>>,
+
+    #[cfg(feature = "tdx")]
+    tdx_caps: Option<TdxCapabilities>,
 }
 
 impl Vm {
@@ -220,7 +225,21 @@ impl Vm {
         let id = api_shared_info.read().unwrap().id.clone();
         let logger = slog_scope::logger().new(slog::o!("id" => id));
         let kvm = KvmContext::new(kvm_fd)?;
+        #[cfg(not(feature = "tdx"))]
         let vm_fd = Arc::new(kvm.create_vm()?);
+        #[cfg(feature = "tdx")]
+        let tdx_enabled = api_shared_info.read().unwrap().tdx_enabled;
+        #[cfg(feature = "tdx")]
+        let vm_fd = {
+            if tdx_enabled {
+                if !dbs_tdx::is_tdx_supported(&kvm.kvm().as_raw_fd()) {
+                    return Err(Error::TdxNotSupported);
+                }
+                Arc::new(kvm.create_vm_with_type(KVM_X86_TDX_VM)?)
+            } else {
+                Arc::new(kvm.create_vm()?)
+            }
+        };
         let resource_manager = Arc::new(ResourceManager::new(Some(kvm.max_memslots())));
         let device_manager = DeviceManager::new(
             vm_fd.clone(),
@@ -230,6 +249,15 @@ impl Vm {
             api_shared_info.clone(),
         )
         .map_err(Error::DeviceMgrError)?;
+
+        #[cfg(feature = "tdx")]
+        let tdx_caps = {
+            if tdx_enabled {
+                Some(tdx_get_caps(&vm_fd.as_raw_fd()).map_err(Error::TdxIoctlError)?)
+            } else {
+                None
+            }
+        };
 
         Ok(Vm {
             epoll_manager,
@@ -255,6 +283,9 @@ impl Vm {
             irqchip_handle: None,
             #[cfg(all(feature = "hotplug", feature = "dbs-upcall"))]
             upcall_client: None,
+
+            #[cfg(feature = "tdx")]
+            tdx_caps,
         })
     }
 
@@ -430,6 +461,8 @@ impl Vm {
             self.shared_info.clone(),
             self.device_manager.io_manager(),
             self.epoll_manager.clone(),
+            #[cfg(feature = "tdx")]
+            self.tdx_caps.clone()
         )?;
         self.vcpu_manager = Some(vcpu_manager);
 

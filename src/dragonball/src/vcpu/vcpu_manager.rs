@@ -16,6 +16,8 @@ use std::sync::{Arc, Barrier, Mutex, RwLock};
 use std::time::Duration;
 
 use dbs_arch::VpmuFeatureLevel;
+#[cfg(feature = "tdx")]
+use dbs_tdx::TdxCapabilities;
 #[cfg(all(feature = "hotplug", feature = "dbs-upcall"))]
 use dbs_upcall::{DevMgrService, UpcallClient};
 use dbs_utils::epoll_manager::{EpollManager, EventOps, EventSet, Events, MutEventSubscriber};
@@ -249,10 +251,22 @@ impl VcpuManager {
         shared_info: Arc<RwLock<InstanceInfo>>,
         io_manager: IoManagerCached,
         epoll_manager: EpollManager,
+        #[cfg(feature = "tdx")] tdx_caps: Option<TdxCapabilities>,
     ) -> Result<Arc<Mutex<Self>>> {
         let support_immediate_exit = kvm_context.kvm().check_extension(Cap::ImmediateExit);
         let max_vcpu_count = vm_config_info.max_vcpu_count;
+        #[cfg(not(feature = "tdx"))]
         let kvm_max_vcpu_count = kvm_context.get_max_vcpus();
+        #[cfg(feature = "tdx")]
+        let tdx_enabled = shared_info.read().unwrap().tdx_enabled;
+        #[cfg(feature = "tdx")]
+        let kvm_max_vcpu_count = {
+            if tdx_enabled {
+                dbs_tdx::get_max_vcpus(&vm_fd.as_raw_fd())
+            } else {
+                kvm_context.get_max_vcpus()
+            }
+        };
 
         // check the max vcpu count in kvm. max_vcpu_count is u8 and kvm_context.get_max_vcpus()
         // returns usize, so convert max_vcpu_count to usize instead of converting kvm max vcpu to
@@ -279,10 +293,20 @@ impl VcpuManager {
             .try_clone()
             .map_err(VcpuManagerError::VcpuIO)?;
 
-        #[cfg(target_arch = "x86_64")]
+        #[cfg(all(target_arch = "x86_64", not(feature = "tdx")))]
         let supported_cpuid = kvm_context
             .supported_cpuid(kvm_bindings::KVM_MAX_CPUID_ENTRIES)
             .map_err(VcpuManagerError::Kvm)?;
+        #[cfg(all(target_arch = "x86_64", feature = "tdx"))]
+        let supported_cpuid = {
+            if tdx_enabled {
+                tdx_caps.unwrap().cpu_id
+            } else {
+                kvm_context
+                    .supported_cpuid(kvm_bindings::KVM_MAX_CPUID_ENTRIES)
+                    .map_err(VcpuManagerError::Kvm)?
+            }
+        };
         #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
         let vpmu_feature_level = match vm_config_info.vpmu_feature {
             #[cfg(target_arch = "x86_64")]
