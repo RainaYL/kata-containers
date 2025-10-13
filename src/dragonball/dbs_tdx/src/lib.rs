@@ -12,6 +12,9 @@ use vmm_sys_util::{ioctl_io_nr, ioctl_ioc_nr};
 pub mod tdx_ioctls;
 pub use tdx_ioctls::*;
 
+#[cfg(target_arch = "x86_64")]
+pub mod td_shim;
+
 pub const KVM_X86_TDX_VM: u64 = 5;
 
 pub const KVM_CAP_VM_TYPES: u64 = 235;

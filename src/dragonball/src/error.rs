@@ -11,6 +11,8 @@
 
 #[cfg(target_arch = "aarch64")]
 use dbs_arch::pmu::PmuError;
+#[cfg(feature = "tdx")]
+use dbs_tdx::td_shim;
 #[cfg(feature = "dbs-virtio-devices")]
 use dbs_virtio_devices::Error as VirtioError;
 
@@ -229,6 +231,16 @@ pub enum StartMicroVmError {
     /// Failed to register DMA memory address range.
     #[error("failure while registering DMA address range: {0:?}")]
     RegisterDMAAddress(#[source] VfioDeviceError),
+
+    #[cfg(feature = "tdx")]
+    /// TDX ioctl related error
+    #[error("TDX ioctl related error: {0}")]
+    TdxIoctlError(#[source] dbs_tdx::TdxIoctlError),
+
+    #[cfg(feature = "tdx")]
+    /// Cannot load td data
+    #[error("cannot load td data following tdshim metadata: {0:?}")]
+    TdDataLoader(#[source] self::LoadTdDataError),
 }
 
 /// Errors associated with starting the instance.
@@ -273,4 +285,31 @@ pub enum EpollError {
     /// Errors from virtio devices.
     #[error("failed to manager Virtio device: {0}")]
     VirtioDevice(#[source] VirtioError),
+}
+
+#[cfg(feature = "tdx")]
+/// Errors associated with loading data follow tdshim metadata
+#[derive(Debug, thiserror::Error)]
+pub enum LoadTdDataError {
+    /// Failed to get hob address
+    #[error("failed to get hob address from tdshim metadata")]
+    HobOffset,
+    /// Failed to get payload address
+    #[error("failed to get payload address from tdshim metadata")]
+    PayloadOffset,
+    /// Failed to get payload param address
+    #[error("failed to get payload params address from tdshim metadata")]
+    PayloadParamsOffset,
+    /// Failed to parse tdshim data
+    #[error("failed to parse tdshim data: {0}")]
+    ParseTdshim(#[source] td_shim::TdvfError),
+    /// Failed to read tdshim data
+    #[error("failed to read tdshim data: {0}")]
+    ReadTdshim(#[source] std::io::Error),
+    /// Failed to load data to guest memory
+    #[error("failed to load data to guest memory: {0}")]
+    LoadData(#[source] vm_memory::GuestMemoryError),
+    /// Failed to load payload
+    #[error("failed to load tdshim data")]
+    LoadPayload,
 }

@@ -716,6 +716,8 @@ impl Vm {
     fn load_kernel(
         &mut self,
         vm_memory: &GuestMemoryImpl,
+        #[cfg(feature = "tdx")]
+        kernel_offset: Option<GuestAddress>,
     ) -> std::result::Result<KernelLoaderResult, StartMicroVmError> {
         // This is the easy way out of consuming the value of the kernel_cmdline.
         let kernel_config = self
@@ -727,7 +729,10 @@ impl Vm {
         #[cfg(target_arch = "x86_64")]
         return linux_loader::loader::elf::Elf::load(
             vm_memory,
+            #[cfg(not(feature = "tdx"))]
             None,
+            #[cfg(feature = "tdx")]
+            kernel_offset,
             kernel_config.kernel_file_mut(),
             Some(high_mem_addr),
         )

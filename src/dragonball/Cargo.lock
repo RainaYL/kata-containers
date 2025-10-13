@@ -374,6 +374,7 @@ dependencies = [
  "kvm-ioctls",
  "serde_json",
  "thiserror 1.0.48",
+ "vm-memory",
  "vmm-sys-util",
 ]
 

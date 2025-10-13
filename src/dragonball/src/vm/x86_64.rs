@@ -8,19 +8,28 @@
 
 use std::collections::HashMap;
 use std::convert::TryInto;
+#[cfg(feature = "tdx")]
+use std::io::{Seek, SeekFrom};
 use std::ops::Deref;
+use std::os::fd::AsRawFd;
 
 use dbs_address_space::AddressSpace;
 use dbs_boot::{add_e820_entry, bootparam, layout, mptable, BootParamsWrapper, InitrdConfig};
+#[cfg(feature = "tdx")]
+use dbs_tdx::td_shim::{PayloadImageType, PayloadInfo, TdvfSection, TdvfSectionType};
 use dbs_utils::epoll_manager::EpollManager;
 use dbs_utils::time::TimestampUs;
 use kvm_bindings::{kvm_irqchip, kvm_pit_config, kvm_pit_state2, KVM_PIT_SPEAKER_DUMMY};
 use linux_loader::cmdline::Cmdline;
 use linux_loader::configurator::{linux::LinuxBootConfigurator, BootConfigurator, BootParams};
 use slog::info;
+#[cfg(feature = "tdx")]
+use vm_memory::Bytes;
 use vm_memory::{Address, GuestAddress, GuestAddressSpace, GuestMemory};
 
 use crate::address_space_manager::{GuestAddressSpaceImpl, GuestMemoryImpl};
+#[cfg(feature = "tdx")]
+use crate::error::LoadTdDataError;
 use crate::error::{Error, Result, StartMicroVmError};
 use crate::event_manager::EventManager;
 use crate::vm::{Vm, VmError};
@@ -192,7 +201,11 @@ impl Vm {
         }
 
         let vm_memory = vm_as.memory();
-        let kernel_loader_result = self.load_kernel(vm_memory.deref())?;
+        let kernel_loader_result = self.load_kernel(
+            vm_memory.deref(),
+            #[cfg(feature = "tdx")]
+            None,
+        )?;
         self.vcpu_manager()
             .map_err(StartMicroVmError::Vcpu)?
             .create_boot_vcpus(request_ts, kernel_loader_result.kernel_load)
@@ -301,4 +314,126 @@ impl Vm {
 
         Ok(())
     }
+
+    #[cfg(feature = "tdx")]
+    fn init_tdx_microvm(
+        &mut self,
+        vm_as: GuestAddressSpaceImpl,
+    ) -> std::result::Result<(), StartMicroVmError> {
+        // Init tdx
+        self.init_tdx()?;
+
+        let boot_vcpu_count = self.vm_config().vcpu_count;
+        self.vcpu_manager()
+            .map_err(StartMicroVmError::Vcpu)?
+            .create_vcpus(boot_vcpu_count, None, None)
+            .map_err(StartMicroVmError::Vcpu)?;
+
+        let vm_memory = vm_as.memory();
+        let sections = self.parse_tdvf_sections()?;
+        let (hob_offset, payload_offset, payload_size, cmdline_offset) =
+            self.load_tdshim(vm_memory.deref(), &sections)?;
+
+        Ok(())
+    }
+
+    #[cfg(feature = "tdx")]
+    fn init_tdx(&self) -> std::result::Result<(), StartMicroVmError> {
+        dbs_tdx::tdx_init(
+            &self.vm_fd.as_raw_fd(),
+            self.tdx_caps.as_ref().unwrap(),
+            &self.vcpu_manager().unwrap().supported_cpuid.clone(),
+        )
+        .map_err(StartMicroVmError::TdxIoctlError)?;
+
+        Ok(())
+    }
+
+    #[cfg(feature = "tdx")]
+    fn parse_tdvf_sections(&mut self) -> std::result::Result<Vec<TdvfSection>, StartMicroVmError> {
+        let kernel_config = self
+            .kernel_config
+            .as_mut()
+            .ok_or(StartMicroVmError::MissingKernelConfig)?;
+
+        let tdshim_file = kernel_config.tdshim_file_mut().unwrap();
+
+        dbs_tdx::td_shim::parse_tdvf_sections(tdshim_file)
+            .map_err(LoadTdDataError::ParseTdshim)
+            .map_err(StartMicroVmError::TdDataLoader)
+    }
+
+    #[cfg(feature = "tdx")]
+    fn load_tdshim(
+        &mut self,
+        vm_memory: &GuestMemoryImpl,
+        sections: &[TdvfSection],
+    ) -> std::result::Result<(u64, u64, u64, u64), StartMicroVmError> {
+        let mut hob_offset: Option<u64> = None;
+        let mut payload_offset: Option<u64> = None;
+        let mut payload_size: Option<u64> = None;
+        let mut cmdline_offset: Option<u64> = None;
+
+        let kernel_config = self
+            .kernel_config
+            .as_mut()
+            .ok_or(StartMicroVmError::MissingKernelConfig)?;
+
+        let tdshim_file = kernel_config.tdshim_file_mut().unwrap();
+
+        for section in sections {
+            match section.r#type {
+                TdvfSectionType::Bfv | TdvfSectionType::Cfv => {
+                    tdshim_file
+                        .seek(SeekFrom::Start(section.data_offset as u64))
+                        .map_err(LoadTdDataError::ReadTdshim)
+                        .map_err(StartMicroVmError::TdDataLoader)?;
+                    vm_memory
+                        .read_from(
+                            GuestAddress(section.address),
+                            tdshim_file,
+                            section.data_size as usize,
+                        )
+                        .map_err(LoadTdDataError::LoadData)
+                        .map_err(StartMicroVmError::TdDataLoader)?;
+                }
+                TdvfSectionType::TdHob => {
+                    hob_offset = Some(section.address);
+                }
+                TdvfSectionType::Payload => {
+                    payload_offset = Some(section.address);
+                    payload_size = Some(section.size);
+                }
+                TdvfSectionType::PayloadParam => {
+                    cmdline_offset = Some(section.address);
+                }
+                _ => {}
+            }
+        }
+
+        if hob_offset.is_none() {
+            return Err(StartMicroVmError::TdDataLoader(LoadTdDataError::HobOffset));
+        }
+
+        if payload_offset.is_none() || payload_size.is_none() {
+            return Err(StartMicroVmError::TdDataLoader(
+                LoadTdDataError::PayloadOffset,
+            ));
+        }
+
+        if cmdline_offset.is_none() {
+            return Err(StartMicroVmError::TdDataLoader(
+                LoadTdDataError::PayloadParamsOffset,
+            ));
+        }
+
+        Ok((
+            hob_offset.unwrap(),
+            payload_offset.unwrap(),
+            payload_size.unwrap(),
+            cmdline_offset.unwrap(),
+        ))
+    }
+
+    
 }
