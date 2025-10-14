@@ -125,6 +125,10 @@ pub enum VcpuManagerError {
     #[cfg(feature = "tdx")]
     #[error("TDX init vcpu error:{0}")]
     TdxVcpuInit(#[source] TdxIoctlError),
+
+    /// Missing vcpu FDs
+    #[error("Missing vcpu FDs")]
+    MissingVcpuFds,
 }
 
 #[cfg(feature = "hotplug")]

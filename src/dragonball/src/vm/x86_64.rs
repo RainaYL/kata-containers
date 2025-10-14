@@ -360,6 +360,21 @@ impl Vm {
             .map_err(LoadTdDataError::LoadData)
             .map_err(StartMicroVmError::TdDataLoader)?;
 
+        for section in sections {
+            let host_address = vm_memory
+                .deref()
+                .get_host_address(GuestAddress(section.address))
+                .unwrap();
+            self.init_tdx_memory(
+                host_address as u64,
+                section.address,
+                section.size,
+                section.attributes,
+            )?;
+        }
+
+        self.finalize_tdx()?;
+
         Ok(())
     }
 
@@ -534,5 +549,37 @@ impl Vm {
         hob.add_payload(vm_memory, payload_info)?;
 
         hob.finish(vm_memory)
+    }
+
+    #[cfg(feature = "tdx")]
+    fn init_tdx_memory(
+        &mut self,
+        host_address: u64,
+        guest_address: u64,
+        size: u64,
+        flags: u32,
+    ) -> std::result::Result<(), StartMicroVmError> {
+        let vcpus_manager = self.vcpu_manager().map_err(StartMicroVmError::Vcpu)?;
+        let vcpus = vcpus_manager.vcpus();
+
+        if vcpus.is_empty() {
+            return Err(StartMicroVmError::Vcpu(
+                crate::vcpu::VcpuManagerError::MissingVcpuFds,
+            ));
+        }
+
+        dbs_tdx::tdx_init_mem_region(
+            &vcpus[0].vcpu_fd().as_raw_fd(),
+            host_address,
+            guest_address,
+            size / dbs_boot::PAGE_SIZE as u64,
+            flags,
+        )
+        .map_err(StartMicroVmError::TdxIoctlError)
+    }
+
+    #[cfg(feature = "tdx")]
+    fn finalize_tdx(&self) -> std::result::Result<(), StartMicroVmError> {
+        dbs_tdx::tdx_finalize(&self.vm_fd().as_raw_fd()).map_err(StartMicroVmError::TdxIoctlError)
     }
 }
