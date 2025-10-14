@@ -241,6 +241,11 @@ pub enum StartMicroVmError {
     /// Cannot load td data
     #[error("cannot load td data following tdshim metadata: {0:?}")]
     TdDataLoader(#[source] self::LoadTdDataError),
+
+    #[cfg(feature = "tdx")]
+    /// Cannot access guest address space manager.
+    #[error("cannot access guest address space manager: {0:?}")]
+    GuestMemory(#[source] address_space_manager::AddressManagerError),
 }
 
 /// Errors associated with starting the instance.

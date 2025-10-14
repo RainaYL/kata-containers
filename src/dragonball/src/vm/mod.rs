@@ -462,7 +462,7 @@ impl Vm {
             self.device_manager.io_manager(),
             self.epoll_manager.clone(),
             #[cfg(feature = "tdx")]
-            self.tdx_caps.clone()
+            self.tdx_caps.clone(),
         )?;
         self.vcpu_manager = Some(vcpu_manager);
 
@@ -634,7 +634,13 @@ impl Vm {
             .map_err(StartMicroVmError::AddressManagerError)?;
         address_space_param.set_kvm_vm_fd(self.vm_fd.clone());
         self.address_space
-            .create_address_space(&self.resource_manager, &numa_regions, address_space_param)
+            .create_address_space(
+                &self.resource_manager,
+                &numa_regions,
+                address_space_param,
+                #[cfg(feature = "tdx")]
+                self.is_tdx_enabled(),
+            )
             .map_err(StartMicroVmError::AddressManagerError)?;
 
         info!(self.logger, "VM: initializing guest memory done");
@@ -716,8 +722,7 @@ impl Vm {
     fn load_kernel(
         &mut self,
         vm_memory: &GuestMemoryImpl,
-        #[cfg(feature = "tdx")]
-        kernel_offset: Option<GuestAddress>,
+        #[cfg(feature = "tdx")] kernel_offset: Option<GuestAddress>,
     ) -> std::result::Result<KernelLoaderResult, StartMicroVmError> {
         // This is the easy way out of consuming the value of the kernel_cmdline.
         let kernel_config = self

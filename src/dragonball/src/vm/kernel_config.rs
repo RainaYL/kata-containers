@@ -7,7 +7,7 @@ use std::fs::File;
 pub struct KernelConfigInfo {
     #[cfg(feature = "tdx")]
     /// The descriptor to the tdshim file.
-    pub tdshim_file: Option<File>,
+    tdshim_file: Option<File>,
     /// The descriptor to the kernel file.
     kernel_file: File,
     /// The descriptor to the initrd file, if there is one

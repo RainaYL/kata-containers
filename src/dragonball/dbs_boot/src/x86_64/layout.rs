@@ -70,6 +70,11 @@ pub const GUEST_MEM_START: u64 = 0u64;
 /// Size of memory below MMIO hole.
 pub const GUEST_MEM_LOW_SIZE: u64 = MMIO_LOW_START - GUEST_MEM_START;
 
+/// Start address of td-shim
+pub const TD_SHIM_START: u64 = MMIO_LOW_END - TD_SHIM_SIZE + 1;
+/// Size of td-shim
+pub const TD_SHIM_SIZE: u64 = 16u64 << 20;
+
 /// Max retry times for reading /proc/cpuinfo
 const CPUINFO_READ_RETRY: u64 = 5;
 

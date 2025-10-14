@@ -17,7 +17,7 @@ use std::time::Duration;
 
 use dbs_arch::VpmuFeatureLevel;
 #[cfg(feature = "tdx")]
-use dbs_tdx::TdxCapabilities;
+use dbs_tdx::{tdx_init_vcpu, TdxCapabilities, TdxIoctlError};
 #[cfg(all(feature = "hotplug", feature = "dbs-upcall"))]
 use dbs_upcall::{DevMgrService, UpcallClient};
 use dbs_utils::epoll_manager::{EpollManager, EventOps, EventSet, Events, MutEventSubscriber};
@@ -120,6 +120,11 @@ pub enum VcpuManagerError {
     /// Kvm Ioctl Error
     #[error("failure in issuing KVM ioctl command: {0}")]
     Kvm(#[source] kvm_ioctls::Error),
+
+    /// Tdx init vcpu error
+    #[cfg(feature = "tdx")]
+    #[error("TDX init vcpu error:{0}")]
+    TdxVcpuInit(#[source] TdxIoctlError),
 }
 
 #[cfg(feature = "hotplug")]
@@ -503,6 +508,17 @@ impl VcpuManager {
             .filter(|(_i, info)| info.handle.is_some())
             .map(|(i, _info)| i as u8)
             .collect()
+    }
+
+    #[cfg(feature = "tdx")]
+    /// init vcpus for TDX
+    pub fn init_tdx_vcpus(&self, hob_address: u64) -> Result<()> {
+        for vcpu_info in &self.vcpu_infos {
+            if let Some(vcpu_fd) = &vcpu_info.vcpu_fd {
+                tdx_init_vcpu(&vcpu_fd.as_raw_fd(), hob_address).map_err(VcpuManagerError::TdxVcpuInit)?;
+            }
+        }
+        Ok(())
     }
 
     /// Get available vcpus to create with target vcpu_count

@@ -30,6 +30,8 @@ pub enum AddressSpaceRegionType {
     DeviceMemory,
     /// DAX address region for virtio-fs/virtio-pmem.
     DAXMemory,
+    /// Memory for guest firmware
+    Firmware,
 }
 
 /// Struct to maintain configuration information about a guest address region.
@@ -142,6 +144,7 @@ impl AddressSpaceRegion {
             mem_prealloc,
             libc::PROT_READ | libc::PROT_WRITE,
             is_hotplug,
+            AddressSpaceRegionType::DefaultMemory,
         )
     }
 
@@ -165,6 +168,7 @@ impl AddressSpaceRegion {
         mem_prealloc: bool,
         prot_flags: i32,
         is_hotplug: bool,
+        region_type: AddressSpaceRegionType,
     ) -> Result<AddressSpaceRegion, AddressSpaceError> {
         let perm_flags = if mem_prealloc {
             libc::MAP_SHARED | libc::MAP_POPULATE
@@ -187,7 +191,7 @@ impl AddressSpaceRegion {
                 let file: File = unsafe { File::from_raw_fd(fd) };
                 file.set_len(size).map_err(AddressSpaceError::SetFileSize)?;
                 Self::build(
-                    AddressSpaceRegionType::DefaultMemory,
+                    region_type,
                     base,
                     size,
                     numa_node_id,
@@ -203,7 +207,7 @@ impl AddressSpaceRegion {
                     perm_flags |= libc::MAP_POPULATE
                 }
                 Self::build(
-                    AddressSpaceRegionType::DefaultMemory,
+                    region_type,
                     base,
                     size,
                     numa_node_id,
@@ -230,7 +234,7 @@ impl AddressSpaceRegion {
                 file.set_len(size).map_err(AddressSpaceError::SetFileSize)?;
                 let file_offset = FileOffset::new(file, 0);
                 Self::build(
-                    AddressSpaceRegionType::DefaultMemory,
+                    region_type,
                     base,
                     size,
                     numa_node_id,
