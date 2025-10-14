@@ -206,6 +206,11 @@ impl Vm {
             info!(self.logger, "VM: enable CPU disable_idle_exits capability");
         }
 
+        #[cfg(feature = "tdx")]
+        if self.is_tdx_enabled() {
+            return self.init_tdx_microvm(vm_as);
+        }
+
         let vm_memory = vm_as.memory();
         let kernel_loader_result = self.load_kernel(
             vm_memory.deref(),
