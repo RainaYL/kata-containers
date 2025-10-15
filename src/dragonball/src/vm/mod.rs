@@ -228,7 +228,7 @@ impl Vm {
         #[cfg(not(feature = "tdx"))]
         let vm_fd = Arc::new(kvm.create_vm()?);
         #[cfg(feature = "tdx")]
-        let tdx_enabled = api_shared_info.read().unwrap().tdx_enabled;
+        let tdx_enabled = api_shared_info.read().expect("Poisoned lock").tdx_enabled;
         #[cfg(feature = "tdx")]
         let vm_fd = {
             if tdx_enabled {

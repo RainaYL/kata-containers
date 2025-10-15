@@ -478,7 +478,7 @@ impl DeviceOpContext {
     #[cfg(feature = "tdx")]
     /// check whether TDX is enabled
     pub fn is_tdx_enabled(&self) -> bool {
-        self.shared_info.read().unwrap().tdx_enabled
+        self.shared_info.read().expect("Poisoned lock").tdx_enabled
     }
 }
 

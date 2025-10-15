@@ -267,7 +267,7 @@ impl VcpuManager {
         #[cfg(not(feature = "tdx"))]
         let kvm_max_vcpu_count = kvm_context.get_max_vcpus();
         #[cfg(feature = "tdx")]
-        let tdx_enabled = shared_info.read().unwrap().tdx_enabled;
+        let tdx_enabled = shared_info.read().expect("Poisoned lock").tdx_enabled;
         #[cfg(feature = "tdx")]
         let kvm_max_vcpu_count = {
             if tdx_enabled {
