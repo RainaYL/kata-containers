@@ -474,6 +474,12 @@ impl DeviceOpContext {
     pub fn is_hotplug(&self) -> bool {
         self.is_hotplug
     }
+
+    #[cfg(feature = "tdx")]
+    /// check whether TDX is enabled
+    pub fn is_tdx_enabled(&self) -> bool {
+        self.shared_info.read().unwrap().tdx_enabled
+    }
 }
 
 #[cfg(all(feature = "hotplug", not(feature = "dbs-upcall")))]

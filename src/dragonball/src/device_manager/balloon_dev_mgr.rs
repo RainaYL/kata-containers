@@ -173,6 +173,7 @@ impl BalloonDeviceMgr {
                         f_deflate_on_oom: balloon_cfg.f_deflate_on_oom,
                         f_reporting: balloon_cfg.f_reporting,
                     },
+                    ctx.is_tdx_enabled(),
                 )
                 .map_err(BalloonDeviceError::CreateBalloonDevice)?,
             );
@@ -224,6 +225,7 @@ impl BalloonDeviceMgr {
                     f_deflate_on_oom: info.config.f_deflate_on_oom,
                     f_reporting: info.config.f_reporting,
                 },
+                ctx.is_tdx_enabled(),
             )
             .map_err(BalloonDeviceError::CreateBalloonDevice)?;
             METRICS

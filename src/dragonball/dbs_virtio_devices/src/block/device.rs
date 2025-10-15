@@ -82,6 +82,7 @@ impl<AS: DbsGuestAddressSpace> Block<AS> {
         queue_sizes: Arc<Vec<u16>>,
         epoll_mgr: EpollManager,
         rate_limiters: Vec<RateLimiter>,
+        f_iommu_platform: bool,
     ) -> Result<Self> {
         let num_queues = disk_images.len();
 
@@ -109,6 +110,10 @@ impl<AS: DbsGuestAddressSpace> Block<AS> {
 
         if num_queues > 1 {
             avail_features |= 1u64 << VIRTIO_BLK_F_MQ;
+        }
+
+        if f_iommu_platform {
+            avail_features |= 1u64 << VIRTIO_F_IOMMU_PLATFORM;
         }
 
         let config_space =
@@ -867,6 +872,7 @@ mod tests {
             Arc::new(vec![128]),
             epoll_mgr,
             vec![],
+            false,
         )
         .unwrap();
 
@@ -923,6 +929,7 @@ mod tests {
                 Arc::new(vec![128]),
                 epoll_mgr.clone(),
                 vec![],
+                false,
             )
             .unwrap();
 
@@ -960,6 +967,7 @@ mod tests {
                 Arc::new(vec![128]),
                 epoll_mgr.clone(),
                 vec![],
+                false,
             )
             .unwrap();
             dev.disk_images = vec![];
@@ -998,6 +1006,7 @@ mod tests {
                 Arc::new(vec![128]),
                 epoll_mgr,
                 vec![],
+                false,
             )
             .unwrap();
 
@@ -1035,6 +1044,7 @@ mod tests {
             Arc::new(vec![128]),
             epoll_mgr,
             vec![],
+            false,
         )
         .unwrap();
 
