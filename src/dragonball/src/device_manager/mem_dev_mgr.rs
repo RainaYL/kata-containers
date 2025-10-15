@@ -302,6 +302,10 @@ impl MemDeviceMgr {
             epoll_mgr.clone(),
             factory,
             boot_mem_size,
+            #[cfg(not(feature = "tdx"))]
+            false,
+            #[cfg(feature = "tdx")]
+            ctx.is_tdx_enabled(),
         )
         .map_err(DeviceMgrError::Virtio)
     }

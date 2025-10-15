@@ -30,7 +30,7 @@ use dbs_utils::epoll_manager::{
 };
 use kvm_ioctls::VmFd;
 use log::{debug, error, info, trace, warn};
-use virtio_bindings::bindings::virtio_blk::VIRTIO_F_VERSION_1;
+use virtio_bindings::bindings::virtio_blk::{VIRTIO_F_IOMMU_PLATFORM, VIRTIO_F_VERSION_1};
 use virtio_queue::{DescriptorChain, QueueOwnedT, QueueSync, QueueT};
 use vm_memory::{
     ByteValued, Bytes, GuestAddress, GuestAddressSpace, GuestMemory, GuestMemoryError,
@@ -910,6 +910,7 @@ impl<AS: GuestAddressSpace> Mem<AS> {
         epoll_mgr: EpollManager,
         factory: Arc<Mutex<dyn MemRegionFactory>>,
         boot_mem_byte: u64,
+        f_iommu_platform: bool,
     ) -> Result<Self> {
         trace!(
             target: MEM_DRIVER_NAME,
@@ -919,6 +920,10 @@ impl<AS: GuestAddressSpace> Mem<AS> {
         );
 
         let mut avail_features = 1u64 << VIRTIO_F_VERSION_1 as u64;
+
+        if f_iommu_platform {
+            avail_features |= 1u64 << VIRTIO_F_IOMMU_PLATFORM;
+        }
 
         // calculate alignment depending on boot memory size
         // algorithm is from kernel (arch/x86/mm/init_64.c: probe_memory_block_size())
@@ -1707,9 +1712,10 @@ pub(crate) mod tests {
         let epoll_mgr = EpollManager::default();
         let id = "mem0".to_string();
         let factory = Arc::new(Mutex::new(DummyMemRegionFactory {}));
-        let mut dev =
-            Mem::<Arc<GuestMemoryMmap>>::new(id, 200, 200, false, None, epoll_mgr, factory, 200)
-                .unwrap();
+        let mut dev = Mem::<Arc<GuestMemoryMmap>>::new(
+            id, 200, 200, false, None, epoll_mgr, factory, 200, false,
+        )
+        .unwrap();
 
         assert_eq!(
             VirtioDevice::<Arc<GuestMemoryMmap<()>>, QueueSync, GuestRegionMmap>::device_type(&dev),
@@ -1766,7 +1772,7 @@ pub(crate) mod tests {
         let id = "mem0".to_string();
         let factory = Arc::new(Mutex::new(DummyMemRegionFactory {}));
         let dev = Mem::<Arc<GuestMemoryMmap>>::new(
-            id, 0x100, 0x100, false, None, epoll_mgr, factory, 0xc0000000,
+            id, 0x100, 0x100, false, None, epoll_mgr, factory, 0xc0000000, false,
         )
         .unwrap();
         let mut requirements = vec![
@@ -1812,6 +1818,7 @@ pub(crate) mod tests {
                 epoll_mgr.clone(),
                 factory.clone(),
                 0xc0000000,
+                false,
             )
             .unwrap();
 
@@ -1838,7 +1845,7 @@ pub(crate) mod tests {
         // disable multi-region in virtio-mem
         {
             let mut dev = Mem::<Arc<GuestMemoryMmap>>::new(
-                id, 0xc00, 0xc00, false, None, epoll_mgr, factory, 0xc0000000,
+                id, 0xc00, 0xc00, false, None, epoll_mgr, factory, 0xc0000000, false,
             )
             .unwrap();
 
@@ -1866,9 +1873,10 @@ pub(crate) mod tests {
         let epoll_mgr = EpollManager::default();
         let id = "mem0".to_string();
         let factory = Arc::new(Mutex::new(DummyMemRegionFactory {}));
-        let dev =
-            Mem::<Arc<GuestMemoryMmap>>::new(id, 200, 200, false, None, epoll_mgr, factory, 200)
-                .unwrap();
+        let dev = Mem::<Arc<GuestMemoryMmap>>::new(
+            id, 200, 200, false, None, epoll_mgr, factory, 200, false,
+        )
+        .unwrap();
         assert!(dev.set_requested_size(200).is_ok());
     }
 
@@ -1888,6 +1896,7 @@ pub(crate) mod tests {
                 epoll_mgr.clone(),
                 factory.clone(),
                 200,
+                false,
             )
             .unwrap();
 
@@ -1924,6 +1933,7 @@ pub(crate) mod tests {
                 epoll_mgr.clone(),
                 factory.clone(),
                 200,
+                false,
             )
             .unwrap();
 
@@ -1949,7 +1959,7 @@ pub(crate) mod tests {
         // test activate mem device is correct
         {
             let mut dev = Mem::<Arc<GuestMemoryMmap>>::new(
-                id, 200, 200, false, None, epoll_mgr, factory, 200,
+                id, 200, 200, false, None, epoll_mgr, factory, 200, false,
             )
             .unwrap();
 
@@ -1979,9 +1989,10 @@ pub(crate) mod tests {
         let epoll_mgr = EpollManager::default();
         let id = "mem0".to_string();
         let factory = Arc::new(Mutex::new(DummyMemRegionFactory {}));
-        let mut dev =
-            Mem::<Arc<GuestMemoryMmap>>::new(id, 200, 200, false, None, epoll_mgr, factory, 200)
-                .unwrap();
+        let mut dev = Mem::<Arc<GuestMemoryMmap>>::new(
+            id, 200, 200, false, None, epoll_mgr, factory, 200, false,
+        )
+        .unwrap();
 
         let mem = GuestMemoryMmap::from_ranges(&[(GuestAddress(0), 0x10000)]).unwrap();
         let queues = vec![VirtioQueueConfig::<QueueSync>::create(128, 0).unwrap()];
