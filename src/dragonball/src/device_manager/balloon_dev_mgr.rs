@@ -173,6 +173,9 @@ impl BalloonDeviceMgr {
                         f_deflate_on_oom: balloon_cfg.f_deflate_on_oom,
                         f_reporting: balloon_cfg.f_reporting,
                     },
+                    #[cfg(not(feature = "tdx"))]
+                    false,
+                    #[cfg(feature = "tdx")]
                     ctx.is_tdx_enabled(),
                 )
                 .map_err(BalloonDeviceError::CreateBalloonDevice)?,

@@ -732,6 +732,9 @@ impl BlockDeviceMgr {
             Arc::new(cfg.queue_sizes()),
             epoll_mgr,
             limiters,
+            #[cfg(not(feature = "tdx"))]
+            false,
+            #[cfg(feature = "tdx")]
             ctx.is_tdx_enabled(),
         )?))
     }

@@ -422,6 +422,10 @@ impl FsDeviceMgr {
                 Box::new(handler),
                 epoll_mgr,
                 limiter,
+                #[cfg(not(feature = "tdx"))]
+                false,
+                #[cfg(feature = "tdx")]
+                ctx.is_tdx_enabled(),
             )
             .map_err(FsDeviceError::CreateFsDevice)?,
         );

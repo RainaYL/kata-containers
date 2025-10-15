@@ -29,7 +29,7 @@ use nydus_api::ConfigV2;
 use nydus_rafs::blobfs::{BlobFs, Config as BlobfsConfig};
 use nydus_rafs::{fs::Rafs, RafsIoRead};
 use rlimit::Resource;
-use virtio_bindings::bindings::virtio_blk::VIRTIO_F_VERSION_1;
+use virtio_bindings::bindings::virtio_blk::{VIRTIO_F_VERSION_1, VIRTIO_F_IOMMU_PLATFORM};
 use virtio_queue::QueueT;
 use vm_memory::{
     FileOffset, GuestAddress, GuestAddressSpace, GuestRegionMmap, GuestUsize, MmapRegion,
@@ -146,6 +146,7 @@ impl<AS: GuestAddressSpace> VirtioFs<AS> {
         handler: Box<dyn VirtioRegionHandler>,
         epoll_mgr: EpollManager,
         rate_limiter: Option<RateLimiter>,
+        f_iommu_platform: bool,
     ) -> Result<Self> {
         info!(
             "{}: tag {} req_num_queues {} queue_size {} cache_size {} cache_policy {} thread_pool_size {} writeback_cache {} no_open {} killpriv_v2 {} xattr {} drop_sys_resource {} no_readdir {}",
@@ -212,10 +213,15 @@ impl<AS: GuestAddressSpace> VirtioFs<AS> {
             ..VfsOptions::default()
         };
 
+        let mut avail_features = 1u64 << VIRTIO_F_VERSION_1;
+        if f_iommu_platform {
+            avail_features |= 1u64 << VIRTIO_F_IOMMU_PLATFORM;
+        }
+
         Ok(VirtioFs {
             device_info: VirtioDeviceInfo::new(
                 VIRTIO_FS_NAME.to_string(),
-                1u64 << VIRTIO_F_VERSION_1,
+                avail_features,
                 Arc::new(vec![queue_size; num_queues]),
                 config_space,
                 epoll_mgr,
@@ -1093,6 +1099,7 @@ pub mod tests {
             new_dummy_handler_helper(),
             epoll_manager.clone(),
             Some(rate_limiter),
+            false,
         );
         assert!(res.is_err());
 
@@ -1114,6 +1121,7 @@ pub mod tests {
             new_dummy_handler_helper(),
             epoll_manager,
             Some(rate_limiter),
+            false,
         );
         assert!(res.is_err());
     }
@@ -1138,6 +1146,7 @@ pub mod tests {
             new_dummy_handler_helper(),
             epoll_manager,
             Some(rate_limiter),
+            false,
         )
         .unwrap();
 
@@ -1207,6 +1216,7 @@ pub mod tests {
                 new_dummy_handler_helper(),
                 epoll_manager.clone(),
                 Some(rate_limiter),
+                false,
             )
             .unwrap();
 
@@ -1251,6 +1261,7 @@ pub mod tests {
                 new_dummy_handler_helper(),
                 epoll_manager,
                 Some(rate_limiter),
+                false,
             )
             .unwrap();
 
@@ -1661,6 +1672,7 @@ pub mod tests {
                 new_dummy_handler_helper(),
                 epoll_manager,
                 Some(rate_limiter),
+                false,
             )
             .unwrap();
             fs
@@ -1693,6 +1705,7 @@ pub mod tests {
             new_dummy_handler_helper(),
             epoll_manager,
             Some(rate_limiter),
+            false,
         )
         .unwrap();
         let kvm = Kvm::new().unwrap();
@@ -1736,6 +1749,7 @@ pub mod tests {
             new_dummy_handler_helper(),
             epoll_manager,
             Some(rate_limiter),
+            false,
         )
         .unwrap();
         let mut requirements = vec![
@@ -1779,6 +1793,7 @@ pub mod tests {
             new_dummy_handler_helper(),
             epoll_manager,
             Some(rate_limiter),
+            false,
         )
         .unwrap();
         let kvm = Kvm::new().unwrap();
