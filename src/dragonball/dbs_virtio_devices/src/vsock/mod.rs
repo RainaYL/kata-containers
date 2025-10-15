@@ -53,6 +53,8 @@ mod defs {
         pub const VIRTIO_F_IN_ORDER: usize = 35;
         /// The device conforms to the virtio spec version 1.0.
         pub const VIRTIO_F_VERSION_1: u32 = 32;
+        /// The device can work behind
+        pub const VIRTIO_F_IOMMU_PLATFORM: u32 = 33;
 
         /// Virtio vsock device ID.
         ///
@@ -334,6 +336,7 @@ mod tests {
                     Arc::new(defs::QUEUE_SIZES.to_vec()),
                     epoll_manager,
                     TestMuxer::new(),
+                    false,
                 )
                 .unwrap(),
             }
@@ -402,6 +405,7 @@ mod tests {
                     Arc::new(defs::QUEUE_SIZES.to_vec()),
                     EpollManager::default(),
                     TestMuxer::new(),
+                    false,
                 )
                 .unwrap(),
                 mem: Arc::new(self.mem.clone()),
