@@ -368,6 +368,10 @@ impl VirtioNetDeviceMgr {
             epoll_mgr,
             rx_rate_limiter,
             tx_rate_limiter,
+            #[cfg(not(feature = "tdx"))]
+            false,
+            #[cfg(feature = "tdx")]
+            ctx.is_tdx_enabled(),
         )?;
 
         Ok(Box::new(net_device))
