@@ -611,14 +611,14 @@ mod tests {
     #[test]
     #[cfg(feature = "tdx")]
     fn test_load_tdshim() {
-        let kernel_path = "~/src/test_resources/hello-vmlinux.bin";
+        let kernel_path = "/tmp/test_resources/hello-vmlinux.bin";
         let kernel_path_buf = PathBuf::from(kernel_path);
         if !kernel_path_buf.exists() {
             println!("Test resource file not found: {}", kernel_path);
             assert!(false);
         }
 
-        let tdshim_path = "~/src/test_resources/tdshim.bin";
+        let tdshim_path = "/tmp/test_resources/tdshim.bin";
         let tdshim_path_buf = PathBuf::from(tdshim_path);
         if !tdshim_path_buf.exists() {
             println!("Test resource file not found: {}", tdshim_path);
