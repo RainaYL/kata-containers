@@ -588,3 +588,84 @@ impl Vm {
         dbs_tdx::tdx_finalize(&self.vm_fd().as_raw_fd()).map_err(StartMicroVmError::TdxIoctlError)
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use crate::api::v1::InstanceInfo;
+    use crate::vm::{CpuTopology, KernelConfigInfo, VmConfigInfo};
+    use std::fs::File;
+    use std::path::PathBuf;
+    use std::sync::{Arc, RwLock};
+
+    #[cfg(feature = "tdx")]
+    fn create_tdx_vm_instance() -> Vm {
+        std::thread::sleep(std::time::Duration::from_millis(5));
+        let instance_info = Arc::new(RwLock::new(InstanceInfo::new("".to_string(), env!("CARGO_PKG_VERSION").to_string(), true)));
+        let epoll_manager = EpollManager::default();
+
+        Vm::new(None, instance_info, epoll_manager).unwrap()
+    }
+
+    #[test]
+    #[cfg(feature = "tdx")]
+    fn test_load_tdshim() {
+        let kernel_path = "~/src/test_resources/hello-vmlinux.bin";
+        let kernel_path_buf = PathBuf::from(kernel_path);
+        if !kernel_path_buf.exists() {
+            println!("Test resource file not found: {}", kernel_path);
+            assert!(false);
+        }
+
+        let tdshim_path = "~/src/test_resources/tdshim.bin";
+        let tdshim_path_buf = PathBuf::from(tdshim_path);
+        if !tdshim_path_buf.exists() {
+            println!("Test resource file not found: {}", tdshim_path);
+            assert!(false);
+        }
+
+        let cmd_line = Cmdline::new(64).unwrap();
+
+        let vm_config = VmConfigInfo {
+            vcpu_count: 1,
+            max_vcpu_count: 3,
+            cpu_pm: "off".to_string(),
+            cpu_topology: CpuTopology {
+                threads_per_core: 1,
+                cores_per_die: 1,
+                dies_per_socket: 1,
+                sockets: 1,
+            },
+            vpmu_feature: 0,
+            mem_type: "shmem".to_string(),
+            mem_file_path: "".to_string(),
+            mem_size_mib: 16,
+            serial_path: None,
+            pci_hotplug_enabled: false,
+        };
+
+        let mut vm = create_tdx_vm_instance();
+
+        vm.set_vm_config(vm_config);
+        assert!(vm.init_guest_memory().is_ok());
+
+        let vm_memory = vm
+            .address_space
+            .get_vm_as()
+            .clone()
+            .unwrap()
+            .memory()
+            .into_inner();
+        vm.set_kernel_config(KernelConfigInfo::new(
+            Some(File::open(tdshim_path).unwrap()),
+            File::open(kernel_path).unwrap(),
+            None,
+            cmd_line,
+        ));
+
+        let sections = vm.parse_tdvf_sections().unwrap();
+        let res = vm.load_tdshim(&vm_memory, &sections);
+        assert!(res.is_ok());
+    }
+}
