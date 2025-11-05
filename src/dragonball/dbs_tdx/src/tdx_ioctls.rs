@@ -221,23 +221,6 @@ pub fn tdx_get_caps(vm_fd: &RawFd) -> std::result::Result<TdxCapabilities, TdxIo
         0,
     )
     .map_err(TdxIoctlError::TdxCapabilities)?;
-    unsafe {
-        let nent = caps[0].cpuid.nent as usize;
-        let entries = caps[0].cpuid.entries.as_mut_slice(nent);
-        println!("{}", nent);
-        for i in 0..nent {
-            let entry = &entries[i];
-            println!("Entry {}", i);
-            println!("function: {:#x}", entry.function);
-            println!("index: {:#x}", entry.index);
-            println!("flags: {:#x}", entry.flags);
-            println!("eax: {:#x}", entry.eax);
-            println!("ebx: {:#x}", entry.ebx);
-            println!("ecx: {:#x}", entry.ecx);
-            println!("edx: {:#x}", entry.edx);
-            println!("");
-        }
-    }
 
     let mut cpu_id = unsafe {
         CpuId::from_entries(caps[0].cpuid.entries.as_slice(caps[0].cpuid.nent as usize)).map_err(
@@ -289,11 +272,6 @@ pub fn tdx_init(
             println!("ecx: {:#x}", entry.ecx);
             println!("edx: {:#x}", entry.edx);
             println!("");
-
-            if entry.function == 0x80000008 && entry.index == 0x0 {
-                entry.eax = (48 << 16) + (entry.eax & ((1 << 16) - 1));
-                println!("eax: {:#x}\n", entry.eax);
-            }
         }
     }
     tdx_command(

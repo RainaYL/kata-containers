@@ -594,7 +594,7 @@ mod tests {
 
     use super::*;
     use crate::api::v1::InstanceInfo;
-    use crate::vm::{CpuTopology, KernelConfigInfo, VmConfigInfo, KvmContext};
+    use crate::vm::{CpuTopology, KernelConfigInfo, KvmContext, VmConfigInfo};
     use std::fs::File;
     use std::path::PathBuf;
     use std::sync::{Arc, RwLock};
@@ -602,7 +602,11 @@ mod tests {
     #[cfg(feature = "tdx")]
     fn create_tdx_vm_instance() -> Vm {
         std::thread::sleep(std::time::Duration::from_millis(5));
-        let instance_info = Arc::new(RwLock::new(InstanceInfo::new("".to_string(), env!("CARGO_PKG_VERSION").to_string(), true)));
+        let instance_info = Arc::new(RwLock::new(InstanceInfo::new(
+            "".to_string(),
+            env!("CARGO_PKG_VERSION").to_string(),
+            true,
+        )));
         let epoll_manager = EpollManager::default();
 
         Vm::new(None, instance_info, epoll_manager).unwrap()
@@ -676,6 +680,26 @@ mod tests {
         let vm_fd = c.create_vm_with_type(dbs_tdx::KVM_X86_TDX_VM).unwrap();
         let caps = dbs_tdx::tdx_get_caps(&vm_fd.as_raw_fd()).unwrap();
         let cpu_id = caps.cpu_id.clone();
+
+        let supported = c.supported_cpuid(80).unwrap();
+        unsafe {
+            let nent = supported.as_fam_struct_ref().nent as usize;
+            let entries = supported.as_fam_struct_ref().entries.as_slice(nent);
+            println!("{}", nent);
+            for i in 0..nent {
+                let entry = &entries[i];
+                println!("Entry {}", i);
+                println!("function: {:#x}", entry.function);
+                println!("index: {:#x}", entry.index);
+                println!("flags: {:#x}", entry.flags);
+                println!("eax: {:#x}", entry.eax);
+                println!("ebx: {:#x}", entry.ebx);
+                println!("ecx: {:#x}", entry.ecx);
+                println!("edx: {:#x}", entry.edx);
+                println!("");
+            }
+        }
+
         dbs_tdx::tdx_init(&vm_fd.as_raw_fd(), &caps, &cpu_id).unwrap();
     }
 }
