@@ -221,8 +221,23 @@ pub fn tdx_get_caps(vm_fd: &RawFd) -> std::result::Result<TdxCapabilities, TdxIo
         0,
     )
     .map_err(TdxIoctlError::TdxCapabilities)?;
-    println!("{}", caps[0].cpuid.nent);
-    println!("{:?}", caps[0].cpuid.entries);
+    unsafe {
+        let nent = caps[0].cpuid.nent as usize;
+        let entries = caps[0].cpuid.entries.as_mut_slice(nent);
+        println!("{}", nent);
+        for i in 0..nent {
+            let entry = &entries[i];
+            println!("Entry {}", i);
+            println!("function: {:#x}", entry.function);
+            println!("index: {:#x}", entry.index);
+            println!("flags: {:#x}", entry.flags);
+            println!("eax: {:#x}", entry.eax);
+            println!("ebx: {:#x}", entry.ebx);
+            println!("ecx: {:#x}", entry.ecx);
+            println!("edx: {:#x}", entry.edx);
+            println!("");
+        }
+    }
 
     let mut cpu_id = unsafe {
         CpuId::from_entries(caps[0].cpuid.entries.as_slice(caps[0].cpuid.nent as usize)).map_err(
@@ -253,14 +268,29 @@ pub fn tdx_init(
         vec_with_fam_field::<kvm_tdx_init_vm, kvm_cpuid_entry2>(KVM_MAX_CPUID_ENTRIES);
     init_vm[0].attributes = caps.supported_attrs;
     init_vm[0].xfam = caps.supported_xfam;
-    init_vm[0].cpuid.nent = 300;
-    println!("{}", init_vm[0].cpuid.nent);
+    init_vm[0].cpuid.nent = cpu_id.len() as __u32;
     init_vm[0].cpuid.padding = 0;
     unsafe {
         let cpuid_entries = init_vm[0].cpuid.entries.as_mut_slice(cpu_id.len());
         cpuid_entries.copy_from_slice(cpu_id);
     }
-    println!("{:?}", init_vm[0].cpuid.entries);
+    unsafe {
+        let nent = init_vm[0].cpuid.nent as usize;
+        let entries = init_vm[0].cpuid.entries.as_mut_slice(nent);
+        println!("{}", nent);
+        for i in 0..nent {
+            let entry = &entries[i];
+            println!("Entry {}", i);
+            println!("function: {:#x}", entry.function);
+            println!("index: {:#x}", entry.index);
+            println!("flags: {:#x}", entry.flags);
+            println!("eax: {:#x}", entry.eax);
+            println!("ebx: {:#x}", entry.ebx);
+            println!("ecx: {:#x}", entry.ecx);
+            println!("edx: {:#x}", entry.edx);
+            println!("");
+        }
+    }
     tdx_command(
         vm_fd,
         TdxCommand::InitVm,
