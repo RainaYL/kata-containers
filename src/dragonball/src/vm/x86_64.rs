@@ -594,7 +594,7 @@ mod tests {
 
     use super::*;
     use crate::api::v1::InstanceInfo;
-    use crate::vm::{CpuTopology, KernelConfigInfo, VmConfigInfo};
+    use crate::vm::{CpuTopology, KernelConfigInfo, VmConfigInfo, KvmContext};
     use std::fs::File;
     use std::path::PathBuf;
     use std::sync::{Arc, RwLock};
@@ -667,5 +667,13 @@ mod tests {
         let sections = vm.parse_tdvf_sections().unwrap();
         let res = vm.load_tdshim(&vm_memory, &sections);
         assert!(res.is_ok());
+    }
+
+    #[test]
+    #[cfg(feature = "tdx")]
+    fn test_tdx_init() {
+        let c = KvmContext::new(None).unwrap();
+        let vm_fd = c.create_vm_with_type(dbs_tdx::KVM_X86_TDX_VM);
+        assert!(vm_fd.is_ok());
     }
 }
