@@ -279,7 +279,7 @@ pub fn tdx_init(
         let entries = init_vm[0].cpuid.entries.as_mut_slice(nent);
         println!("{}", nent);
         for i in 0..nent {
-            let entry = &entries[i];
+            let entry = &mut entries[i];
             println!("Entry {}", i);
             println!("function: {:#x}", entry.function);
             println!("index: {:#x}", entry.index);
@@ -289,6 +289,11 @@ pub fn tdx_init(
             println!("ecx: {:#x}", entry.ecx);
             println!("edx: {:#x}", entry.edx);
             println!("");
+
+            if entry.function == 0x80000008 && entry.index == 0x0 {
+                entry.eax &= 42 << 16;
+                println!("eax: {:#x}\n", entry.eax);
+            }
         }
     }
     tdx_command(
