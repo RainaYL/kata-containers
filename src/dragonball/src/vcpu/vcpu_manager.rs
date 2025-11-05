@@ -17,7 +17,7 @@ use std::time::Duration;
 
 use dbs_arch::VpmuFeatureLevel;
 #[cfg(feature = "tdx")]
-use dbs_tdx::{tdx_init_vcpu, TdxCapabilities, TdxIoctlError};
+use dbs_tdx::{tdx_init_vcpu, TdxIoctlError};
 #[cfg(all(feature = "hotplug", feature = "dbs-upcall"))]
 use dbs_upcall::{DevMgrService, UpcallClient};
 use dbs_utils::epoll_manager::{EpollManager, EventOps, EventSet, Events, MutEventSubscriber};
@@ -260,7 +260,6 @@ impl VcpuManager {
         shared_info: Arc<RwLock<InstanceInfo>>,
         io_manager: IoManagerCached,
         epoll_manager: EpollManager,
-        #[cfg(feature = "tdx")] tdx_caps: Option<TdxCapabilities>,
     ) -> Result<Arc<Mutex<Self>>> {
         let support_immediate_exit = kvm_context.kvm().check_extension(Cap::ImmediateExit);
         let max_vcpu_count = vm_config_info.max_vcpu_count;
@@ -302,32 +301,9 @@ impl VcpuManager {
             .try_clone()
             .map_err(VcpuManagerError::VcpuIO)?;
 
-        let mut supported_cpuid = kvm_context
+        let supported_cpuid = kvm_context
             .supported_cpuid(kvm_bindings::KVM_MAX_CPUID_ENTRIES)
             .map_err(VcpuManagerError::Kvm)?;
-
-        #[cfg(all(target_arch = "x86_64", feature = "tdx"))]
-        if tdx_enabled {
-            let tdx_supported_cpuid = tdx_caps.unwrap().cpu_id;
-            Self::filter_tdx_cpuid(&tdx_supported_cpuid, &mut supported_cpuid);
-            unsafe {
-                let nent = supported_cpuid.as_fam_struct_ref().nent as usize;
-                let entries = supported_cpuid.as_fam_struct_ref().entries.as_slice(nent);
-                println!("{}", nent);
-                for i in 0..nent {
-                    let entry = &entries[i];
-                    println!("Entry {}", i);
-                    println!("function: {:#x}", entry.function);
-                    println!("index: {:#x}", entry.index);
-                    println!("flags: {:#x}", entry.flags);
-                    println!("eax: {:#x}", entry.eax);
-                    println!("ebx: {:#x}", entry.ebx);
-                    println!("ecx: {:#x}", entry.ecx);
-                    println!("edx: {:#x}", entry.edx);
-                    println!("");
-                }
-            }
-        }
 
         #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
         let vpmu_feature_level = match vm_config_info.vpmu_feature {
@@ -828,66 +804,6 @@ impl VcpuManager {
 
     fn get_vcpus_action(&self) -> VcpuAction {
         self.vcpus_in_action.0
-    }
-
-    #[cfg(feature = "tdx")]
-    fn filter_tdx_cpuid(
-        tdx_supported_cpuid: &kvm_bindings::CpuId,
-        kvm_supported_cpuid: &mut kvm_bindings::CpuId,
-    ) {
-        let mut filtered_entries = Vec::new();
-        let kvm_supported_cpuid = kvm_supported_cpuid.as_mut_fam_struct();
-        unsafe {
-            let kvm_entries = kvm_supported_cpuid
-                .entries
-                .as_mut_slice(kvm_supported_cpuid.nent as usize);
-            for kvm_entry in kvm_entries.iter() {
-                let tdx_entry = Self::find_cpuid_entry(
-                    tdx_supported_cpuid,
-                    kvm_entry.function,
-                    kvm_entry.index,
-                );
-                if tdx_entry.is_none() {
-                    continue;
-                }
-
-                let tdx_entry = tdx_entry.unwrap();
-                let filtered_entry = kvm_bindings::kvm_cpuid_entry2 {
-                    function: kvm_entry.function,
-                    index: kvm_entry.index,
-                    flags: kvm_entry.flags,
-                    eax: kvm_entry.eax & tdx_entry.eax,
-                    ebx: kvm_entry.ebx & tdx_entry.ebx,
-                    ecx: kvm_entry.ecx & tdx_entry.ecx,
-                    edx: kvm_entry.edx & tdx_entry.edx,
-                    ..Default::default()
-                };
-                filtered_entries.push(filtered_entry);
-            }
-
-            for (i, entry) in filtered_entries.iter().enumerate() {
-                kvm_entries[i] = *entry;
-            }
-            kvm_supported_cpuid.nent = filtered_entries.len() as u32;
-        }
-    }
-
-    #[cfg(feature = "tdx")]
-    fn find_cpuid_entry(
-        cpuid: &kvm_bindings::CpuId,
-        function: u32,
-        index: u32,
-    ) -> Option<kvm_bindings::kvm_cpuid_entry2> {
-        let cpuid = cpuid.as_fam_struct_ref();
-        unsafe {
-            let entries = cpuid.entries.as_slice(cpuid.nent as usize);
-            for entry in entries {
-                if entry.function == function && entry.index == index {
-                    return Some(entry.clone());
-                }
-            }
-        }
-        None
     }
 }
 

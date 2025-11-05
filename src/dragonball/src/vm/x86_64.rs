@@ -388,7 +388,7 @@ impl Vm {
         dbs_tdx::tdx_init(
             &self.vm_fd.as_raw_fd(),
             self.tdx_caps.as_ref().unwrap(),
-            &self.vcpu_manager().unwrap().supported_cpuid.clone(),
+            self.vcpu_manager().unwrap().supported_cpuid.clone(),
         )
         .map_err(StartMicroVmError::TdxIoctlError)?;
 
@@ -679,8 +679,7 @@ mod tests {
         let c = KvmContext::new(None).unwrap();
         let vm_fd = c.create_vm_with_type(dbs_tdx::KVM_X86_TDX_VM).unwrap();
         let caps = dbs_tdx::tdx_get_caps(&vm_fd.as_raw_fd()).unwrap();
-        let cpu_id = caps.cpu_id.clone();
-
-        dbs_tdx::tdx_init(&vm_fd.as_raw_fd(), &caps, &cpu_id).unwrap();
+        let cpu_id = c.supported_cpuid(80).unwrap();
+        dbs_tdx::tdx_init(&vm_fd.as_raw_fd(), &caps, cpu_id).unwrap();
     }
 }
