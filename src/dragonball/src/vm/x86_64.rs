@@ -674,7 +674,9 @@ mod tests {
     fn test_tdx_init() {
         let c = KvmContext::new(None).unwrap();
         let vm_fd = c.create_vm_with_type(dbs_tdx::KVM_X86_TDX_VM).unwrap();
-        let caps = dbs_tdx::tdx_get_caps(&vm_fd.as_raw_fd());
-        assert!(caps.is_ok());
+        let caps = dbs_tdx::tdx_get_caps(&vm_fd.as_raw_fd()).unwrap();
+        let cpu_id = caps.cpu_id.clone();
+        let res = dbs_tdx::tdx_init(&vm_fd.as_raw_fd(), &caps, &cpu_id);
+        assert!(res.is_ok());
     }
 }
