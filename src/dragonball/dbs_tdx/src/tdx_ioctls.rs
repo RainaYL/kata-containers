@@ -257,6 +257,7 @@ pub fn tdx_init(
         let cpuid_entries = init_vm[0].cpuid.entries.as_mut_slice(cpu_id.len());
         cpuid_entries.copy_from_slice(cpu_id);
     }
+    
     unsafe {
         let nent = init_vm[0].cpuid.nent as usize;
         let entries = init_vm[0].cpuid.entries.as_mut_slice(nent);
@@ -274,6 +275,7 @@ pub fn tdx_init(
             println!("");
         }
     }
+
     tdx_command(
         vm_fd,
         TdxCommand::InitVm,

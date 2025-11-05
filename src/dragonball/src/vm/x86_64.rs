@@ -681,25 +681,6 @@ mod tests {
         let caps = dbs_tdx::tdx_get_caps(&vm_fd.as_raw_fd()).unwrap();
         let cpu_id = caps.cpu_id.clone();
 
-        let supported = c.supported_cpuid(80).unwrap();
-        unsafe {
-            let nent = supported.as_fam_struct_ref().nent as usize;
-            let entries = supported.as_fam_struct_ref().entries.as_slice(nent);
-            println!("{}", nent);
-            for i in 0..nent {
-                let entry = &entries[i];
-                println!("Entry {}", i);
-                println!("function: {:#x}", entry.function);
-                println!("index: {:#x}", entry.index);
-                println!("flags: {:#x}", entry.flags);
-                println!("eax: {:#x}", entry.eax);
-                println!("ebx: {:#x}", entry.ebx);
-                println!("ecx: {:#x}", entry.ecx);
-                println!("edx: {:#x}", entry.edx);
-                println!("");
-            }
-        }
-
         dbs_tdx::tdx_init(&vm_fd.as_raw_fd(), &caps, &cpu_id).unwrap();
     }
 }
