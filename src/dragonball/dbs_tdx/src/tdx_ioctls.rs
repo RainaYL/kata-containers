@@ -253,7 +253,7 @@ pub fn tdx_init(
         vec_with_fam_field::<kvm_tdx_init_vm, kvm_cpuid_entry2>(KVM_MAX_CPUID_ENTRIES);
     init_vm[0].attributes = caps.supported_attrs;
     init_vm[0].xfam = caps.supported_xfam;
-    init_vm[0].cpuid.nent = KVM_MAX_CPUID_ENTRIES  as u32 + 1;
+    init_vm[0].cpuid.nent = 300;
     println!("{}", init_vm[0].cpuid.nent);
     init_vm[0].cpuid.padding = 0;
     unsafe {
