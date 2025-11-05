@@ -221,6 +221,9 @@ pub fn tdx_get_caps(vm_fd: &RawFd) -> std::result::Result<TdxCapabilities, TdxIo
         0,
     )
     .map_err(TdxIoctlError::TdxCapabilities)?;
+    println!("{}", caps[0].cpuid.nent);
+    println!("{:?}", caps[0].cpuid.entries);
+
     let mut cpu_id = unsafe {
         CpuId::from_entries(caps[0].cpuid.entries.as_slice(caps[0].cpuid.nent as usize)).map_err(
             |e| {
@@ -251,11 +254,13 @@ pub fn tdx_init(
     init_vm[0].attributes = caps.supported_attrs;
     init_vm[0].xfam = caps.supported_xfam;
     init_vm[0].cpuid.nent = cpu_id.len() as u32;
+    println!("{}", init_vm[0].cpuid.nent);
     init_vm[0].cpuid.padding = 0;
     unsafe {
         let cpuid_entries = init_vm[0].cpuid.entries.as_mut_slice(cpu_id.len());
         cpuid_entries.copy_from_slice(cpu_id);
     }
+    println!("{:?}", init_vm[0].cpuid.entries);
     tdx_command(
         vm_fd,
         TdxCommand::InitVm,
