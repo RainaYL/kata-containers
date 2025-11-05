@@ -310,6 +310,23 @@ impl VcpuManager {
         if tdx_enabled {
             let tdx_supported_cpuid = tdx_caps.unwrap().cpu_id;
             Self::filter_tdx_cpuid(&tdx_supported_cpuid, &mut supported_cpuid);
+            unsafe {
+                let nent = supported_cpuid.as_fam_struct_ref().nent as usize;
+                let entries = supported_cpuid.as_fam_struct_ref().entries.as_slice(nent);
+                println!("{}", nent);
+                for i in 0..nent {
+                    let entry = &entries[i];
+                    println!("Entry {}", i);
+                    println!("function: {:#x}", entry.function);
+                    println!("index: {:#x}", entry.index);
+                    println!("flags: {:#x}", entry.flags);
+                    println!("eax: {:#x}", entry.eax);
+                    println!("ebx: {:#x}", entry.ebx);
+                    println!("ecx: {:#x}", entry.ecx);
+                    println!("edx: {:#x}", entry.edx);
+                    println!("");
+                }
+            }
         }
 
         #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
@@ -825,8 +842,11 @@ impl VcpuManager {
                 .entries
                 .as_mut_slice(kvm_supported_cpuid.nent as usize);
             for kvm_entry in kvm_entries.iter() {
-                let tdx_entry =
-                    Self::find_cpuid_entry(tdx_supported_cpuid, kvm_entry.function, kvm_entry.index);
+                let tdx_entry = Self::find_cpuid_entry(
+                    tdx_supported_cpuid,
+                    kvm_entry.function,
+                    kvm_entry.index,
+                );
                 if tdx_entry.is_none() {
                     continue;
                 }

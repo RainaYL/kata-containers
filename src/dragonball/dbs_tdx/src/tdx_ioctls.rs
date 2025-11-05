@@ -260,10 +260,10 @@ pub fn tdx_init(
     
     unsafe {
         let nent = init_vm[0].cpuid.nent as usize;
-        let entries = init_vm[0].cpuid.entries.as_mut_slice(nent);
+        let entries = init_vm[0].cpuid.entries.as_slice(nent);
         println!("{}", nent);
         for i in 0..nent {
-            let entry = &mut entries[i];
+            let entry = &entries[i];
             println!("Entry {}", i);
             println!("function: {:#x}", entry.function);
             println!("index: {:#x}", entry.index);
