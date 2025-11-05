@@ -301,24 +301,6 @@ pub fn tdx_init(vm_fd: &RawFd, caps: &TdxCapabilities, mut cpu_id: CpuId) -> Res
         cpuid_entries.copy_from_slice(cpu_id.entries.as_slice(cpu_id.nent as usize));
     }
 
-    unsafe {
-        let nent = init_vm[0].cpuid.nent as usize;
-        let entries = init_vm[0].cpuid.entries.as_slice(nent);
-        println!("{}", nent);
-        for i in 0..nent {
-            let entry = &entries[i];
-            println!("Entry {}", i);
-            println!("function: {:#x}", entry.function);
-            println!("index: {:#x}", entry.index);
-            println!("flags: {:#x}", entry.flags);
-            println!("eax: {:#x}", entry.eax);
-            println!("ebx: {:#x}", entry.ebx);
-            println!("ecx: {:#x}", entry.ecx);
-            println!("edx: {:#x}", entry.edx);
-            println!("");
-        }
-    }
-
     tdx_command(
         vm_fd,
         TdxCommand::InitVm,
