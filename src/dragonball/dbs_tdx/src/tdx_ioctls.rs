@@ -291,7 +291,7 @@ pub fn tdx_init(
             println!("");
 
             if entry.function == 0x80000008 && entry.index == 0x0 {
-                entry.eax = (42 << 16) + (entry.eax & ((1 << 16) - 1));
+                entry.eax = (48 << 16) + (entry.eax & ((1 << 16) - 1));
                 println!("eax: {:#x}\n", entry.eax);
             }
         }
