@@ -681,7 +681,8 @@ mod tests {
         let c = KvmContext::new(None).unwrap();
         let vm_fd = c.create_vm_with_type(dbs_tdx::KVM_X86_TDX_VM).unwrap();
         let caps = dbs_tdx::tdx_get_caps(&vm_fd.as_raw_fd()).unwrap();
-        let cpu_id = c.supported_cpuid(80).unwrap();
+        let mut cpu_id = c.supported_cpuid(80).unwrap();
+        dbs_tdx::filter_tdx_cpuid(&caps.cpu_id, &mut cpu_id);
         dbs_tdx::tdx_init(
             &vm_fd.as_raw_fd(),
             caps.supported_attrs,
