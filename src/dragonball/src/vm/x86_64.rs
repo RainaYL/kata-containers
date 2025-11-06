@@ -606,7 +606,7 @@ mod tests {
         let instance_info = Arc::new(RwLock::new(InstanceInfo::new(
             "".to_string(),
             env!("CARGO_PKG_VERSION").to_string(),
-            true,
+            false,
         )));
         let epoll_manager = EpollManager::default();
         let mut vm = Vm::new(None, instance_info, epoll_manager).unwrap();

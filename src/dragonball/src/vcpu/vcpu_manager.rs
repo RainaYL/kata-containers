@@ -579,7 +579,6 @@ impl VcpuManager {
         let kvm_vcpu = match &self.vcpu_infos[cpu_index as usize].vcpu_fd {
             Some(vcpu_fd) => vcpu_fd.clone(),
             None => {
-                println!("vcpu id: {}", cpu_index);
                 let vcpu_fd = Arc::new(
                     self.vm_fd
                         .create_vcpu(cpu_index as u64)
