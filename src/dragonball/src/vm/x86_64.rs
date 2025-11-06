@@ -670,7 +670,7 @@ mod tests {
         vm.vm_fd().create_vcpu(0).unwrap();
         */
         let kvm = kvm_ioctls::Kvm::new().unwrap();
-        let vm = kvm.create_vm_with_type(0).unwrap();
+        let vm = kvm.create_vm_with_type(5).unwrap();
         vm.create_vcpu(0).unwrap();
     }
 }
