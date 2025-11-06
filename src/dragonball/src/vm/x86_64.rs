@@ -698,7 +698,7 @@ mod tests {
 
         let mut vm = create_tdx_vm_instance();
         vm.set_vm_config(vm_config);
-        let vm_fd = vm.vm_fd().as_raw_fd();
+        vm.init_guest_memory().unwrap();
 
         vm.init_vcpu_manager(vm.vm_as().unwrap().clone(), BpfProgram::default())
             .unwrap();
@@ -706,7 +706,7 @@ mod tests {
         let cpu_id = vm.vcpu_manager().unwrap().supported_cpuid.clone();
 
         dbs_tdx::tdx_init(
-            &vm_fd,
+            &vm.vm_fd().as_raw_fd(),
             tdx_caps.supported_attrs,
             tdx_caps.supported_xfam,
             cpu_id,
