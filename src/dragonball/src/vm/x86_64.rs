@@ -663,7 +663,7 @@ mod tests {
             cmd_line,
         ));
 
-        //vm.init_tdx().unwrap();
+        vm.init_tdx().unwrap();
 
         //let mut vcpu_manager = vm.vcpu_manager().unwrap();
         vm.vm_fd().create_vcpu(0).unwrap();
