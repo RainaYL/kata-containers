@@ -711,18 +711,16 @@ mod tests {
             cmd_line,
         ));
         vm.init_guest_memory().unwrap();
+
+        vm.init_vcpu_manager(vm.vm_as().unwrap().clone(), BpfProgram::default())
+            .unwrap();
         vm.vcpu_manager()
             .unwrap()
             .set_reset_event_fd(EventFd::new(libc::EFD_NONBLOCK).unwrap())
             .unwrap();
 
-        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-        {
-            vm.setup_interrupt_controller().unwrap();
-        }
+        vm.setup_interrupt_controller().unwrap();
 
-        vm.init_vcpu_manager(vm.vm_as().unwrap().clone(), BpfProgram::default())
-            .unwrap();
         let tdx_caps = vm.tdx_caps.as_ref().unwrap();
         let cpu_id = vm.vcpu_manager().unwrap().supported_cpuid.clone();
 
