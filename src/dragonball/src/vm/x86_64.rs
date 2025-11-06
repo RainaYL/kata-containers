@@ -600,6 +600,7 @@ mod tests {
     use std::fs::File;
     use std::path::PathBuf;
     use std::sync::{Arc, RwLock};
+    use vmm_sys_util::eventfd::EventFd;
 
     #[cfg(feature = "tdx")]
     fn create_tdx_vm_instance() -> Vm {
@@ -710,6 +711,15 @@ mod tests {
             cmd_line,
         ));
         vm.init_guest_memory().unwrap();
+        vm.vcpu_manager()
+            .unwrap()
+            .set_reset_event_fd(EventFd::new(libc::EFD_NONBLOCK).unwrap())
+            .unwrap();
+
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        {
+            vm.setup_interrupt_controller().unwrap();
+        }
 
         vm.init_vcpu_manager(vm.vm_as().unwrap().clone(), BpfProgram::default())
             .unwrap();
