@@ -606,7 +606,7 @@ mod tests {
         let instance_info = Arc::new(RwLock::new(InstanceInfo::new(
             "".to_string(),
             env!("CARGO_PKG_VERSION").to_string(),
-            false,
+            true,
         )));
         let epoll_manager = EpollManager::default();
         let mut vm = Vm::new(None, instance_info, epoll_manager).unwrap();
@@ -667,6 +667,6 @@ mod tests {
         //let cpu_id = vm.vcpu_manager().unwrap().supported_cpuid.clone();
 
         let mut vcpu_manager = vm.vcpu_manager().unwrap();
-        assert!(vcpu_manager.create_vcpus(2, None, None).is_ok());
+        vcpu_manager.create_vcpus(2, None, None).unwrap();
     }
 }
