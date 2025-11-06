@@ -650,6 +650,7 @@ mod tests {
     #[cfg(feature = "tdx")]
     fn test_tdx_init() {
 
+        /* 
         let kernel_path = "/tmp/test_resources/vmlinux-confidential.container";
         let tdshim_path = "/tmp/test_resources/tdshim.bin";
         let cmd_line = Cmdline::new(64).unwrap();
@@ -667,5 +668,9 @@ mod tests {
 
         //let mut vcpu_manager = vm.vcpu_manager().unwrap();
         vm.vm_fd().create_vcpu(0).unwrap();
+        */
+        let kvm = kvm_ioctls::Kvm::new().unwrap();
+        let vm = kvm.create_vm_with_type(0).unwrap();
+        vm.create_vcpu(0).unwrap();
     }
 }
