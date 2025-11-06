@@ -663,8 +663,8 @@ mod tests {
             cmd_line,
         ));
 
-        let tdx_caps = vm.tdx_caps.as_ref().unwrap();
-        let cpu_id = vm.vcpu_manager().unwrap().supported_cpuid.clone();
+        //let tdx_caps = vm.tdx_caps.as_ref().unwrap();
+        //let cpu_id = vm.vcpu_manager().unwrap().supported_cpuid.clone();
 
         let mut vcpu_manager = vm.vcpu_manager().unwrap();
         assert!(vcpu_manager.create_vcpus(2, None, None).is_ok());
