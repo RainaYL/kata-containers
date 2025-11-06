@@ -628,7 +628,7 @@ mod tests {
             pci_hotplug_enabled: false,
         };
         vm.set_vm_config(vm_config);
-        vm.init_guest_memory().unwrap();
+        //vm.init_guest_memory().unwrap();
 
         vm.init_vcpu_manager(vm.vm_as().unwrap().clone(), BpfProgram::default())
             .unwrap();
