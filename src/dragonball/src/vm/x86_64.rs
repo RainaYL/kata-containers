@@ -385,9 +385,11 @@ impl Vm {
 
     #[cfg(feature = "tdx")]
     fn init_tdx(&self) -> std::result::Result<(), StartMicroVmError> {
+        let tdx_caps = self.tdx_caps.as_ref().unwrap();
         dbs_tdx::tdx_init(
             &self.vm_fd.as_raw_fd(),
-            self.tdx_caps.as_ref().unwrap(),
+            tdx_caps.supported_attrs,
+            tdx_caps.supported_xfam,
             self.vcpu_manager().unwrap().supported_cpuid.clone(),
         )
         .map_err(StartMicroVmError::TdxIoctlError)?;
@@ -680,6 +682,12 @@ mod tests {
         let vm_fd = c.create_vm_with_type(dbs_tdx::KVM_X86_TDX_VM).unwrap();
         let caps = dbs_tdx::tdx_get_caps(&vm_fd.as_raw_fd()).unwrap();
         let cpu_id = c.supported_cpuid(80).unwrap();
-        dbs_tdx::tdx_init(&vm_fd.as_raw_fd(), &caps, cpu_id).unwrap();
+        dbs_tdx::tdx_init(
+            &vm_fd.as_raw_fd(),
+            caps.supported_attrs,
+            caps.supported_xfam,
+            cpu_id,
+        )
+        .unwrap();
     }
 }

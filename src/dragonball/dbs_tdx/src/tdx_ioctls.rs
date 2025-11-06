@@ -241,59 +241,12 @@ pub fn tdx_get_caps(vm_fd: &RawFd) -> std::result::Result<TdxCapabilities, TdxIo
     })
 }
 
-fn filter_tdx_cpuid(tdx_supported_cpuid: &CpuId, cpu_id: &mut CpuId) {
-    let mut filtered_entries = Vec::new();
-    let cpu_id = cpu_id.as_mut_fam_struct();
-    unsafe {
-        let entries = cpu_id.entries.as_mut_slice(cpu_id.nent as usize);
-        for entry in entries.iter() {
-            let tdx_entry = find_cpuid_entry(tdx_supported_cpuid, entry.function, entry.index);
-            if tdx_entry.is_none() {
-                continue;
-            }
-
-            let tdx_entry = tdx_entry.unwrap();
-            let filtered_entry = kvm_bindings::kvm_cpuid_entry2 {
-                function: entry.function,
-                index: entry.index,
-                flags: entry.flags,
-                eax: entry.eax & tdx_entry.eax,
-                ebx: entry.ebx & tdx_entry.ebx,
-                ecx: entry.ecx & tdx_entry.ecx,
-                edx: entry.edx & tdx_entry.edx,
-                ..Default::default()
-            };
-            filtered_entries.push(filtered_entry);
-        }
-
-        for (i, entry) in filtered_entries.iter().enumerate() {
-            entries[i] = *entry;
-        }
-        cpu_id.nent = filtered_entries.len() as u32;
-    }
-}
-
-fn find_cpuid_entry(cpuid: &CpuId, function: u32, index: u32) -> Option<kvm_cpuid_entry2> {
-    let cpuid = cpuid.as_fam_struct_ref();
-    unsafe {
-        let entries = cpuid.entries.as_slice(cpuid.nent as usize);
-        for entry in entries {
-            if entry.function == function && entry.index == index {
-                return Some(entry.clone());
-            }
-        }
-    }
-    None
-}
-
-pub fn tdx_init(vm_fd: &RawFd, caps: &TdxCapabilities, mut cpu_id: CpuId) -> Result<(), TdxIoctlError> {
-    filter_tdx_cpuid(&caps.cpu_id, &mut cpu_id);
-
+pub fn tdx_init(vm_fd: &RawFd, attributes: u64, xfam: u64, cpu_id: CpuId) -> Result<(), TdxIoctlError> {
     let cpu_id = cpu_id.as_fam_struct_ref();
     let mut init_vm =
         vec_with_fam_field::<kvm_tdx_init_vm, kvm_cpuid_entry2>(cpu_id.nent as usize);
-    init_vm[0].attributes = caps.supported_attrs;
-    init_vm[0].xfam = caps.supported_xfam;
+    init_vm[0].attributes = attributes;
+    init_vm[0].xfam = xfam;
     init_vm[0].cpuid.nent = cpu_id.nent as __u32;
     init_vm[0].cpuid.padding = 0;
     unsafe {
