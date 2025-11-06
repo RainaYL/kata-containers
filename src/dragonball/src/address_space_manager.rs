@@ -322,7 +322,7 @@ impl AddressSpaceMgr {
                     .ok_or(AddressManagerError::InvalidOperation)?;
             }
         }
-
+        /* 
         #[cfg(feature = "tdx")]
         if tdx_enabled {
             let region = Arc::new(
@@ -340,7 +340,7 @@ impl AddressSpaceMgr {
                 .map_err(AddressManagerError::CreateAddressSpaceRegion)?,
             );
             regions.push(region);
-        }
+        }*/
 
         // Create GuestMemory object
         let mut vm_memory = GuestMemoryMmap::new();
