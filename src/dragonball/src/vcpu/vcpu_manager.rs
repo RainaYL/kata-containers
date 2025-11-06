@@ -1153,7 +1153,11 @@ mod tests {
     use crate::vm::{CpuTopology, Vm, VmConfigInfo};
 
     fn get_vm() -> Vm {
-        let instance_info = Arc::new(RwLock::new(InstanceInfo::default()));
+        let instance_info = Arc::new(RwLock::new(InstanceInfo::new(
+            "".to_string(),
+            env!("CARGO_PKG_VERSION").to_string(),
+            true,
+        )));
         let epoll_manager = EpollManager::default();
         let mut vm = Vm::new(None, instance_info, epoll_manager).unwrap();
         let vm_config = VmConfigInfo {
