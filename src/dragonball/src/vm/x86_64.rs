@@ -671,6 +671,10 @@ mod tests {
         */
         let kvm = kvm_ioctls::Kvm::new().unwrap();
         let vm = kvm.create_vm_with_type(5).unwrap();
+        let mut supported_cpuid = kvm.get_supported_cpuid(80).unwrap();
+        let tdx_caps = dbs_tdx::tdx_get_caps(&vm.as_raw_fd()).unwrap();
+        dbs_tdx::filter_tdx_cpuid(&tdx_caps.cpu_id, &mut supported_cpuid);
+        dbs_tdx::tdx_init(&vm.as_raw_fd(), tdx_caps.supported_attrs, tdx_caps.supported_xfam, supported_cpuid).unwrap();
         vm.create_vcpu(0).unwrap();
     }
 }
