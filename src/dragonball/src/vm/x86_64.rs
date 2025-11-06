@@ -678,6 +678,11 @@ mod tests {
     #[test]
     #[cfg(feature = "tdx")]
     fn test_tdx_init() {
+
+        let kernel_path = "/tmp/test_resources/vmlinux-confidential.container";
+        let tdshim_path = "/tmp/test_resources/tdshim.bin";
+        let cmd_line = Cmdline::new(64).unwrap();
+
         let vm_config = VmConfigInfo {
             vcpu_count: 1,
             max_vcpu_count: 3,
@@ -698,6 +703,12 @@ mod tests {
 
         let mut vm = create_tdx_vm_instance();
         vm.set_vm_config(vm_config);
+        vm.set_kernel_config(KernelConfigInfo::new(
+            Some(File::open(tdshim_path).unwrap()),
+            File::open(kernel_path).unwrap(),
+            None,
+            cmd_line,
+        ));
         vm.init_guest_memory().unwrap();
 
         vm.init_vcpu_manager(vm.vm_as().unwrap().clone(), BpfProgram::default())
@@ -712,5 +723,17 @@ mod tests {
             cpu_id,
         )
         .unwrap();
+
+        vm.vcpu_manager().unwrap().create_vcpus(1, None, None).unwrap();
+
+        let vm_memory = vm.vm_as().cloned().unwrap().memory();
+        let sections = vm.parse_tdvf_sections().unwrap();
+        let (hob_offset, payload_offset, payload_size, cmdline_offset) =
+            vm.load_tdshim(vm_memory.deref(), &sections).unwrap();
+
+        let payload_info =
+            vm.load_tdx_payload(payload_offset, payload_size, vm_memory.deref()).unwrap();
+
+        vm.load_tdx_cmdline(cmdline_offset, vm_memory.deref()).unwrap();
     }
 }
