@@ -392,7 +392,7 @@ impl Vm {
             tdx_caps.supported_xfam,
             self.vcpu_manager().unwrap().supported_cpuid.clone(),
         )
-        .map_err(StartMicroVmError::TdxIoctlError)?;
+        .map_err(StartMicroVmError::TdxError)?;
 
         Ok(())
     }
@@ -582,12 +582,12 @@ impl Vm {
             size / dbs_boot::PAGE_SIZE as u64,
             flags,
         )
-        .map_err(StartMicroVmError::TdxIoctlError)
+        .map_err(StartMicroVmError::TdxError)
     }
 
     #[cfg(feature = "tdx")]
     fn finalize_tdx(&self) -> std::result::Result<(), StartMicroVmError> {
-        dbs_tdx::tdx_finalize(&self.vm_fd().as_raw_fd()).map_err(StartMicroVmError::TdxIoctlError)
+        dbs_tdx::tdx_finalize(&self.vm_fd().as_raw_fd()).map_err(StartMicroVmError::TdxError)
     }
 }
 
@@ -596,7 +596,8 @@ mod tests {
 
     use super::*;
     use crate::api::v1::InstanceInfo;
-    use crate::vm::{CpuTopology, VmConfigInfo, BpfProgram};
+    use crate::vm::{CpuTopology, KernelConfigInfo, VmConfigInfo, BpfProgram};
+    use std::fs::File;
     use std::sync::{Arc, RwLock};
     use vmm_sys_util::eventfd::EventFd;
 
@@ -637,10 +638,7 @@ mod tests {
             .set_reset_event_fd(EventFd::new(libc::EFD_NONBLOCK).unwrap())
             .unwrap();
 
-        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-        {
-            vm.setup_interrupt_controller().unwrap();
-        }
+        vm.setup_interrupt_controller().unwrap();
 
         vm
     }
@@ -648,8 +646,6 @@ mod tests {
     #[test]
     #[cfg(feature = "tdx")]
     fn test_tdx_init() {
-
-        /*
         let kernel_path = "/tmp/test_resources/vmlinux-confidential.container";
         let tdshim_path = "/tmp/test_resources/tdshim.bin";
         let cmd_line = Cmdline::new(64).unwrap();
@@ -665,18 +661,8 @@ mod tests {
 
         vm.init_tdx().unwrap();
 
-        //let mut vcpu_manager = vm.vcpu_manager().unwrap();
-        vm.vm_fd().create_vcpu(0).unwrap();
-        */
-        
-        let kvm = kvm_ioctls::Kvm::new().unwrap();
-        dbs_tdx::tdx_pre_create_vm(&kvm.as_raw_fd()).unwrap();
-        let vm = kvm.create_vm_with_type(5).unwrap();
-        dbs_tdx::tdx_post_create_vm(&vm.as_raw_fd()).unwrap();
-        let mut supported_cpuid = kvm.get_supported_cpuid(80).unwrap();
-        let tdx_caps = dbs_tdx::tdx_get_caps(&vm.as_raw_fd()).unwrap();
-        dbs_tdx::filter_tdx_cpuid(&tdx_caps.cpu_id, &mut supported_cpuid);
-        dbs_tdx::tdx_init(&vm.as_raw_fd(), tdx_caps.supported_attrs, tdx_caps.supported_xfam, supported_cpuid).unwrap();
-        vm.create_vcpu(0).unwrap();
+        let mut vcpu_manager = vm.vcpu_manager().unwrap();
+        let boot_vcpu_count = vm.vm_config().vcpu_count;
+        vcpu_manager.create_vcpus(boot_vcpu_count, None, None).unwrap();
     }
 }

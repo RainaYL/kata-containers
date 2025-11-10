@@ -17,7 +17,7 @@ use std::time::Duration;
 
 use dbs_arch::VpmuFeatureLevel;
 #[cfg(feature = "tdx")]
-use dbs_tdx::{tdx_init_vcpu, TdxIoctlError};
+use dbs_tdx::{tdx_init_vcpu, TdxError};
 #[cfg(all(feature = "hotplug", feature = "dbs-upcall"))]
 use dbs_upcall::{DevMgrService, UpcallClient};
 use dbs_utils::epoll_manager::{EpollManager, EventOps, EventSet, Events, MutEventSubscriber};
@@ -124,7 +124,7 @@ pub enum VcpuManagerError {
     /// Tdx init vcpu error
     #[cfg(feature = "tdx")]
     #[error("TDX init vcpu error:{0}")]
-    TdxVcpuInit(#[source] TdxIoctlError),
+    TdxVcpuInit(#[source] TdxError),
 
     /// Missing vcpu FDs
     #[error("Missing vcpu FDs")]

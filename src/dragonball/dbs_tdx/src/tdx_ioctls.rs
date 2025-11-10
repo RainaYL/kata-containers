@@ -201,9 +201,9 @@ pub struct TdxCapabilities {
 }
 
 /// Get TDX capabilities
-pub fn tdx_get_caps(vm_fd: &RawFd) -> std::result::Result<TdxCapabilities, TdxIoctlError> {
+pub fn tdx_get_caps(vm_fd: &RawFd) -> std::result::Result<TdxCapabilities, TdxError> {
     let defaults = CpuId::new(KVM_MAX_CPUID_ENTRIES).map_err(|e| {
-        TdxIoctlError::TdxCapabilities(std::io::Error::new(std::io::ErrorKind::OutOfMemory, e))
+        TdxError::OutOfMemory(std::io::Error::new(std::io::ErrorKind::OutOfMemory, e))
     })?;
     let mut caps =
         vec_with_fam_field::<kvm_tdx_capabilities, kvm_cpuid_entry2>(KVM_MAX_CPUID_ENTRIES);
@@ -220,17 +220,18 @@ pub fn tdx_get_caps(vm_fd: &RawFd) -> std::result::Result<TdxCapabilities, TdxIo
         &caps[0] as *const _ as u64,
         0,
     )
-    .map_err(TdxIoctlError::TdxCapabilities)?;
+    .map_err(TdxIoctlError::TdxCapabilities)
+    .map_err(TdxError::TdxIoctlError)?;
 
     let mut cpu_id = unsafe {
-        CpuId::from_entries(caps[0].cpuid.entries.as_slice(caps[0].cpuid.nent as usize)).map_err(
-            |e| {
+        CpuId::from_entries(caps[0].cpuid.entries.as_slice(caps[0].cpuid.nent as usize))
+            .map_err(|e| {
                 TdxIoctlError::TdxCapabilities(std::io::Error::new(
                     std::io::ErrorKind::OutOfMemory,
                     e,
                 ))
-            },
-        )?
+            })
+            .map_err(TdxError::TdxIoctlError)?
     };
     cpu_id.as_mut_fam_struct().nent = caps[0].cpuid.nent;
     cpu_id.as_mut_fam_struct().padding = 0;
@@ -241,10 +242,9 @@ pub fn tdx_get_caps(vm_fd: &RawFd) -> std::result::Result<TdxCapabilities, TdxIo
     })
 }
 
-pub fn tdx_init(vm_fd: &RawFd, attributes: u64, xfam: u64, cpu_id: CpuId) -> Result<(), TdxIoctlError> {
+pub fn tdx_init(vm_fd: &RawFd, attributes: u64, xfam: u64, cpu_id: CpuId) -> Result<(), TdxError> {
     let cpu_id = cpu_id.as_fam_struct_ref();
-    let mut init_vm =
-        vec_with_fam_field::<kvm_tdx_init_vm, kvm_cpuid_entry2>(cpu_id.nent as usize);
+    let mut init_vm = vec_with_fam_field::<kvm_tdx_init_vm, kvm_cpuid_entry2>(cpu_id.nent as usize);
     init_vm[0].attributes = attributes;
     init_vm[0].xfam = xfam;
     init_vm[0].cpuid.nent = cpu_id.nent as __u32;
@@ -261,14 +261,16 @@ pub fn tdx_init(vm_fd: &RawFd, attributes: u64, xfam: u64, cpu_id: CpuId) -> Res
         &init_vm[0] as *const _ as u64,
         0,
     )
-    .map_err(TdxIoctlError::TdxInit)?;
+    .map_err(TdxIoctlError::TdxInit)
+    .map_err(TdxError::TdxIoctlError)?;
 
     Ok(())
 }
 
-pub fn tdx_init_vcpu(vcpu_fd: &RawFd, hob_address: u64) -> Result<(), TdxIoctlError> {
+pub fn tdx_init_vcpu(vcpu_fd: &RawFd, hob_address: u64) -> Result<(), TdxError> {
     tdx_command(vcpu_fd, TdxCommand::InitVcpu, 0, hob_address, 0)
-        .map_err(TdxIoctlError::TdxInitVcpu)?;
+        .map_err(TdxIoctlError::TdxInitVcpu)
+        .map_err(TdxError::TdxIoctlError)?;
 
     Ok(())
 }
@@ -279,7 +281,7 @@ pub fn tdx_init_mem_region(
     gpa: u64,
     nr_pages: u64,
     flags: u32,
-) -> Result<(), TdxIoctlError> {
+) -> Result<(), TdxError> {
     let init_mem_region = kvm_tdx_init_mem_region {
         source_addr,
         gpa,
@@ -292,20 +294,23 @@ pub fn tdx_init_mem_region(
         &init_mem_region as *const _ as u64,
         0,
     )
-    .map_err(TdxIoctlError::TdxInitMemRegion)?;
+    .map_err(TdxIoctlError::TdxInitMemRegion)
+    .map_err(TdxError::TdxIoctlError)?;
 
     Ok(())
 }
 
-pub fn tdx_finalize(vm_fd: &RawFd) -> Result<(), TdxIoctlError> {
-    tdx_command(vm_fd, TdxCommand::FinalizeVm, 0, 0, 0).map_err(TdxIoctlError::TdxFinalize)?;
+pub fn tdx_finalize(vm_fd: &RawFd) -> Result<(), TdxError> {
+    tdx_command(vm_fd, TdxCommand::FinalizeVm, 0, 0, 0)
+        .map_err(TdxIoctlError::TdxFinalize)
+        .map_err(TdxError::TdxIoctlError)?;
 
     Ok(())
 }
 
-pub fn tdx_get_cpuid(vcpu_fd: &RawFd) -> Result<CpuId, TdxIoctlError> {
+pub fn tdx_get_cpuid(vcpu_fd: &RawFd) -> Result<CpuId, TdxError> {
     let cpu_id = CpuId::new(KVM_MAX_CPUID_ENTRIES).map_err(|e| {
-        TdxIoctlError::TdxGetCpuid(std::io::Error::new(std::io::ErrorKind::OutOfMemory, e))
+        TdxError::OutOfMemory(std::io::Error::new(std::io::ErrorKind::OutOfMemory, e))
     })?;
     tdx_command(
         vcpu_fd,
@@ -314,7 +319,8 @@ pub fn tdx_get_cpuid(vcpu_fd: &RawFd) -> Result<CpuId, TdxIoctlError> {
         cpu_id.as_fam_struct_ptr() as u64,
         0,
     )
-    .map_err(TdxIoctlError::TdxGetCpuid)?;
+    .map_err(TdxIoctlError::TdxGetCpuid)
+    .map_err(TdxError::TdxIoctlError)?;
 
     Ok(cpu_id)
 }

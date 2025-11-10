@@ -87,12 +87,7 @@ pub enum Error {
     #[cfg(feature = "tdx")]
     /// TDX ioctl related error
     #[error("TDX ioctl related error: {0}")]
-    TdxIoctlError(#[source] dbs_tdx::TdxIoctlError),
-
-    #[cfg(feature = "tdx")]
-    /// TDX not supported for the machine
-    #[error("TDX not supported")]
-    TdxNotSupported,
+    TdxError(#[source] dbs_tdx::TdxError),
 }
 
 /// Errors associated with starting the instance.
@@ -235,7 +230,7 @@ pub enum StartMicroVmError {
     #[cfg(feature = "tdx")]
     /// TDX ioctl related error
     #[error("TDX ioctl related error: {0}")]
-    TdxIoctlError(#[source] dbs_tdx::TdxIoctlError),
+    TdxError(#[source] dbs_tdx::TdxError),
 
     #[cfg(feature = "tdx")]
     /// Cannot load td data

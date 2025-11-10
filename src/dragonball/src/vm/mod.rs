@@ -232,10 +232,10 @@ impl Vm {
         #[cfg(feature = "tdx")]
         let vm_fd = {
             if tdx_enabled {
-                if !dbs_tdx::is_tdx_supported(&kvm.kvm().as_raw_fd()) {
-                    return Err(Error::TdxNotSupported);
-                }
-                Arc::new(kvm.create_vm_with_type(KVM_X86_TDX_VM)?)
+                dbs_tdx::tdx_pre_create_vm(&kvm.kvm().as_raw_fd()).map_err(Error::TdxError)?;
+                let vm = kvm.create_vm_with_type(KVM_X86_TDX_VM)?;
+                dbs_tdx::tdx_post_create_vm(&vm.as_raw_fd()).map_err(Error::TdxError)?;
+                Arc::new(vm)
             } else {
                 Arc::new(kvm.create_vm()?)
             }
@@ -253,7 +253,7 @@ impl Vm {
         #[cfg(feature = "tdx")]
         let tdx_caps = {
             if tdx_enabled {
-                Some(tdx_get_caps(&vm_fd.as_raw_fd()).map_err(Error::TdxIoctlError)?)
+                Some(tdx_get_caps(&vm_fd.as_raw_fd()).map_err(Error::TdxError)?)
             } else {
                 None
             }

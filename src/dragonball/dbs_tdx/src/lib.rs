@@ -42,6 +42,9 @@ pub enum TdxError {
     /// Cannot enable split irqchip
     #[error("Cannot enable split irqchip: {0}")]
     SplitIrqchipNotEnabled(std::io::Error),
+    /// Out of memory
+    #[error("Failed to allocate memory: {0}")]
+    OutOfMemory(std::io::Error),
 }
 
 pub fn tdx_pre_create_vm(kvm_fd: &RawFd) -> Result<(), TdxError> {
@@ -109,18 +112,6 @@ pub fn filter_tdx_cpuid(tdx_supported_cpuid: &CpuId, cpu_id: &mut CpuId) {
             filtered_entries.push(filtered_entry);
         }
 
-        for (i, entry) in filtered_entries.iter().enumerate() {
-            entries[i] = *entry;
-            println!("Entry {}", i);
-            println!("function: {:x}", entries[i].function);
-            println!("index: {:x}", entries[i].index);
-            println!("flags: {:x}", entries[i].flags);
-            println!("eax: {:x}", entries[i].eax);
-            println!("ebx: {:x}", entries[i].ebx);
-            println!("ecx: {:x}", entries[i].ecx);
-            println!("edx: {:x}", entries[i].edx);
-            println!("");
-        }
         cpu_id.nent = filtered_entries.len() as u32;
     }
 }
