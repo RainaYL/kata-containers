@@ -343,7 +343,7 @@ impl Vm {
         let boot_vcpu_count = self.vm_config().vcpu_count;
         self.vcpu_manager()
             .map_err(StartMicroVmError::Vcpu)?
-            .create_vcpus(boot_vcpu_count, None, None)
+            .create_vcpus(boot_vcpu_count, None, None, #[cfg(feature = "tdx")] true)
             .map_err(StartMicroVmError::Vcpu)?;
 
         let vm_memory = vm_as.memory();
@@ -669,6 +669,6 @@ mod tests {
 
         let mut vcpu_manager = vm.vcpu_manager().unwrap();
         let boot_vcpu_count = vm.vm_config().vcpu_count;
-        vcpu_manager.create_vcpus(boot_vcpu_count, None, None).unwrap();
+        vcpu_manager.create_vcpus(boot_vcpu_count, None, None, true).unwrap();
     }
 }

@@ -892,7 +892,7 @@ impl Vm {
             if let Some(vcpu_count) = config.vcpu_count {
                 self.vcpu_manager()
                     .map_err(VcpuResizeError::Vcpu)?
-                    .resize_vcpu(vcpu_count, sync_tx)?;
+                    .resize_vcpu(vcpu_count, sync_tx, #[cfg(feature = "tdx")] self.is_tdx_enabled())?;
 
                 self.vm_config.vcpu_count = vcpu_count;
             }

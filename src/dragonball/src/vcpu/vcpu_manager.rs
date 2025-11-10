@@ -407,7 +407,7 @@ impl VcpuManager {
         } else {
             self.vcpu_config.boot_vcpu_count
         };
-        self.create_vcpus(boot_vcpu_count, Some(request_ts), Some(entry_addr))?;
+        self.create_vcpus(boot_vcpu_count, Some(request_ts), Some(entry_addr), #[cfg(feature = "tdx")] false)?;
 
         Ok(())
     }
@@ -428,6 +428,7 @@ impl VcpuManager {
         vcpu_count: u8,
         request_ts: Option<TimestampUs>,
         entry_addr: Option<GuestAddress>,
+        #[cfg(feature = "tdx")] tdx_enabled: bool,
     ) -> Result<Vec<u8>> {
         info!("create vcpus");
         if vcpu_count > self.vcpu_config.max_vcpu_count {
@@ -437,7 +438,7 @@ impl VcpuManager {
         let request_ts = request_ts.unwrap_or_default();
         let mut created_cpus = Vec::new();
         for cpu_id in self.calculate_available_vcpus(vcpu_count) {
-            self.create_vcpu(cpu_id, request_ts.clone(), entry_addr)?;
+            self.create_vcpu(cpu_id, request_ts.clone(), entry_addr, #[cfg(feature = "tdx")] tdx_enabled)?;
             created_cpus.push(cpu_id);
         }
 
@@ -554,6 +555,7 @@ impl VcpuManager {
         &mut self,
         entry_addr: Option<GuestAddress>,
         vcpu: &mut Vcpu,
+        #[cfg(feature = "tdx")] tdx_enabled: bool,
     ) -> std::result::Result<(), VcpuError> {
         vcpu.configure(
             &self.vcpu_config,
@@ -561,6 +563,7 @@ impl VcpuManager {
             &self.vm_as,
             entry_addr,
             None,
+            #[cfg(feature = "tdx")] tdx_enabled,
         )
     }
 
@@ -569,6 +572,7 @@ impl VcpuManager {
         cpu_index: u8,
         request_ts: TimestampUs,
         entry_addr: Option<GuestAddress>,
+        #[cfg(feature = "tdx")] tdx_enabled: bool,
     ) -> Result<()> {
         info!("creating vcpu {}", cpu_index);
         if self.vcpu_infos.get(cpu_index as usize).is_none() {
@@ -596,7 +600,7 @@ impl VcpuManager {
             .unwrap()
             .vcpu
             .insert(cpu_index as u32, vcpu.metrics());
-        self.configure_single_vcpu(entry_addr, &mut vcpu)
+        self.configure_single_vcpu(entry_addr, &mut vcpu, #[cfg(feature = "tdx")] tdx_enabled)
             .map_err(VcpuManagerError::Vcpu)?;
         self.vcpu_infos[cpu_index as usize].vcpu = Some(vcpu);
 
@@ -893,6 +897,7 @@ mod hotplug {
             &mut self,
             vcpu_count: u8,
             sync_tx: Option<Sender<Option<i32>>>,
+            #[cfg(feature = "tdx")] tdx_enabled: bool,
         ) -> std::result::Result<(), VcpuResizeError> {
             if self.get_vcpus_action() != VcpuAction::None {
                 return Err(VcpuResizeError::VcpuIsHotplugging);
@@ -908,7 +913,7 @@ mod hotplug {
                         self.sync_action_finish(false);
                         Ok(())
                     }
-                    Ordering::Greater => self.do_add_vcpu(vcpu_count, upcall),
+                    Ordering::Greater => self.do_add_vcpu(vcpu_count, upcall, #[cfg(feature = "tdx")] tdx_enabled),
                     Ordering::Less => self.do_del_vcpu(vcpu_count, upcall),
                 }
             } else {
@@ -920,6 +925,7 @@ mod hotplug {
             &mut self,
             vcpu_count: u8,
             upcall_client: Arc<UpcallClient<DevMgrService>>,
+            #[cfg(feature = "tdx")] tdx_enabled: bool,
         ) -> std::result::Result<(), VcpuResizeError> {
             info!("resize vcpu: add");
             if vcpu_count > self.vcpu_config.max_vcpu_count {
@@ -927,7 +933,7 @@ mod hotplug {
             }
 
             let created_vcpus = self
-                .create_vcpus(vcpu_count, None, None)
+                .create_vcpus(vcpu_count, None, None, #[cfg(feature = "tdx")] tdx_enabled)
                 .map_err(VcpuResizeError::Vcpu)?;
             let cpu_ids = self
                 .activate_vcpus(vcpu_count, true)
@@ -1280,11 +1286,11 @@ mod tests {
         let mut vcpu_manager = vm.vcpu_manager().unwrap();
 
         // test create vcpu more than max
-        let res = vcpu_manager.create_vcpus(20, None, None);
+        let res = vcpu_manager.create_vcpus(20, None, None, #[cfg(feature = "tdx")] false);
         assert!(matches!(res, Err(VcpuManagerError::ExpectedVcpuExceedMax)));
 
         // test create vcpus
-        assert!(vcpu_manager.create_vcpus(2, None, None).is_ok());
+        assert!(vcpu_manager.create_vcpus(2, None, None, #[cfg(feature = "tdx")] false).is_ok());
         assert_eq!(vcpu_manager.present_vcpus_count(), 0);
         assert_eq!(get_present_unstart_vcpus(&vcpu_manager), 2);
         assert_eq!(vcpu_manager.vcpus().len(), 2);
@@ -1489,7 +1495,7 @@ mod tests {
         vcpu_manager.set_vcpus_action(VcpuAction::Hotplug, cpu_ids);
 
         // vcpu is already in hotplug process
-        let res = vcpu_manager.resize_vcpu(1, None);
+        let res = vcpu_manager.resize_vcpu(1, None, #[cfg(feature = "tdx")] false);
         assert!(matches!(res, Err(VcpuResizeError::VcpuIsHotplugging)));
 
         // clear vcpus action
@@ -1497,7 +1503,7 @@ mod tests {
         vcpu_manager.set_vcpus_action(VcpuAction::None, cpu_ids);
 
         // no upcall channel
-        let res = vcpu_manager.resize_vcpu(1, None);
+        let res = vcpu_manager.resize_vcpu(1, None, #[cfg(feature = "tdx")] false);
         assert!(matches!(
             res,
             Err(VcpuResizeError::UpdateNotAllowedPostBoot)
@@ -1514,14 +1520,14 @@ mod tests {
         vcpu_manager.set_upcall_channel(Some(Arc::new(upcall_client)));
 
         // success: no need to resize
-        vcpu_manager.resize_vcpu(1, None).unwrap();
+        vcpu_manager.resize_vcpu(1, None, #[cfg(feature = "tdx")] false).unwrap();
 
         // exceeed max vcpu count
-        let res = vcpu_manager.resize_vcpu(4, None);
+        let res = vcpu_manager.resize_vcpu(4, None, #[cfg(feature = "tdx")] false);
         assert!(matches!(res, Err(VcpuResizeError::ExpectedVcpuExceedMax)));
 
         // remove vcpu 0
-        let res = vcpu_manager.resize_vcpu(0, None);
+        let res = vcpu_manager.resize_vcpu(0, None, #[cfg(feature = "tdx")] false);
         assert!(matches!(res, Err(VcpuResizeError::Vcpu0CanNotBeRemoved)));
     }
 }
