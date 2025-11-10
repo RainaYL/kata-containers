@@ -288,6 +288,12 @@ impl Vm {
     pub(crate) fn setup_interrupt_controller(
         &mut self,
     ) -> std::result::Result<(), StartMicroVmError> {
+        // TDX uses split irqchip, and irqchip is created while wnabling KVM_CAP_SPLIT_IRQCHIP
+        // Therefore no need to call KVM_CREATE_IRQCHIP
+        #[cfg(feature = "tdx")]
+        if self.is_tdx_enabled() {
+            return Ok(())
+        }
         self.vm_fd
             .create_irq_chip()
             .map_err(|e| StartMicroVmError::ConfigureVm(VmError::VmSetup(e)))
