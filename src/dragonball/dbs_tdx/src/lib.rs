@@ -22,6 +22,8 @@ pub const KVM_CAP_VM_TYPES: u64 = 235;
 
 pub const KVM_TDX_MEASURE_MEMORY_REGION: u32 = 1u32 << 0;
 
+pub const NR_ROUTES_USERSPACE_IOAPIC: u64 = 24;
+
 ioctl_io_nr!(KVM_CHECK_EXTENSION, KVMIO, 0x03);
 ioctl_iow_nr!(KVM_ENABLE_CAP, KVMIO, 0xa3, kvm_enable_cap);
 
@@ -55,11 +57,14 @@ pub fn tdx_pre_create_vm(kvm_fd: &RawFd) -> Result<(), TdxError> {
         return Err(TdxError::SplitIrqchipNotSupported);
     }
 
-    let gsi_count = 24;
+    Ok(())
+}
+
+pub fn tdx_post_create_vm(vm_fd: &RawFd) -> Result<(), TdxError> {
     let mut enable_split_irqchip = kvm_enable_cap::default();
     enable_split_irqchip.cap = KVM_CAP_SPLIT_IRQCHIP;
-    enable_split_irqchip.args[0] = gsi_count;
-    let ret = unsafe { ioctl_with_ref(kvm_fd, KVM_ENABLE_CAP(), &enable_split_irqchip) };
+    enable_split_irqchip.args[0] = NR_ROUTES_USERSPACE_IOAPIC;
+    let ret = unsafe { ioctl_with_ref(vm_fd, KVM_ENABLE_CAP(), &enable_split_irqchip) };
     if ret < 0 {
         return Err(TdxError::SplitIrqchipNotEnabled(
             std::io::Error::last_os_error(),

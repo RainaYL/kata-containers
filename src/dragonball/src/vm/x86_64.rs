@@ -596,8 +596,7 @@ mod tests {
 
     use super::*;
     use crate::api::v1::InstanceInfo;
-    use crate::vm::{CpuTopology, KernelConfigInfo, VmConfigInfo, BpfProgram};
-    use std::fs::File;
+    use crate::vm::{CpuTopology, VmConfigInfo, BpfProgram};
     use std::sync::{Arc, RwLock};
     use vmm_sys_util::eventfd::EventFd;
 
@@ -650,7 +649,7 @@ mod tests {
     #[cfg(feature = "tdx")]
     fn test_tdx_init() {
 
-        /* 
+        /*
         let kernel_path = "/tmp/test_resources/vmlinux-confidential.container";
         let tdshim_path = "/tmp/test_resources/tdshim.bin";
         let cmd_line = Cmdline::new(64).unwrap();
@@ -671,15 +670,9 @@ mod tests {
         */
         
         let kvm = kvm_ioctls::Kvm::new().unwrap();
-        //dbs_tdx::tdx_pre_create_vm(&kvm.as_raw_fd()).unwrap();
+        dbs_tdx::tdx_pre_create_vm(&kvm.as_raw_fd()).unwrap();
         let vm = kvm.create_vm_with_type(5).unwrap();
-        let mut cap = kvm_bindings::kvm_enable_cap {
-            // KVM_CAP_HYPERV_SYNIC needs KVM_CAP_SPLIT_IRQCHIP enabled
-            cap: kvm_bindings::KVM_CAP_SPLIT_IRQCHIP,
-            ..Default::default()
-        };
-        cap.args[0] = 24;
-        vm.enable_cap(&cap).unwrap();
+        dbs_tdx::tdx_post_create_vm(&vm.as_raw_fd()).unwrap();
         let mut supported_cpuid = kvm.get_supported_cpuid(80).unwrap();
         let tdx_caps = dbs_tdx::tdx_get_caps(&vm.as_raw_fd()).unwrap();
         dbs_tdx::filter_tdx_cpuid(&tdx_caps.cpu_id, &mut supported_cpuid);
