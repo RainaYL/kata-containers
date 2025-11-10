@@ -55,9 +55,7 @@ pub fn tdx_pre_create_vm(kvm_fd: &RawFd) -> Result<(), TdxError> {
         return Err(TdxError::SplitIrqchipNotSupported);
     }
 
-    let gsi_count =
-        unsafe { ioctl_with_val(kvm_fd, KVM_CHECK_EXTENSION(), KVM_CAP_IRQ_ROUTING as u64) } as u64
-            - 1;
+    let gsi_count = 24;
     let mut enable_split_irqchip = kvm_enable_cap::default();
     enable_split_irqchip.cap = KVM_CAP_SPLIT_IRQCHIP;
     enable_split_irqchip.args[0] = gsi_count;
