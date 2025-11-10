@@ -3,7 +3,7 @@
 
 use std::os::fd::RawFd;
 
-use kvm_bindings::{kvm_enable_cap, CpuId, KVMIO, KVM_CAP_IRQ_ROUTING, KVM_CAP_SPLIT_IRQCHIP};
+use kvm_bindings::{kvm_enable_cap, CpuId, KVMIO, KVM_CAP_SPLIT_IRQCHIP};
 use kvm_ioctls::Cap;
 use thiserror::Error;
 use vmm_sys_util::ioctl::{ioctl_with_ref, ioctl_with_val};
