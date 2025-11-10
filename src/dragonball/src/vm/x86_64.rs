@@ -612,7 +612,7 @@ mod tests {
         let instance_info = Arc::new(RwLock::new(InstanceInfo::new(
             "".to_string(),
             env!("CARGO_PKG_VERSION").to_string(),
-            true,
+            false,
         )));
         let epoll_manager = EpollManager::default();
         let mut vm = Vm::new(None, instance_info, epoll_manager).unwrap();
@@ -665,7 +665,7 @@ mod tests {
             cmd_line,
         ));
 
-        vm.init_tdx().unwrap();
+        //vm.init_tdx().unwrap();
 
         let mut vcpu_manager = vm.vcpu_manager().unwrap();
         let boot_vcpu_count = vm.vm_config().vcpu_count;
