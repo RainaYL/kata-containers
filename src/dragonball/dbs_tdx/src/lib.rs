@@ -45,7 +45,7 @@ pub enum TdxError {
 pub fn tdx_pre_create_vm(kvm_fd: &RawFd) -> Result<(), TdxError> {
     let supported_vm_types =
         unsafe { ioctl_with_val(kvm_fd, KVM_CHECK_EXTENSION(), KVM_CAP_VM_TYPES) } as u64;
-    if supported_vm_types & (1 << KVM_X86_TDX_VM) > 0 {
+    if supported_vm_types & (1 << KVM_X86_TDX_VM) == 0 {
         return Err(TdxError::TdxVmNotSupported);
     }
 
