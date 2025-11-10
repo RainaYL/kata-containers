@@ -19,7 +19,7 @@ use vmm_sys_util::{ioctl_ioc_nr, ioctl_iowr_nr};
 
 ioctl_iowr_nr!(KVM_MEMORY_ENCRYPT_OP, KVMIO, 0xba, std::os::raw::c_ulong);
 
-/// TDX module related errors.
+/// TDX ioctl related errors.
 #[derive(Error, Debug)]
 pub enum TdxIoctlError {
     /// Failed to get TDX Capbilities

@@ -669,7 +669,9 @@ mod tests {
         //let mut vcpu_manager = vm.vcpu_manager().unwrap();
         vm.vm_fd().create_vcpu(0).unwrap();
         */
+        
         let kvm = kvm_ioctls::Kvm::new().unwrap();
+        dbs_tdx::tdx_pre_create_vm(&kvm.as_raw_fd()).unwrap();
         let vm = kvm.create_vm_with_type(5).unwrap();
         let mut supported_cpuid = kvm.get_supported_cpuid(80).unwrap();
         let tdx_caps = dbs_tdx::tdx_get_caps(&vm.as_raw_fd()).unwrap();
