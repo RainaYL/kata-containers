@@ -77,12 +77,6 @@ pub fn tdx_post_create_vm(vm_fd: &RawFd) -> Result<(), TdxError> {
     Ok(())
 }
 
-pub fn is_tdx_supported(kvm_fd: &RawFd) -> bool {
-    let supported_vm_types =
-        unsafe { ioctl_with_val(kvm_fd, KVM_CHECK_EXTENSION(), KVM_CAP_VM_TYPES) } as u64;
-    supported_vm_types & (1 << KVM_X86_TDX_VM) > 0
-}
-
 pub fn get_max_vcpus(vm_fd: &RawFd) -> usize {
     unsafe { ioctl_with_val(vm_fd, KVM_CHECK_EXTENSION(), Cap::MaxVcpus as u64) as usize }
 }
@@ -110,6 +104,18 @@ pub fn filter_tdx_cpuid(tdx_supported_cpuid: &CpuId, cpu_id: &mut CpuId) {
                 ..Default::default()
             };
             filtered_entries.push(filtered_entry);
+        }
+        for (i, entry) in filtered_entries.iter().enumerate() {
+            entries[i] = *entry;
+            println!("Entry {}", i);
+            println!("function: {:x}", entries[i].function);
+            println!("index: {:x}", entries[i].index);
+            println!("flags: {:x}", entries[i].flags);
+            println!("eax: {:x}", entries[i].eax);
+            println!("ebx: {:x}", entries[i].ebx);
+            println!("ecx: {:x}", entries[i].ecx);
+            println!("edx: {:x}", entries[i].edx);
+            println!("");
         }
 
         cpu_id.nent = filtered_entries.len() as u32;
