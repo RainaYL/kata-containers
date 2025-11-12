@@ -681,7 +681,7 @@ mod tests {
         let payload_info =
             vm.load_tdx_payload(payload_offset, payload_size, vm_memory.deref()).unwrap();
 
-        //vm.load_tdx_cmdline(cmdline_offset, vm_memory.deref()).unwrap();
+        vm.load_tdx_cmdline(cmdline_offset, vm_memory.deref()).unwrap();
 
         //let mut vcpu_manager = vm.vcpu_manager().unwrap();
         //let boot_vcpu_count = vm.vm_config().vcpu_count;
