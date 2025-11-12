@@ -686,5 +686,6 @@ mod tests {
         let mut vcpu_manager = vm.vcpu_manager().unwrap();
         let boot_vcpu_count = vm.vm_config().vcpu_count;
         vcpu_manager.create_vcpus(boot_vcpu_count, None, None, true).unwrap();
+        vcpu_manager.init_tdx_vcpus(hob_offset).unwrap();
     }
 }
