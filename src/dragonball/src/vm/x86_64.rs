@@ -500,6 +500,9 @@ impl Vm {
             self.load_kernel(vm_memory, Some(GuestAddress(payload_offset)))?;
 
         if kernel_loader_result.kernel_end > (payload_offset + payload_size) {
+            println!("0x{:#x}", payload_offset);
+            println!("0x{:#x}", kernel_loader_result.kernel_end);
+            println!("0x{:#x}", payload_offset + payload_size);
             Err(StartMicroVmError::TdDataLoader(
                 LoadTdDataError::LoadPayload,
             ))
