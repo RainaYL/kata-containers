@@ -108,6 +108,16 @@ pub fn filter_tdx_cpuid(tdx_supported_cpuid: &CpuId, cpu_id: &mut CpuId) {
         
         for (i, entry) in filtered_entries.iter().enumerate() {
             entries[i] = *entry;
+
+            println!("Entry {}", i);
+            println!("function: {}", entry.function);
+            println!("index: {}", entry.index);
+            println!("flags: {}", entry.flags);
+            println!("eax: {}", entry.eax);
+            println!("ebx: {}", entry.ebx);
+            println!("ecx: {}", entry.ecx);
+            println!("edx: {}", entry.edx);
+            println!();
         }
 
         cpu_id.nent = filtered_entries.len() as u32;
