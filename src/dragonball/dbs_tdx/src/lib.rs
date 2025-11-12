@@ -19,6 +19,8 @@ pub use tdx_ioctls::*;
 #[cfg(target_arch = "x86_64")]
 pub mod td_shim;
 
+pub const CPUID_EXT_X2APIC: u32 = 1 << 21;
+
 pub const KVM_X86_TDX_VM: u64 = 5;
 
 pub const KVM_CAP_VM_TYPES: u64 = 235;
@@ -127,6 +129,10 @@ pub fn filter_tdx_cpuid(tdx_supported_cpuid: &CpuId, cpu_id: &mut CpuId) {
 
         for (i, entry) in filtered_entries.iter().enumerate() {
             entries[i] = *entry;
+
+            if entry.function == 0x1 && entry.index == 0x0 {
+                entries[i].ecx |= CPUID_EXT_X2APIC;
+            }
 
             println!("Entry {}", i);
             println!("function: {:#x}", entry.function);
