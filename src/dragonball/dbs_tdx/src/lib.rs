@@ -76,11 +76,10 @@ pub fn tdx_post_create_vm(vm_fd: &RawFd) -> Result<(), TdxError> {
     }
 
     let mut enable_x2apic = kvm_enable_cap::default();
-    enable_x2apic.cap =
-        KVM_CAP_X2APIC_API | KVM_X2APIC_API_USE_32BIT_IDS | KVM_X2APIC_API_DISABLE_BROADCAST_QUIRK;
+    enable_x2apic.cap = KVM_CAP_X2APIC_API;
+    enable_x2apic.args[0] = (KVM_X2APIC_API_USE_32BIT_IDS | KVM_X2APIC_API_DISABLE_BROADCAST_QUIRK) as u64;
     let ret = unsafe { ioctl_with_ref(vm_fd, KVM_ENABLE_CAP(), &enable_x2apic) };
     if ret < 0 {
-        println!("{}", ret);
         return Err(TdxError::X2apicNotEnabled);
     }
 
