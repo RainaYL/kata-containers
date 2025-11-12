@@ -622,7 +622,7 @@ mod tests {
             cpu_pm: "off".to_string(),
             mem_type: "shmem".to_string(),
             mem_file_path: "".to_string(),
-            mem_size_mib: 100,
+            mem_size_mib: 1024,
             serial_path: None,
             cpu_topology: CpuTopology {
                 threads_per_core: 1,
