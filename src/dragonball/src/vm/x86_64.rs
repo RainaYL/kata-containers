@@ -656,7 +656,7 @@ mod tests {
         let tdshim_path = "/tmp/test_resources/tdshim.bin";
 
         let boot_args = "console=ttyS0 console=ttyS1 earlyprintk=ttyS1 tty0 reboot=k debug panic=1 pci=off root=/dev/vda1";
-        let mut cmd_line = Cmdline::new(64).unwrap();
+        let mut cmd_line = Cmdline::new(256).unwrap();
         cmd_line.insert_str(boot_args).unwrap();
 
         let mut vm = get_vm();
