@@ -654,7 +654,10 @@ mod tests {
     fn test_tdx_init() {
         let kernel_path = "/tmp/test_resources/vmlinux-confidential.container";
         let tdshim_path = "/tmp/test_resources/tdshim.bin";
-        let cmd_line = Cmdline::new(64).unwrap();
+
+        let boot_args = "console=ttyS0 console=ttyS1 earlyprintk=ttyS1 tty0 reboot=k debug panic=1 pci=off root=/dev/vda1";
+        let mut cmd_line = Cmdline::new(64).unwrap();
+        cmd_line.insert_str(boot_args).unwrap();
 
         let mut vm = get_vm();
 
@@ -667,8 +670,18 @@ mod tests {
 
         vm.init_tdx().unwrap();
 
+        let vm_memory = vm.vm_as().unwrap().memory();
+        let sections = vm.parse_tdvf_sections().unwrap();
+        let (hob_offset, payload_offset, payload_size, cmdline_offset) =
+            vm.load_tdshim(vm_memory.deref(), &sections).unwrap();
+
+        let payload_info =
+            vm.load_tdx_payload(payload_offset, payload_size, vm_memory.deref()).unwrap();
+
+        vm.load_tdx_cmdline(cmdline_offset, vm_memory.deref()).unwrap();
+
         let mut vcpu_manager = vm.vcpu_manager().unwrap();
         let boot_vcpu_count = vm.vm_config().vcpu_count;
-        vcpu_manager.create_vcpus(boot_vcpu_count, None, None, true).unwrap();
+        vm.vcpu_manager().unwrap().create_vcpus(boot_vcpu_count, None, None, true).unwrap();
     }
 }
