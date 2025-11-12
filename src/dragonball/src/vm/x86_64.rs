@@ -684,7 +684,7 @@ mod tests {
         vm.load_tdx_cmdline(cmdline_offset, vm_memory.deref()).unwrap();
 
         let mut vcpu_manager = vm.vcpu_manager().unwrap();
-        //let boot_vcpu_count = vm.vm_config().vcpu_count;
+        let boot_vcpu_count = vm.vm_config().vcpu_count;
         //vm.vcpu_manager().unwrap().create_vcpus(boot_vcpu_count, None, None, true).unwrap();
     }
 }
