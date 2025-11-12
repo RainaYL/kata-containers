@@ -110,13 +110,13 @@ pub fn filter_tdx_cpuid(tdx_supported_cpuid: &CpuId, cpu_id: &mut CpuId) {
             entries[i] = *entry;
 
             println!("Entry {}", i);
-            println!("function: {}", entry.function);
-            println!("index: {}", entry.index);
-            println!("flags: {}", entry.flags);
-            println!("eax: {}", entry.eax);
-            println!("ebx: {}", entry.ebx);
-            println!("ecx: {}", entry.ecx);
-            println!("edx: {}", entry.edx);
+            println!("function: {:#8x}", entry.function);
+            println!("index: {:#8x}", entry.index);
+            println!("flags: {:#8x}", entry.flags);
+            println!("eax: {:#8x}", entry.eax);
+            println!("ebx: {:#8x}", entry.ebx);
+            println!("ecx: {:#8x}", entry.ecx);
+            println!("edx: {:#8x}", entry.edx);
             println!();
         }
 
