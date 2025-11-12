@@ -3,7 +3,10 @@
 
 use std::os::fd::RawFd;
 
-use kvm_bindings::{kvm_enable_cap, CpuId, KVMIO, KVM_CAP_SPLIT_IRQCHIP};
+use kvm_bindings::{
+    kvm_enable_cap, CpuId, KVMIO, KVM_CAP_SPLIT_IRQCHIP, KVM_CAP_X2APIC_API,
+    KVM_X2APIC_API_DISABLE_BROADCAST_QUIRK, KVM_X2APIC_API_USE_32BIT_IDS,
+};
 use kvm_ioctls::Cap;
 use thiserror::Error;
 use vmm_sys_util::ioctl::{ioctl_with_ref, ioctl_with_val};
@@ -36,12 +39,12 @@ pub enum TdxError {
     /// TDX VM is not supported
     #[error("TDX VM is not supported")]
     TdxVmNotSupported,
-    /// Split irqchip is not supported
-    #[error("Split irqchip is not supported")]
-    SplitIrqchipNotSupported,
     /// Cannot enable split irqchip
-    #[error("Cannot enable split irqchip: {0}")]
-    SplitIrqchipNotEnabled(std::io::Error),
+    #[error("Cannot enable split irqchip")]
+    SplitIrqchipNotEnabled,
+    /// Cannot enable x2APIC
+    #[error("Cannot enable x2APIC")]
+    X2apicNotEnabled,
     /// Out of memory
     #[error("Failed to allocate memory: {0}")]
     OutOfMemory(std::io::Error),
@@ -57,7 +60,7 @@ pub fn tdx_pre_create_vm(kvm_fd: &RawFd) -> Result<(), TdxError> {
     let split_irqchip_supported =
         unsafe { ioctl_with_val(kvm_fd, KVM_CHECK_EXTENSION(), KVM_CAP_SPLIT_IRQCHIP as u64) };
     if split_irqchip_supported <= 0 {
-        return Err(TdxError::SplitIrqchipNotSupported);
+        return Err(TdxError::SplitIrqchipNotEnabled);
     }
 
     Ok(())
@@ -69,9 +72,15 @@ pub fn tdx_post_create_vm(vm_fd: &RawFd) -> Result<(), TdxError> {
     enable_split_irqchip.args[0] = NR_ROUTES_USERSPACE_IOAPIC;
     let ret = unsafe { ioctl_with_ref(vm_fd, KVM_ENABLE_CAP(), &enable_split_irqchip) };
     if ret < 0 {
-        return Err(TdxError::SplitIrqchipNotEnabled(
-            std::io::Error::last_os_error(),
-        ));
+        return Err(TdxError::SplitIrqchipNotEnabled);
+    }
+
+    let mut enable_x2apic = kvm_enable_cap::default();
+    enable_x2apic.cap =
+        KVM_CAP_X2APIC_API | KVM_X2APIC_API_USE_32BIT_IDS | KVM_X2APIC_API_DISABLE_BROADCAST_QUIRK;
+    let ret = unsafe { ioctl_with_ref(vm_fd, KVM_ENABLE_CAP(), &enable_x2apic) };
+    if ret < 0 {
+        return Err(TdxError::X2apicNotEnabled);
     }
 
     Ok(())
@@ -87,6 +96,16 @@ pub fn filter_tdx_cpuid(tdx_supported_cpuid: &CpuId, cpu_id: &mut CpuId) {
     unsafe {
         let entries = cpu_id.entries.as_mut_slice(cpu_id.nent as usize);
         for entry in entries.iter() {
+
+            println!("function: {:#x}", entry.function);
+            println!("index: {:#x}", entry.index);
+            println!("flags: {:#x}", entry.flags);
+            println!("eax: {:#x}", entry.eax);
+            println!("ebx: {:#x}", entry.ebx);
+            println!("ecx: {:#x}", entry.ecx);
+            println!("edx: {:#x}", entry.edx);
+            println!();
+
             let tdx_entry = find_cpuid_entry(tdx_supported_cpuid, entry.function, entry.index);
             if tdx_entry.is_none() {
                 continue;
@@ -105,20 +124,22 @@ pub fn filter_tdx_cpuid(tdx_supported_cpuid: &CpuId, cpu_id: &mut CpuId) {
             };
             filtered_entries.push(filtered_entry);
         }
-        
+
         for (i, entry) in filtered_entries.iter().enumerate() {
             entries[i] = *entry;
 
             println!("Entry {}", i);
-            println!("function: {:#8x}", entry.function);
-            println!("index: {:#8x}", entry.index);
-            println!("flags: {:#8x}", entry.flags);
-            println!("eax: {:#8x}", entry.eax);
-            println!("ebx: {:#8x}", entry.ebx);
-            println!("ecx: {:#8x}", entry.ecx);
-            println!("edx: {:#8x}", entry.edx);
+            println!("function: {:#x}", entry.function);
+            println!("index: {:#x}", entry.index);
+            println!("flags: {:#x}", entry.flags);
+            println!("eax: {:#x}", entry.eax);
+            println!("ebx: {:#x}", entry.ebx);
+            println!("ecx: {:#x}", entry.ecx);
+            println!("edx: {:#x}", entry.edx);
             println!();
         }
+
+
 
         cpu_id.nent = filtered_entries.len() as u32;
     }

@@ -628,8 +628,8 @@ mod tests {
             mem_size_mib: 1024,
             serial_path: None,
             cpu_topology: CpuTopology {
-                threads_per_core: 1,
-                cores_per_die: 3,
+                threads_per_core: 3,
+                cores_per_die: 1,
                 dies_per_socket: 1,
                 sockets: 1,
             },
