@@ -500,9 +500,9 @@ impl Vm {
             self.load_kernel(vm_memory, Some(GuestAddress(payload_offset)))?;
 
         if kernel_loader_result.kernel_end > (payload_offset + payload_size) {
-            println!("0x{:#x}", payload_offset);
-            println!("0x{:#x}", kernel_loader_result.kernel_end);
-            println!("0x{:#x}", payload_offset + payload_size);
+            println!("{:#x}", payload_offset);
+            println!("{:#x}", kernel_loader_result.kernel_end);
+            println!("{:#x}", payload_offset + payload_size);
             Err(StartMicroVmError::TdDataLoader(
                 LoadTdDataError::LoadPayload,
             ))
@@ -655,7 +655,7 @@ mod tests {
     #[test]
     #[cfg(feature = "tdx")]
     fn test_tdx_init() {
-        let kernel_path = "/tmp/test_resources/vmlinux-confidential.container";
+        let kernel_path = "/tmp/test_resources/hello-vmlinux.bin";
         let tdshim_path = "/tmp/test_resources/tdshim.bin";
 
         let boot_args = "console=ttyS0 console=ttyS1 earlyprintk=ttyS1 tty0 reboot=k debug panic=1 pci=off root=/dev/vda1";
