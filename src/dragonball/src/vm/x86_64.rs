@@ -398,7 +398,7 @@ impl Vm {
             &self.vm_fd.as_raw_fd(),
             tdx_caps.supported_attrs,
             tdx_caps.supported_xfam,
-            self.vcpu_manager().unwrap().supported_cpuid.clone(),
+            supported_cpuid,
         )
         .map_err(StartMicroVmError::TdxError)?;
 
