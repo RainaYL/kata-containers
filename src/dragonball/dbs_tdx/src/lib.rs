@@ -99,15 +99,6 @@ pub fn filter_tdx_cpuid(tdx_supported_cpuid: &CpuId, cpu_id: &mut CpuId) {
         let entries = cpu_id.entries.as_mut_slice(cpu_id.nent as usize);
         for entry in entries.iter() {
 
-            println!("function: {:#x}", entry.function);
-            println!("index: {:#x}", entry.index);
-            println!("flags: {:#x}", entry.flags);
-            println!("eax: {:#x}", entry.eax);
-            println!("ebx: {:#x}", entry.ebx);
-            println!("ecx: {:#x}", entry.ecx);
-            println!("edx: {:#x}", entry.edx);
-            println!();
-
             let tdx_entry = find_cpuid_entry(tdx_supported_cpuid, entry.function, entry.index);
             if tdx_entry.is_none() {
                 continue;
@@ -129,16 +120,6 @@ pub fn filter_tdx_cpuid(tdx_supported_cpuid: &CpuId, cpu_id: &mut CpuId) {
 
         for (i, entry) in filtered_entries.iter().enumerate() {
             entries[i] = *entry;
-
-            println!("Entry {}", i);
-            println!("function: {:#x}", entry.function);
-            println!("index: {:#x}", entry.index);
-            println!("flags: {:#x}", entry.flags);
-            println!("eax: {:#x}", entry.eax);
-            println!("ebx: {:#x}", entry.ebx);
-            println!("ecx: {:#x}", entry.ecx);
-            println!("edx: {:#x}", entry.edx);
-            println!();
         }
 
 
