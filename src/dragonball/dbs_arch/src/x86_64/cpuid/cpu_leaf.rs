@@ -67,6 +67,8 @@ pub mod leaf_0x1 {
     }
 
     pub mod edx {
+        pub const MSR_BITINDEX: u32 = 5;
+        pub const APIC_BITINDEX: u32 = 9;
         pub const PSN_BITINDEX: u32 = 18; // Processor Serial Number
         pub const DS_BITINDEX: u32 = 21; // Debug Store.
         pub const ACPI_BITINDEX: u32 = 22; // Thermal Monitor and Software Controlled Clock Facilities.

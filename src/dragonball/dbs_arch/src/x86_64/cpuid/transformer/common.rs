@@ -44,7 +44,9 @@ pub fn update_feature_info_entry(entry: &mut CpuIdEntry, vm_spec: &VmSpec) -> Re
     // package) is valid for the package
     entry
         .edx
-        .write_bit(edx::HTT_BITINDEX, vm_spec.cpu_count > 1);
+        .write_bit(edx::HTT_BITINDEX, vm_spec.cpu_count > 1)
+        .write_bit(edx::MSR_BITINDEX, true)
+        .write_bit(edx::APIC_BITINDEX, true);
 
     Ok(())
 }
