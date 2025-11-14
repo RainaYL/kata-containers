@@ -88,7 +88,6 @@ pub fn setup_msrs(vcpu: &VcpuFd) -> Result<()> {
         .map_err(Error::SetModelSpecificRegisters)
         .and_then(|msrs_written| {
             if msrs_written as u32 != kvm_msrs.as_fam_struct_ref().nmsrs {
-                println!("{} {}", msrs_written, kvm_msrs.as_fam_struct_ref().nmsrs);
                 Err(Error::SetModelSpecificRegistersCount)
             } else {
                 Ok(msrs_written)

@@ -95,7 +95,12 @@ impl Vcpu {
     ) -> Result<()> {
         self.set_cpuid(vcpu_config)?;
 
-        //dbs_arch::regs::setup_msrs(&self.fd).map_err(VcpuError::MSRSConfiguration)?;
+        #[cfg(feature = "tdx")]
+        if tdx_enabled {
+            return Ok(())
+        }
+
+        dbs_arch::regs::setup_msrs(&self.fd).map_err(VcpuError::MSRSConfiguration)?;
         if let Some(start_addr) = kernel_start_addr {
             dbs_arch::regs::setup_regs(
                 &self.fd,
