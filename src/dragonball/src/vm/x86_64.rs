@@ -689,5 +689,8 @@ mod tests {
         let boot_vcpu_count = vm.vm_config().vcpu_count;
         vcpu_manager.create_vcpus(boot_vcpu_count, None, None, true).unwrap();
         vcpu_manager.init_tdx_vcpus(hob_offset).unwrap();
+
+        let address_space = vm.vm_address_space().cloned().unwrap();
+        vm.generate_hob_list(hob_offset, vm_memory.deref(), address_space, payload_info).unwrap();
     }
 }
