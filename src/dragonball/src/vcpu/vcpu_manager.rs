@@ -260,7 +260,6 @@ impl VcpuManager {
         shared_info: Arc<RwLock<InstanceInfo>>,
         io_manager: IoManagerCached,
         epoll_manager: EpollManager,
-        #[cfg(feature = "tdx")] tdx_caps: Option<&dbs_tdx::TdxCapabilities>,
     ) -> Result<Arc<Mutex<Self>>> {
         let support_immediate_exit = kvm_context.kvm().check_extension(Cap::ImmediateExit);
         let max_vcpu_count = vm_config_info.max_vcpu_count;
@@ -297,7 +296,7 @@ impl VcpuManager {
             .try_clone()
             .map_err(VcpuManagerError::VcpuIO)?;
 
-        let mut supported_cpuid = kvm_context
+        let supported_cpuid = kvm_context
             .supported_cpuid(kvm_bindings::KVM_MAX_CPUID_ENTRIES)
             .map_err(VcpuManagerError::Kvm)?;
 

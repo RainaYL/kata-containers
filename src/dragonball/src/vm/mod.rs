@@ -461,8 +461,6 @@ impl Vm {
             self.shared_info.clone(),
             self.device_manager.io_manager(),
             self.epoll_manager.clone(),
-            #[cfg(feature = "tdx")]
-            self.tdx_caps.as_ref(),
         )?;
         self.vcpu_manager = Some(vcpu_manager);
 
