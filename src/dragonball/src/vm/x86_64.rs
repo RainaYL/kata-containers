@@ -502,9 +502,6 @@ impl Vm {
             self.load_kernel(vm_memory, Some(GuestAddress(payload_offset)))?;
 
         if kernel_loader_result.kernel_end > (payload_offset + payload_size) {
-            println!("{:#x}", payload_offset);
-            println!("{:#x}", kernel_loader_result.kernel_end);
-            println!("{:#x}", payload_offset + payload_size);
             Err(StartMicroVmError::TdDataLoader(
                 LoadTdDataError::LoadPayload,
             ))
@@ -586,10 +583,6 @@ impl Vm {
             ));
         }
 
-        println!("source_addr: {:#x}", host_address);
-        println!("gpa: {:#x}", guest_address);
-        println!("size: {:#x}", size);
-        println!("flags: {}", flags);
         dbs_tdx::tdx_init_mem_region(
             &vcpus[0].vcpu_fd().as_raw_fd(),
             host_address,
@@ -701,12 +694,24 @@ mod tests {
                 .deref()
                 .get_host_address(GuestAddress(section.address))
                 .unwrap();
-            vm.init_tdx_memory(
+            let guest_address  = section.address;
+            let size = section.size;
+            let r#type = section.r#type;
+            println!("host address: {:#x}", host_address as u64);
+            println!("guest address: {:#x}", guest_address);
+            println!("size: {:#x}", size);
+            println!("type: {}", r#type as u32);
+            
+            let res = vm.init_tdx_memory(
                 host_address as u64,
                 section.address,
                 section.size,
                 section.attributes,
-            ).unwrap();
+            );
+            if res.is_err() {
+                println!("Error: {:#}", std::io::Error::last_os_error());
+            }
+            println!();
         }
     }
 }
