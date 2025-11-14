@@ -95,7 +95,7 @@ impl Vcpu {
     ) -> Result<()> {
         self.set_cpuid(vcpu_config)?;
 
-        dbs_arch::regs::setup_msrs(&self.fd).map_err(VcpuError::MSRSConfiguration)?;
+        //dbs_arch::regs::setup_msrs(&self.fd).map_err(VcpuError::MSRSConfiguration)?;
         if let Some(start_addr) = kernel_start_addr {
             dbs_arch::regs::setup_regs(
                 &self.fd,
@@ -124,7 +124,7 @@ impl Vcpu {
             )
             .map_err(VcpuError::SREGSConfiguration)?;
         }
-        dbs_arch::interrupts::set_lint(&self.fd).map_err(VcpuError::LocalIntConfiguration)?;
+        //dbs_arch::interrupts::set_lint(&self.fd).map_err(VcpuError::LocalIntConfiguration)?;
 
         Ok(())
     }
