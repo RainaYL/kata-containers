@@ -38,7 +38,6 @@ pub fn update_feature_info_entry(entry: &mut CpuIdEntry, vm_spec: &VmSpec) -> Re
     entry
         .ecx
         .write_bit(ecx::X2APIC_BITINDEX, true);
-    println!("Feature bit set");
 
     // EDX bit 28: Hyper-Threading Technology, PAUSE. A value of 1 for HTT indicates the value in
     // CPUID.1.Ebx[23:16] (the Maximum number of addressable IDs for logical processors in this
