@@ -588,7 +588,7 @@ impl Vm {
 
         println!("source_addr: {:#x}", host_address);
         println!("gpa: {:#x}", guest_address);
-        println!("nr_pages: {}", size << 12);
+        println!("size: {:#x}", size);
         println!("flags: {}", flags);
         dbs_tdx::tdx_init_mem_region(
             &vcpus[0].vcpu_fd().as_raw_fd(),
