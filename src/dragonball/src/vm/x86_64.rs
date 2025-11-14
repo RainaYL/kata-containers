@@ -392,6 +392,8 @@ impl Vm {
     #[cfg(feature = "tdx")]
     fn init_tdx(&self) -> std::result::Result<(), StartMicroVmError> {
         let tdx_caps = self.tdx_caps.as_ref().unwrap();
+        let mut supported_cpuid = self.vcpu_manager().unwrap().supported_cpuid.clone();
+        dbs_tdx::filter_tdx_cpuid(&tdx_caps.cpu_id, &mut supported_cpuid);
         dbs_tdx::tdx_init(
             &self.vm_fd.as_raw_fd(),
             tdx_caps.supported_attrs,

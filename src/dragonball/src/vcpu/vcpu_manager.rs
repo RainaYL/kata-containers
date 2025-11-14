@@ -300,10 +300,6 @@ impl VcpuManager {
         let mut supported_cpuid = kvm_context
             .supported_cpuid(kvm_bindings::KVM_MAX_CPUID_ENTRIES)
             .map_err(VcpuManagerError::Kvm)?;
-        #[cfg(feature = "tdx")]
-        if tdx_enabled {
-            dbs_tdx::filter_tdx_cpuid(&tdx_caps.unwrap().cpu_id, &mut supported_cpuid);
-        }
 
         #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
         let vpmu_feature_level = match vm_config_info.vpmu_feature {
