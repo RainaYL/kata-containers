@@ -589,9 +589,6 @@ impl Vm {
             ));
         }
 
-        dbs_tdx::tdx_add_private_memory(&self.vm_fd().as_raw_fd(), guest_address, size)
-            .map_err(StartMicroVmError::TdxError)?;
-
         println!("host address: {:#x}", host_address as u64);
         println!("guest address: {:#x}", guest_address);
         println!("size: {:#x}", size);
@@ -710,6 +707,10 @@ mod tests {
         let address_space = vm.vm_address_space().cloned().unwrap();
         vm.generate_hob_list(hob_offset, vm_memory.deref(), address_space, payload_info)
             .unwrap();
+
+        for section in sections.iter() {
+            dbs_tdx::tdx_add_private_memory(&vm.vm_fd().as_raw_fd(), section.address, section.size).unwrap();
+        }
 
         for section in sections {
             let host_address = vm_memory
