@@ -592,6 +592,10 @@ impl Vm {
         dbs_tdx::tdx_add_private_memory(&self.vm_fd().as_raw_fd(), guest_address, size)
             .map_err(StartMicroVmError::TdxError)?;
 
+        println!("host address: {:#x}", host_address as u64);
+        println!("guest address: {:#x}", guest_address);
+        println!("size: {:#x}", size);
+
         dbs_tdx::tdx_init_mem_region(
             &vcpus[0].vcpu_fd().as_raw_fd(),
             host_address,
@@ -712,24 +716,14 @@ mod tests {
                 .deref()
                 .get_host_address(GuestAddress(section.address))
                 .unwrap();
-            let guest_address = section.address;
-            let size = section.size;
-            let r#type = section.r#type;
-            println!("host address: {:#x}", host_address as u64);
-            println!("guest address: {:#x}", guest_address);
-            println!("size: {:#x}", size);
-            println!("type: {}", r#type as u32);
 
-            let res = vm.init_tdx_memory(
+            vm.init_tdx_memory(
                 host_address as u64,
                 section.address,
                 section.size,
                 section.attributes,
-            );
-            if res.is_err() {
-                println!("Error: {:#}", std::io::Error::last_os_error());
-            }
-            println!();
+            )
+            .unwrap();
         }
     }
 }
