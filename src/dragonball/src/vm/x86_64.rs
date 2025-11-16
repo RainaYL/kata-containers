@@ -292,7 +292,7 @@ impl Vm {
         // Therefore no need to call KVM_CREATE_IRQCHIP
         #[cfg(feature = "tdx")]
         if self.is_tdx_enabled() {
-            return Ok(())
+            return Ok(());
         }
         self.vm_fd
             .create_irq_chip()
@@ -343,7 +343,13 @@ impl Vm {
         let boot_vcpu_count = self.vm_config().vcpu_count;
         self.vcpu_manager()
             .map_err(StartMicroVmError::Vcpu)?
-            .create_vcpus(boot_vcpu_count, None, None, #[cfg(feature = "tdx")] true)
+            .create_vcpus(
+                boot_vcpu_count,
+                None,
+                None,
+                #[cfg(feature = "tdx")]
+                true,
+            )
             .map_err(StartMicroVmError::Vcpu)?;
 
         let vm_memory = vm_as.memory();
@@ -583,6 +589,9 @@ impl Vm {
             ));
         }
 
+        dbs_tdx::tdx_add_private_memory(&self.vm_fd().as_raw_fd(), guest_address, size)
+            .map_err(StartMicroVmError::TdxError)?;
+
         dbs_tdx::tdx_init_mem_region(
             &vcpus[0].vcpu_fd().as_raw_fd(),
             host_address,
@@ -604,7 +613,7 @@ mod tests {
 
     use super::*;
     use crate::api::v1::InstanceInfo;
-    use crate::vm::{CpuTopology, KernelConfigInfo, VmConfigInfo, BpfProgram};
+    use crate::vm::{BpfProgram, CpuTopology, KernelConfigInfo, VmConfigInfo};
     use std::fs::File;
     use std::sync::{Arc, RwLock};
     use vmm_sys_util::eventfd::EventFd;
@@ -677,31 +686,40 @@ mod tests {
         let (hob_offset, payload_offset, payload_size, cmdline_offset) =
             vm.load_tdshim(vm_memory.deref(), &sections).unwrap();
 
-        let payload_info =
-            vm.load_tdx_payload(payload_offset, payload_size, vm_memory.deref()).unwrap();
+        let payload_info = vm
+            .load_tdx_payload(payload_offset, payload_size, vm_memory.deref())
+            .unwrap();
 
-        vm.load_tdx_cmdline(cmdline_offset, vm_memory.deref()).unwrap();
+        vm.load_tdx_cmdline(cmdline_offset, vm_memory.deref())
+            .unwrap();
 
         let boot_vcpu_count = vm.vm_config().vcpu_count;
-        vm.vcpu_manager().unwrap().create_vcpus(boot_vcpu_count, None, None, true).unwrap();
-        vm.vcpu_manager().unwrap().init_tdx_vcpus(hob_offset).unwrap();
+        vm.vcpu_manager()
+            .unwrap()
+            .create_vcpus(boot_vcpu_count, None, None, true)
+            .unwrap();
+        vm.vcpu_manager()
+            .unwrap()
+            .init_tdx_vcpus(hob_offset)
+            .unwrap();
 
         let address_space = vm.vm_address_space().cloned().unwrap();
-        vm.generate_hob_list(hob_offset, vm_memory.deref(), address_space, payload_info).unwrap();
+        vm.generate_hob_list(hob_offset, vm_memory.deref(), address_space, payload_info)
+            .unwrap();
 
         for section in sections {
             let host_address = vm_memory
                 .deref()
                 .get_host_address(GuestAddress(section.address))
                 .unwrap();
-            let guest_address  = section.address;
+            let guest_address = section.address;
             let size = section.size;
             let r#type = section.r#type;
             println!("host address: {:#x}", host_address as u64);
             println!("guest address: {:#x}", guest_address);
             println!("size: {:#x}", size);
             println!("type: {}", r#type as u32);
-            
+
             let res = vm.init_tdx_memory(
                 host_address as u64,
                 section.address,

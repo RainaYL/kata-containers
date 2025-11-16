@@ -1,10 +1,11 @@
 // Copyright (C) 2023 Alibaba Cloud. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
+#![allow(non_camel_case_types)]
 
 use std::os::fd::RawFd;
 
 use kvm_bindings::{
-    kvm_enable_cap, CpuId, KVMIO, KVM_CAP_SPLIT_IRQCHIP, KVM_CAP_X2APIC_API,
+    __u64, kvm_enable_cap, CpuId, KVMIO, KVM_CAP_SPLIT_IRQCHIP, KVM_CAP_X2APIC_API,
     KVM_X2APIC_API_DISABLE_BROADCAST_QUIRK, KVM_X2APIC_API_USE_32BIT_IDS,
 };
 use kvm_ioctls::Cap;
@@ -19,18 +20,24 @@ pub use tdx_ioctls::*;
 #[cfg(target_arch = "x86_64")]
 pub mod td_shim;
 
-pub const CPUID_EXT_X2APIC: u32 = 1 << 21;
-
 pub const KVM_X86_TDX_VM: u64 = 5;
 
 pub const KVM_CAP_VM_TYPES: u64 = 235;
 
 pub const KVM_TDX_MEASURE_MEMORY_REGION: u32 = 1u32 << 0;
 
+pub const KVM_MEMORY_ATTRIBUTE_PRIVATE: u64 = 1u64 << 3;
+
 pub const NR_ROUTES_USERSPACE_IOAPIC: u64 = 24;
 
 ioctl_io_nr!(KVM_CHECK_EXTENSION, KVMIO, 0x03);
 ioctl_iow_nr!(KVM_ENABLE_CAP, KVMIO, 0xa3, kvm_enable_cap);
+ioctl_iow_nr!(
+    KVM_SET_MEMORY_ATTRIBUTES,
+    KVMIO,
+    0xd2,
+    kvm_memory_attributes
+);
 
 /// TDX related error
 #[derive(Error, Debug)]
@@ -50,6 +57,9 @@ pub enum TdxError {
     /// Out of memory
     #[error("Failed to allocate memory: {0}")]
     OutOfMemory(std::io::Error),
+    /// Cannot set guest memory to private
+    #[error("Cannot set guest memory to private")]
+    MemoryAttrNotPrivate,
 }
 
 pub fn tdx_pre_create_vm(kvm_fd: &RawFd) -> Result<(), TdxError> {
@@ -57,12 +67,6 @@ pub fn tdx_pre_create_vm(kvm_fd: &RawFd) -> Result<(), TdxError> {
         unsafe { ioctl_with_val(kvm_fd, KVM_CHECK_EXTENSION(), KVM_CAP_VM_TYPES) } as u64;
     if supported_vm_types & (1 << KVM_X86_TDX_VM) == 0 {
         return Err(TdxError::TdxVmNotSupported);
-    }
-
-    let split_irqchip_supported =
-        unsafe { ioctl_with_val(kvm_fd, KVM_CHECK_EXTENSION(), KVM_CAP_SPLIT_IRQCHIP as u64) };
-    if split_irqchip_supported <= 0 {
-        return Err(TdxError::SplitIrqchipNotEnabled);
     }
 
     Ok(())
@@ -79,7 +83,8 @@ pub fn tdx_post_create_vm(vm_fd: &RawFd) -> Result<(), TdxError> {
 
     let mut enable_x2apic = kvm_enable_cap::default();
     enable_x2apic.cap = KVM_CAP_X2APIC_API;
-    enable_x2apic.args[0] = (KVM_X2APIC_API_USE_32BIT_IDS | KVM_X2APIC_API_DISABLE_BROADCAST_QUIRK) as u64;
+    enable_x2apic.args[0] =
+        (KVM_X2APIC_API_USE_32BIT_IDS | KVM_X2APIC_API_DISABLE_BROADCAST_QUIRK) as u64;
     let ret = unsafe { ioctl_with_ref(vm_fd, KVM_ENABLE_CAP(), &enable_x2apic) };
     if ret < 0 {
         return Err(TdxError::X2apicNotEnabled);
@@ -98,7 +103,6 @@ pub fn filter_tdx_cpuid(tdx_supported_cpuid: &CpuId, cpu_id: &mut CpuId) {
     unsafe {
         let entries = cpu_id.entries.as_mut_slice(cpu_id.nent as usize);
         for entry in entries.iter() {
-
             let tdx_entry = find_cpuid_entry(tdx_supported_cpuid, entry.function, entry.index);
             if tdx_entry.is_none() {
                 continue;
@@ -122,8 +126,6 @@ pub fn filter_tdx_cpuid(tdx_supported_cpuid: &CpuId, cpu_id: &mut CpuId) {
             entries[i] = *entry;
         }
 
-
-
         cpu_id.nent = filtered_entries.len() as u32;
     }
 }
@@ -143,4 +145,44 @@ fn find_cpuid_entry(
         }
     }
     None
+}
+
+#[repr(C)]
+#[derive(Debug, Default)]
+struct kvm_memory_attributes {
+    address: __u64,
+    size: __u64,
+    attributes: __u64,
+    flags: __u64,
+}
+
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of kvm_memory_attributes"][::std::mem::size_of::<kvm_memory_attributes>() - 32usize];
+    ["Alignment of kvm_memory_attributes"]
+        [::std::mem::align_of::<kvm_memory_attributes>() - 8usize];
+    ["Offset of field: kvm_memory_attributes::address"]
+        [::std::mem::offset_of!(kvm_memory_attributes, address) - 0usize];
+    ["Offset of field: kvm_memory_attributes::size"]
+        [::std::mem::offset_of!(kvm_memory_attributes, size) - 8usize];
+    ["Offset of field: kvm_memory_attributes::attributes"]
+        [::std::mem::offset_of!(kvm_memory_attributes, attributes) - 16usize];
+    ["Offset of field: kvm_memory_attributes::flags"]
+        [::std::mem::offset_of!(kvm_memory_attributes, flags) - 24usize];
+};
+
+pub fn tdx_add_private_memory(vm_fd: &RawFd, gpa: u64, size: u64) -> Result<(), TdxError> {
+    let memory_attributes = kvm_memory_attributes {
+        address: gpa,
+        size,
+        attributes: KVM_MEMORY_ATTRIBUTE_PRIVATE,
+        flags: 0,
+    };
+    let ret = unsafe { ioctl_with_ref(vm_fd, KVM_SET_MEMORY_ATTRIBUTES(), &memory_attributes) };
+
+    if ret < 0 {
+        return Err(TdxError::MemoryAttrNotPrivate);
+    }
+
+    Ok(())
 }
