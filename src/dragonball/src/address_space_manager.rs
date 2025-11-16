@@ -361,7 +361,7 @@ impl AddressSpaceMgr {
             vm_memory = vm_memory
                 .insert_region(mmap_reg.clone())
                 .map_err(AddressManagerError::CreateGuestMemory)?;
-            self.map_to_kvm(res_mgr, &param, reg, mmap_reg)?;
+            //self.map_to_kvm(res_mgr, &param, reg, mmap_reg)?;
         }
 
         #[cfg(feature = "atomic-guest-memory")]
