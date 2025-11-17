@@ -623,7 +623,7 @@ mod tests {
             true,
         )));
         let epoll_manager = EpollManager::default();
-        let mut vm = Vm::new(None, instance_info, epoll_manager).unwrap();
+        let mut vm = Vm::new(None, instance_info, epoll_manager.clone()).unwrap();
         let vm_config = VmConfigInfo {
             vcpu_count: 1,
             max_vcpu_count: 3,
@@ -646,6 +646,8 @@ mod tests {
 
         vm.init_vcpu_manager(vm.vm_as().unwrap().clone(), BpfProgram::default())
             .unwrap();
+        
+        vm.init_devices(epoll_manager.clone()).unwrap();
 
         vm.vcpu_manager()
             .unwrap()
