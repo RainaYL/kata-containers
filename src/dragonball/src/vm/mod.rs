@@ -628,17 +628,16 @@ impl Vm {
             numa_regions,
         );
 
-        let mut address_space_param = AddressSpaceMgrBuilder::new(&mem_type, &mem_file_path)
-            .map_err(StartMicroVmError::AddressManagerError)?;
+        let mut address_space_param = AddressSpaceMgrBuilder::new(
+            &mem_type,
+            &mem_file_path,
+            #[cfg(feature = "tdx")]
+            self.is_tdx_enabled(),
+        )
+        .map_err(StartMicroVmError::AddressManagerError)?;
         address_space_param.set_kvm_vm_fd(self.vm_fd.clone());
         self.address_space
-            .create_address_space(
-                &self.resource_manager,
-                &numa_regions,
-                address_space_param,
-                #[cfg(feature = "tdx")]
-                self.is_tdx_enabled(),
-            )
+            .create_address_space(&self.resource_manager, &numa_regions, address_space_param)
             .map_err(StartMicroVmError::AddressManagerError)?;
 
         info!(self.logger, "VM: initializing guest memory done");
@@ -890,7 +889,12 @@ impl Vm {
             if let Some(vcpu_count) = config.vcpu_count {
                 self.vcpu_manager()
                     .map_err(VcpuResizeError::Vcpu)?
-                    .resize_vcpu(vcpu_count, sync_tx, #[cfg(feature = "tdx")] self.is_tdx_enabled())?;
+                    .resize_vcpu(
+                        vcpu_count,
+                        sync_tx,
+                        #[cfg(feature = "tdx")]
+                        self.is_tdx_enabled(),
+                    )?;
 
                 self.vm_config.vcpu_count = vcpu_count;
             }

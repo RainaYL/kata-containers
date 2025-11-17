@@ -50,16 +50,16 @@ pub enum TdxError {
     TdxVmNotSupported,
     /// Cannot enable split irqchip
     #[error("Cannot enable split irqchip")]
-    SplitIrqchipNotEnabled,
+    SplitIrqchip,
     /// Cannot enable x2APIC
     #[error("Cannot enable x2APIC")]
-    X2apicNotEnabled,
+    X2apic,
     /// Out of memory
     #[error("Failed to allocate memory: {0}")]
-    OutOfMemory(std::io::Error),
+    OutOfMemory(#[source] std::io::Error),
     /// Cannot set guest memory to private
-    #[error("Cannot set guest memory to private")]
-    MemoryAttrNotPrivate,
+    #[error("Cannot set guest memory to private: {0}")]
+    MemoryAttrPrivate(#[source] std::io::Error),
 }
 
 pub fn tdx_pre_create_vm(kvm_fd: &RawFd) -> Result<(), TdxError> {
@@ -78,7 +78,7 @@ pub fn tdx_post_create_vm(vm_fd: &RawFd) -> Result<(), TdxError> {
     enable_split_irqchip.args[0] = NR_ROUTES_USERSPACE_IOAPIC;
     let ret = unsafe { ioctl_with_ref(vm_fd, KVM_ENABLE_CAP(), &enable_split_irqchip) };
     if ret < 0 {
-        return Err(TdxError::SplitIrqchipNotEnabled);
+        return Err(TdxError::SplitIrqchip);
     }
 
     let mut enable_x2apic = kvm_enable_cap::default();
@@ -87,7 +87,7 @@ pub fn tdx_post_create_vm(vm_fd: &RawFd) -> Result<(), TdxError> {
         (KVM_X2APIC_API_USE_32BIT_IDS | KVM_X2APIC_API_DISABLE_BROADCAST_QUIRK) as u64;
     let ret = unsafe { ioctl_with_ref(vm_fd, KVM_ENABLE_CAP(), &enable_x2apic) };
     if ret < 0 {
-        return Err(TdxError::X2apicNotEnabled);
+        return Err(TdxError::X2apic);
     }
 
     Ok(())
@@ -181,7 +181,7 @@ pub fn tdx_add_private_memory(vm_fd: &RawFd, gpa: u64, size: u64) -> Result<(), 
     let ret = unsafe { ioctl_with_ref(vm_fd, KVM_SET_MEMORY_ATTRIBUTES(), &memory_attributes) };
 
     if ret < 0 {
-        return Err(TdxError::MemoryAttrNotPrivate);
+        return Err(TdxError::MemoryAttrPrivate(std::io::Error::last_os_error()));
     }
 
     Ok(())

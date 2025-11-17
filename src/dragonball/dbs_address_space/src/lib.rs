@@ -64,6 +64,10 @@ pub enum AddressSpaceError {
     /// Failed to unlink memory file.
     #[error("can not unlink memory file")]
     UnlinkFile(#[source] nix::Error),
+
+    /// Failed to create VM-bound memfd
+    #[error("can not create VM-bound memfd")]
+    CreateVmboundMemFd(#[source] std::io::Error),
 }
 
 #[cfg(test)]

@@ -18,3 +18,4 @@ lazy_static = "1"
 thiserror = "1"
 vmm-sys-util = {workspace = true}
 vm-memory = { workspace = true, features = ["backend-mmap", "backend-atomic"] }
+kvm-bindings = { workspace = true }
