@@ -676,7 +676,7 @@ mod tests {
             cmd_line,
         ));
 
-        vm.init_devices(epoll_manager.clone()).unwrap();
+        vm.init_devices(vm.epoll_manager().clone()).unwrap();
 
         vm.init_tdx().unwrap();
 
