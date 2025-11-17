@@ -28,7 +28,7 @@ pub enum TdvfError {
 }
 
 /// TDVF_DESCRIPTOR
-#[repr(packed)]
+#[repr(C, packed)]
 pub struct TdvfDescriptor {
     signature: [u8; 4],
     length: u32,
@@ -36,7 +36,7 @@ pub struct TdvfDescriptor {
     num_sections: u32, // NumberOfSectionEntry
 }
 
-#[repr(packed)]
+#[repr(C, packed)]
 #[derive(Clone, Copy, Default, Debug)]
 /// DVF_SECTION
 pub struct TdvfSection {
