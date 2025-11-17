@@ -506,7 +506,6 @@ impl MemRegionFactory for MemoryRegionFactory {
                 mem_file_path.as_str(),
                 false,
                 true,
-                false,
             )
             .map_err(|e| {
                 error!(self.logger, "failed to insert address space region: {}", e);

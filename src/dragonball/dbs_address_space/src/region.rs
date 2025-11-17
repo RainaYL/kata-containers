@@ -1,18 +1,14 @@
 // Copyright (C) 2021 Alibaba Cloud. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
-#![allow(non_camel_case_types)]
 
 use std::ffi::CString;
 use std::fs::{File, OpenOptions};
-use std::os::unix::io::{FromRawFd, RawFd};
+use std::os::unix::io::FromRawFd;
 use std::path::Path;
 use std::str::FromStr;
 
-use kvm_bindings::{__u64, KVMIO};
 use nix::sys::memfd;
 use vm_memory::{Address, FileOffset, GuestAddress, GuestUsize};
-use vmm_sys_util::ioctl::ioctl_with_ref;
-use vmm_sys_util::{ioctl_ioc_nr, ioctl_iowr_nr};
 
 use crate::memory::MemorySourceType;
 use crate::memory::MemorySourceType::MemFdShared;
@@ -138,7 +134,6 @@ impl AddressSpaceRegion {
         mem_file_path: &str,
         mem_prealloc: bool,
         is_hotplug: bool,
-        kvm_mmap: bool
     ) -> Result<AddressSpaceRegion, AddressSpaceError> {
         Self::create_memory_region(
             base,
@@ -150,7 +145,6 @@ impl AddressSpaceRegion {
             libc::PROT_READ | libc::PROT_WRITE,
             is_hotplug,
             AddressSpaceRegionType::DefaultMemory,
-            kvm_mmap,
         )
     }
 
@@ -175,42 +169,34 @@ impl AddressSpaceRegion {
         prot_flags: i32,
         is_hotplug: bool,
         region_type: AddressSpaceRegionType,
-        kvm_mmap: bool,
     ) -> Result<AddressSpaceRegion, AddressSpaceError> {
-        let mut perm_flags = if mem_prealloc {
+        let perm_flags = if mem_prealloc {
             libc::MAP_SHARED | libc::MAP_POPULATE
         } else {
             libc::MAP_SHARED
         };
-        if kvm_mmap {
-            perm_flags |= libc::MAP_ANONYMOUS;
-        }
         let source_type = MemorySourceType::from_str(mem_type)
             .map_err(|_e| AddressSpaceError::InvalidMemorySourceType(mem_type.to_string()))?;
         let mut reg = match source_type {
             MemorySourceType::MemFdShared | MemorySourceType::MemFdOnHugeTlbFs => {
-                let file_offset = if !kvm_mmap {
-                    let fn_str = if source_type == MemFdShared {
-                        CString::new("shmem").expect("CString::new('shmem') failed")
-                    } else {
-                        CString::new("hugeshmem").expect("CString::new('hugeshmem') failed")
-                    };
-                    let filename = fn_str.as_c_str();
-                    let fd = memfd::memfd_create(filename, memfd::MemFdCreateFlag::empty())
-                        .map_err(AddressSpaceError::CreateMemFd)?;
-                    // Safe because we have just created the fd.
-                    let file: File = unsafe { File::from_raw_fd(fd) };
-                    file.set_len(size).map_err(AddressSpaceError::SetFileSize)?;
-                    Some(FileOffset::new(file, 0))
+                let fn_str = if source_type == MemFdShared {
+                    CString::new("shmem").expect("CString::new('shmem') failed")
                 } else {
-                    None
+                    CString::new("hugeshmem").expect("CString::new('hugeshmem') failed")
                 };
+                let filename = fn_str.as_c_str();
+                let fd = memfd::memfd_create(filename, memfd::MemFdCreateFlag::empty())
+                    .map_err(AddressSpaceError::CreateMemFd)?;
+                // Safe because we have just created the fd.
+                let file: File = unsafe { File::from_raw_fd(fd) };
+                file.set_len(size).map_err(AddressSpaceError::SetFileSize)?;
+
                 Self::build(
                     region_type,
                     base,
                     size,
                     numa_node_id,
-                    file_offset,
+                    Some(FileOffset::new(file, 0)),
                     perm_flags,
                     prot_flags,
                     is_hotplug,
@@ -407,52 +393,7 @@ impl AddressSpaceRegion {
 
         !(end1 <= other.base || self.base >= end2)
     }
-
-    /// Call KVM_CREATE_GUEST_MEMFD to create a memfd bound to specific VM
-    pub fn create_vmbound_memfd(
-        vm_fd: &RawFd,
-        size: u64,
-        flags: u64,
-    ) -> Result<i32, AddressSpaceError> {
-        let create_guest_memfd = kvm_create_guest_memfd {
-            size,
-            flags,
-            ..Default::default()
-        };
-        println!("{}", size);
-        let ret = unsafe { ioctl_with_ref(vm_fd, KVM_CREATE_GUEST_MEMFD(), &create_guest_memfd) };
-        if ret < 0 {
-            return Err(AddressSpaceError::CreateVmboundMemFd(
-                std::io::Error::last_os_error(),
-            ));
-        }
-
-        Ok(ret)
-    }
 }
-
-ioctl_iowr_nr!(KVM_CREATE_GUEST_MEMFD, KVMIO, 0xd4, kvm_create_guest_memfd);
-
-#[repr(C)]
-#[derive(Debug, Default)]
-struct kvm_create_guest_memfd {
-    size: __u64,
-    flags: __u64,
-    reserved: [__u64; 6usize],
-}
-
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of kvm_create_guest_memfd"][::std::mem::size_of::<kvm_create_guest_memfd>() - 64usize];
-    ["Alignment of kvm_create_guest_memfd"]
-        [::std::mem::align_of::<kvm_create_guest_memfd>() - 8usize];
-    ["Offset of field: kvm_create_guest_memfd::size"]
-        [::std::mem::offset_of!(kvm_create_guest_memfd, size) - 0usize];
-    ["Offset of field: kvm_create_guest_memfd::flags"]
-        [::std::mem::offset_of!(kvm_create_guest_memfd, flags) - 8usize];
-    ["Offset of field: kvm_create_guest_memfd::reserved"]
-        [::std::mem::offset_of!(kvm_create_guest_memfd, reserved) - 16usize];
-};
 
 #[cfg(test)]
 mod tests {
@@ -573,7 +514,6 @@ mod tests {
             "invalid",
             false,
             false,
-            false,
         )
         .unwrap_err();
 
@@ -583,7 +523,6 @@ mod tests {
             None,
             "shmem",
             "",
-            false,
             false,
             false,
         )
@@ -602,7 +541,6 @@ mod tests {
             "",
             true,
             false,
-            false,
         )
         .unwrap();
         assert_eq!(reg.region_type(), AddressSpaceRegionType::DefaultMemory);
@@ -618,7 +556,6 @@ mod tests {
             "mmap",
             "",
             true,
-            false,
             false,
         )
         .unwrap();

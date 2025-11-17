@@ -632,7 +632,7 @@ mod tests {
             vcpu_count: 1,
             max_vcpu_count: 3,
             cpu_pm: "off".to_string(),
-            mem_type: "shmem".to_string(),
+            mem_type: "anon".to_string(),
             mem_file_path: "".to_string(),
             mem_size_mib: 1024,
             serial_path: None,
@@ -707,10 +707,6 @@ mod tests {
         let address_space = vm.vm_address_space().cloned().unwrap();
         vm.generate_hob_list(hob_offset, vm_memory.deref(), address_space, payload_info)
             .unwrap();
-
-        for section in sections.iter() {
-            dbs_tdx::tdx_add_private_memory(&vm.vm_fd().as_raw_fd(), section.address, section.size).unwrap();
-        }
 
         for section in sections {
             let host_address = vm_memory

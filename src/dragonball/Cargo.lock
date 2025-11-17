@@ -263,7 +263,6 @@ name = "dbs-address-space"
 version = "0.3.0"
 dependencies = [
  "arc-swap",
- "kvm-bindings",
  "lazy_static",
  "libc",
  "nix 0.23.2",

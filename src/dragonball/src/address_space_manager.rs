@@ -15,6 +15,8 @@
 //! In other words, AddressSpace is the resource owner, and GuestMemory is an accessor for guest
 //! virtual memory.
 
+#![allow(non_camel_case_types)]
+
 use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::os::unix::io::{AsRawFd, FromRawFd};
@@ -29,7 +31,7 @@ use dbs_address_space::{
 use dbs_allocator::Constraint;
 #[cfg(feature = "tdx")]
 use dbs_boot::layout::{TD_SHIM_SIZE, TD_SHIM_START};
-use kvm_bindings::kvm_userspace_memory_region;
+use kvm_bindings::{__u64, kvm_userspace_memory_region, KVMIO};
 use kvm_ioctls::VmFd;
 use log::{debug, error, info, warn};
 use nix::sys::mman;
@@ -40,6 +42,8 @@ use vm_memory::{
     address::Address, FileOffset, GuestAddress, GuestAddressSpace, GuestMemoryMmap,
     GuestMemoryRegion, GuestRegionMmap, GuestUsize, MemoryRegionAddress, MmapRegion,
 };
+use vmm_sys_util::ioctl::ioctl_with_ref;
+use vmm_sys_util::{ioctl_ioc_nr, ioctl_iowr_nr};
 
 use crate::resource_manager::ResourceManager;
 use crate::vm::NumaRegionInfo;
@@ -341,7 +345,6 @@ impl AddressSpaceMgr {
                     libc::PROT_READ | libc::PROT_WRITE,
                     false,
                     AddressSpaceRegionType::Firmware,
-                    true,
                 )
                 .map_err(AddressManagerError::CreateAddressSpaceRegion)?,
             );
@@ -406,10 +409,6 @@ impl AddressSpaceMgr {
             &mem_file_path,
             param.mem_prealloc,
             false,
-            #[cfg(not(feature = "tdx"))]
-            false,
-            #[cfg(feature = "tdx")]
-            if param.tdx_enabled { true } else { false },
         )
         .map_err(AddressManagerError::CreateAddressSpaceRegion)?;
         let region = Arc::new(region);
@@ -732,6 +731,29 @@ impl Default for AddressSpaceMgr {
         }
     }
 }
+
+ioctl_iowr_nr!(KVM_CREATE_GUEST_MEMFD, KVMIO, 0xd4, kvm_create_guest_memfd);
+
+#[repr(C)]
+#[derive(Debug, Default)]
+struct kvm_create_guest_memfd {
+    size: __u64,
+    flags: __u64,
+    reserved: [__u64; 6usize],
+}
+
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of kvm_create_guest_memfd"][::std::mem::size_of::<kvm_create_guest_memfd>() - 64usize];
+    ["Alignment of kvm_create_guest_memfd"]
+        [::std::mem::align_of::<kvm_create_guest_memfd>() - 8usize];
+    ["Offset of field: kvm_create_guest_memfd::size"]
+        [::std::mem::offset_of!(kvm_create_guest_memfd, size) - 0usize];
+    ["Offset of field: kvm_create_guest_memfd::flags"]
+        [::std::mem::offset_of!(kvm_create_guest_memfd, flags) - 8usize];
+    ["Offset of field: kvm_create_guest_memfd::reserved"]
+        [::std::mem::offset_of!(kvm_create_guest_memfd, reserved) - 16usize];
+};
 
 #[cfg(test)]
 mod tests {
