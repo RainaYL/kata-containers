@@ -610,9 +610,11 @@ mod tests {
 
     use super::*;
     use crate::api::v1::InstanceInfo;
+    use crate::device_manager::blk_dev_mgr::BlockDeviceConfigInfo;
     use crate::vm::{BpfProgram, CpuTopology, KernelConfigInfo, VmConfigInfo};
     use std::fs::File;
-    use std::sync::{Arc, RwLock};
+    use std::path::PathBuf;
+    use std::sync::{Arc, RwLock, mpsc};
     use vmm_sys_util::eventfd::EventFd;
 
     #[cfg(feature = "tdx")]
@@ -675,6 +677,17 @@ mod tests {
             None,
             cmd_line,
         ));
+
+        let block_device_config_info = BlockDeviceConfigInfo {
+            drive_id: String::from("rootfs"),
+            path_on_host: PathBuf::from("/tmp/test_resources/kata-ubuntu-noble-confidential.image"),
+            is_root_device: true,
+            is_read_only: false,
+            ..Default::default()
+        };
+        let ctx = vm.create_device_op_context(Some(vm.epoll_manager().clone())).unwrap();
+        let (sender, _) = mpsc::channel();
+        vm.device_manager_mut().block_manager.insert_device(ctx, block_device_config_info, sender).unwrap();
 
         vm.init_devices(vm.epoll_manager().clone()).unwrap();
 
