@@ -12,7 +12,7 @@ use kvm_bindings::{__u64, KVMIO};
 use nix::sys::memfd;
 use vm_memory::{Address, FileOffset, GuestAddress, GuestUsize};
 use vmm_sys_util::ioctl::ioctl_with_ref;
-use vmm_sys_util::{ioctl_ioc_nr, ioctl_iow_nr};
+use vmm_sys_util::{ioctl_ioc_nr, ioctl_iowr_nr};
 
 use crate::memory::MemorySourceType;
 use crate::memory::MemorySourceType::MemFdShared;
@@ -423,7 +423,7 @@ impl AddressSpaceRegion {
     }
 }
 
-ioctl_iow_nr!(KVM_CREATE_GUEST_MEMFD, KVMIO, 0xd4, kvm_create_guest_memfd);
+ioctl_iowr_nr!(KVM_CREATE_GUEST_MEMFD, KVMIO, 0xd4, kvm_create_guest_memfd);
 
 #[repr(C)]
 #[derive(Debug, Default)]
