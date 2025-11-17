@@ -135,3 +135,24 @@ pub fn parse_tdvf_sections(file: &mut File) -> std::result::Result<Vec<TdvfSecti
 
     Ok(sections)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_tdvf() {
+        let path = "/tmp/test_resources/final.bin";
+        let mut file = std::fs::File::open(path).unwrap();
+        let sections = parse_tdvf_sections(&mut file).unwrap();
+
+        for section in sections {
+            let address = section.address;
+            let r#type = section.r#type as u32;
+            let size = section.size;
+            println!("{:#x}", address);
+            println!("{}", r#type);
+            println!("{:#x}", size);
+        }
+    }
+}

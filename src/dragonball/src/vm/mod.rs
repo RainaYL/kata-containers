@@ -640,8 +640,6 @@ impl Vm {
             .create_address_space(&self.resource_manager, &numa_regions, address_space_param)
             .map_err(StartMicroVmError::AddressManagerError)?;
 
-        println!("here");
-
         info!(self.logger, "VM: initializing guest memory done");
         Ok(())
     }
