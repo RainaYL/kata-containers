@@ -702,4 +702,20 @@ mod tests {
         
         vm.vcpu_manager().unwrap().start_boot_vcpus(BpfProgram::default()).unwrap();
     }
+
+    #[test]
+    fn test_parse_tdvf() {
+        let path = "/tmp/test_resources/final.bin";
+        let mut file = std::fs::File::open(path).unwrap();
+        let sections = dbs_tdx::td_shim::parse_tdvf_sections(&mut file).unwrap();
+
+        for section in sections {
+            let address = section.address;
+            let r#type = section.r#type as u32;
+            let size = section.size;
+            println!("{:#x}", address);
+            println!("{}", r#type);
+            println!("{:#x}", size);
+        }
+    }
 }
