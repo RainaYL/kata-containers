@@ -620,7 +620,6 @@ mod tests {
     use std::fs::File;
     use std::path::PathBuf;
     use std::sync::{Arc, RwLock, mpsc};
-    use vmm_sys_util::eventfd::EventFd;
 
     #[cfg(feature = "tdx")]
     fn get_vm() -> Vm {
@@ -653,13 +652,6 @@ mod tests {
 
         vm.init_vcpu_manager(vm.vm_as().unwrap().clone(), BpfProgram::default())
             .unwrap();
-
-        vm.vcpu_manager()
-            .unwrap()
-            .set_reset_event_fd(EventFd::new(libc::EFD_NONBLOCK).unwrap())
-            .unwrap();
-
-        vm.setup_interrupt_controller().unwrap();
 
         vm
     }
@@ -694,52 +686,7 @@ mod tests {
         let (sender, _) = mpsc::channel();
         vm.device_manager_mut().block_manager.insert_device(ctx, block_device_config_info, sender).unwrap();
 
-        vm.init_devices(vm.epoll_manager().clone()).unwrap();
-
-        vm.init_tdx().unwrap();
-
-        let vm_memory = vm.vm_as().unwrap().memory();
-        let sections = vm.parse_tdvf_sections().unwrap();
-        let (hob_offset, payload_offset, payload_size, cmdline_offset) =
-            vm.load_tdshim(vm_memory.deref(), &sections).unwrap();
-
-        let payload_info = vm
-            .load_tdx_payload(payload_offset, payload_size, vm_memory.deref())
-            .unwrap();
-
-        vm.load_tdx_cmdline(cmdline_offset, vm_memory.deref())
-            .unwrap();
-
-        let boot_vcpu_count = vm.vm_config().vcpu_count;
-        vm.vcpu_manager()
-            .unwrap()
-            .create_vcpus(boot_vcpu_count, None, None, true)
-            .unwrap();
-        vm.vcpu_manager()
-            .unwrap()
-            .init_tdx_vcpus(hob_offset)
-            .unwrap();
-
-        let address_space = vm.vm_address_space().cloned().unwrap();
-        vm.generate_hob_list(hob_offset, vm_memory.deref(), address_space, payload_info)
-            .unwrap();
-
-        for section in sections {
-            let host_address = vm_memory
-                .deref()
-                .get_host_address(GuestAddress(section.address))
-                .unwrap();
-
-            vm.init_tdx_memory(
-                host_address as u64,
-                section.address,
-                section.size,
-                section.attributes,
-            )
-            .unwrap();
-        }
-
-        vm.finalize_tdx().unwrap();
+        vm.init_microvm(vm.epoll_manager().clone(), vm.vm_as().unwrap().clone(), TimestampUs::default()).unwrap();
 
         vm.init_configure_system(&vm.vm_as().unwrap().clone()).unwrap();
         vm.init_upcall().unwrap();
