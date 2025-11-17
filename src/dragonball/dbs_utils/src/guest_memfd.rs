@@ -10,6 +10,8 @@ ioctl_iowr_nr!(KVM_CREATE_GUEST_MEMFD, KVMIO, 0xd4, kvm_create_guest_memfd);
 
 pub const KVM_MEM_GUEST_MEMFD: u32 = 1u32 << 2;
 
+pub const KVM_MEMORY_ATTRIBUTE_PRIVATE: u64 = 1u64 << 3;
+
 #[repr(C)]
 #[derive(Debug, Default)]
 struct kvm_create_guest_memfd {
@@ -121,6 +123,53 @@ pub fn kvm_set_user_memory_region2(
             &userspace_memory_region,
         )
     };
+
+    if ret < 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+
+    Ok(())
+}
+
+ioctl_iow_nr!(
+    KVM_SET_MEMORY_ATTRIBUTES,
+    KVMIO,
+    0xd2,
+    kvm_memory_attributes
+);
+
+#[repr(C)]
+#[derive(Debug, Default)]
+struct kvm_memory_attributes {
+    address: __u64,
+    size: __u64,
+    attributes: __u64,
+    flags: __u64,
+}
+
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of kvm_memory_attributes"][::std::mem::size_of::<kvm_memory_attributes>() - 32usize];
+    ["Alignment of kvm_memory_attributes"]
+        [::std::mem::align_of::<kvm_memory_attributes>() - 8usize];
+    ["Offset of field: kvm_memory_attributes::address"]
+        [::std::mem::offset_of!(kvm_memory_attributes, address) - 0usize];
+    ["Offset of field: kvm_memory_attributes::size"]
+        [::std::mem::offset_of!(kvm_memory_attributes, size) - 8usize];
+    ["Offset of field: kvm_memory_attributes::attributes"]
+        [::std::mem::offset_of!(kvm_memory_attributes, attributes) - 16usize];
+    ["Offset of field: kvm_memory_attributes::flags"]
+        [::std::mem::offset_of!(kvm_memory_attributes, flags) - 24usize];
+};
+
+pub fn kvm_set_memory_attributes(vm_fd: &RawFd, guest_address: u64, size: u64, attributes: u64) -> Result<(), std::io::Error> {
+    let memory_attributes = kvm_memory_attributes {
+        address: guest_address,
+        size,
+        attributes,
+        flags: 0,
+    };
+    let ret = unsafe { ioctl_with_ref(vm_fd, KVM_SET_MEMORY_ATTRIBUTES(), &memory_attributes) };
 
     if ret < 0 {
         return Err(std::io::Error::last_os_error());
