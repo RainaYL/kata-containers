@@ -708,7 +708,7 @@ mod tests {
         let boot_vcpu_count = vm.vm_config().vcpu_count;
         vm.vcpu_manager()
             .unwrap()
-            .create_vcpus(boot_vcpu_count, None, None, true)
+            .create_vcpus(boot_vcpu_count, None, Some(GuestAddress(0xfffffff0)), true)
             .unwrap();
         vm.vcpu_manager()
             .unwrap()
