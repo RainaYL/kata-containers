@@ -735,5 +735,7 @@ mod tests {
         }
 
         vm.finalize_tdx().unwrap();
+
+        vm.init_configure_system(&vm.vm_as().unwrap().clone()).unwrap();
     }
 }
