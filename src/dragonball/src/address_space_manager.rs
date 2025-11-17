@@ -15,8 +15,6 @@
 //! In other words, AddressSpace is the resource owner, and GuestMemory is an accessor for guest
 //! virtual memory.
 
-#![allow(non_camel_case_types)]
-
 use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::os::unix::io::{AsRawFd, FromRawFd};
@@ -31,7 +29,10 @@ use dbs_address_space::{
 use dbs_allocator::Constraint;
 #[cfg(feature = "tdx")]
 use dbs_boot::layout::{TD_SHIM_SIZE, TD_SHIM_START};
-use kvm_bindings::{__u64, kvm_userspace_memory_region, KVMIO};
+use dbs_utils::guest_memfd::{
+    kvm_create_guest_memfd, kvm_set_user_memory_region2, KVM_MEM_GUEST_MEMFD,
+};
+use kvm_bindings::kvm_userspace_memory_region;
 use kvm_ioctls::VmFd;
 use log::{debug, error, info, warn};
 use nix::sys::mman;
@@ -42,8 +43,6 @@ use vm_memory::{
     address::Address, FileOffset, GuestAddress, GuestAddressSpace, GuestMemoryMmap,
     GuestMemoryRegion, GuestRegionMmap, GuestUsize, MemoryRegionAddress, MmapRegion,
 };
-use vmm_sys_util::ioctl::ioctl_with_ref;
-use vmm_sys_util::{ioctl_ioc_nr, ioctl_iowr_nr};
 
 use crate::resource_manager::ResourceManager;
 use crate::vm::NumaRegionInfo;
@@ -154,10 +153,13 @@ pub enum AddressManagerError {
     #[error("address manager failed to create Address Space Region {0}")]
     CreateAddressSpaceRegion(#[source] AddressSpaceError),
 
-    /// Missing vmfd param in tdx case
-    #[cfg(feature = "tdx")]
-    #[error("address manager is missing vmfd param for tdx")]
-    MissingVmfdParam,
+    /// Failed to create VM-bound memfd
+    #[error("address manager failed to create VM-bound memfd: {0}")]
+    CreateVmboundMemfd(#[source] std::io::Error),
+
+    /// Failed to set KVM memory slot with VM-bound memfd
+    #[error("address manager failed to configure KVM memory slot with VM-bound memfd: {0}")]
+    KvmSetMemorySlotWithMemfd(#[source] std::io::Error),
 }
 
 type Result<T> = std::result::Result<T, AddressManagerError>;
@@ -330,10 +332,6 @@ impl AddressSpaceMgr {
 
         #[cfg(feature = "tdx")]
         if param.tdx_enabled {
-            if param.vmfd.is_none() {
-                return Err(AddressManagerError::MissingVmfdParam);
-            }
-
             let region = Arc::new(
                 AddressSpaceRegion::create_memory_region(
                     GuestAddress(TD_SHIM_START),
@@ -370,7 +368,16 @@ impl AddressSpaceMgr {
             vm_memory = vm_memory
                 .insert_region(mmap_reg.clone())
                 .map_err(AddressManagerError::CreateGuestMemory)?;
-            self.map_to_kvm(res_mgr, &param, reg, mmap_reg)?;
+            self.map_to_kvm(
+                res_mgr,
+                &param,
+                reg,
+                mmap_reg,
+                #[cfg(not(feature = "tdx"))]
+                false,
+                #[cfg(feature = "tdx")]
+                param.tdx_enabled,
+            )?;
         }
 
         #[cfg(feature = "atomic-guest-memory")]
@@ -434,6 +441,7 @@ impl AddressSpaceMgr {
         param: &AddressSpaceMgrBuilder,
         reg: &Arc<AddressSpaceRegion>,
         mmap_reg: Arc<GuestRegionImpl>,
+        kvm_guest_memfd: bool,
     ) -> Result<()> {
         // Build mapping between GPA <-> HVA, by adding kvm memory slot.
         let slot = res_mgr
@@ -446,22 +454,39 @@ impl AddressSpaceMgr {
                 .map_err(|_e| AddressManagerError::InvalidOperation)?;
             let flags = 0u32;
 
-            let mem_region = kvm_userspace_memory_region {
-                slot,
-                guest_phys_addr: reg.start_addr().raw_value(),
-                memory_size: reg.len(),
-                userspace_addr: host_addr as u64,
-                flags,
-            };
+            if !kvm_guest_memfd {
+                let mem_region = kvm_userspace_memory_region {
+                    slot,
+                    guest_phys_addr: reg.start_addr().raw_value(),
+                    memory_size: reg.len(),
+                    userspace_addr: host_addr as u64,
+                    flags,
+                };
 
-            info!(
-                "VM: guest memory region {:x} starts at {:x?}",
-                reg.start_addr().raw_value(),
-                host_addr
-            );
-            // Safe because the guest regions are guaranteed not to overlap.
-            unsafe { vmfd.set_user_memory_region(mem_region) }
-                .map_err(AddressManagerError::KvmSetMemorySlot)?;
+                info!(
+                    "VM: guest memory region {:x} starts at {:x?}",
+                    reg.start_addr().raw_value(),
+                    host_addr
+                );
+                // Safe because the guest regions are guaranteed not to overlap.
+                unsafe { vmfd.set_user_memory_region(mem_region) }
+                    .map_err(AddressManagerError::KvmSetMemorySlot)?;
+            } else {
+                let vm_fd = vmfd.as_raw_fd();
+                let memfd = kvm_create_guest_memfd(&vm_fd, reg.len(), 0)
+                    .map_err(AddressManagerError::CreateVmboundMemfd)?;
+                let flags = KVM_MEM_GUEST_MEMFD;
+                kvm_set_user_memory_region2(
+                    &vm_fd,
+                    slot,
+                    host_addr as u64,
+                    reg.start_addr().raw_value(),
+                    reg.len(),
+                    memfd as u32,
+                    0,
+                    flags,
+                ).map_err(AddressManagerError::KvmSetMemorySlotWithMemfd)?;
+            }
         }
 
         self.base_to_slot
@@ -731,29 +756,6 @@ impl Default for AddressSpaceMgr {
         }
     }
 }
-
-ioctl_iowr_nr!(KVM_CREATE_GUEST_MEMFD, KVMIO, 0xd4, kvm_create_guest_memfd);
-
-#[repr(C)]
-#[derive(Debug, Default)]
-struct kvm_create_guest_memfd {
-    size: __u64,
-    flags: __u64,
-    reserved: [__u64; 6usize],
-}
-
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of kvm_create_guest_memfd"][::std::mem::size_of::<kvm_create_guest_memfd>() - 64usize];
-    ["Alignment of kvm_create_guest_memfd"]
-        [::std::mem::align_of::<kvm_create_guest_memfd>() - 8usize];
-    ["Offset of field: kvm_create_guest_memfd::size"]
-        [::std::mem::offset_of!(kvm_create_guest_memfd, size) - 0usize];
-    ["Offset of field: kvm_create_guest_memfd::flags"]
-        [::std::mem::offset_of!(kvm_create_guest_memfd, flags) - 8usize];
-    ["Offset of field: kvm_create_guest_memfd::reserved"]
-        [::std::mem::offset_of!(kvm_create_guest_memfd, reserved) - 16usize];
-};
 
 #[cfg(test)]
 mod tests {
