@@ -138,7 +138,7 @@ impl AddressSpaceRegion {
         mem_file_path: &str,
         mem_prealloc: bool,
         is_hotplug: bool,
-        vm_fd: Option<RawFd>,
+        kvm_mmap: bool
     ) -> Result<AddressSpaceRegion, AddressSpaceError> {
         Self::create_memory_region(
             base,
@@ -150,7 +150,7 @@ impl AddressSpaceRegion {
             libc::PROT_READ | libc::PROT_WRITE,
             is_hotplug,
             AddressSpaceRegionType::DefaultMemory,
-            vm_fd,
+            kvm_mmap,
         )
     }
 
@@ -175,7 +175,7 @@ impl AddressSpaceRegion {
         prot_flags: i32,
         is_hotplug: bool,
         region_type: AddressSpaceRegionType,
-        vm_fd: Option<RawFd>,
+        kvm_mmap: bool,
     ) -> Result<AddressSpaceRegion, AddressSpaceError> {
         let perm_flags = if mem_prealloc {
             libc::MAP_SHARED | libc::MAP_POPULATE
@@ -186,29 +186,28 @@ impl AddressSpaceRegion {
             .map_err(|_e| AddressSpaceError::InvalidMemorySourceType(mem_type.to_string()))?;
         let mut reg = match source_type {
             MemorySourceType::MemFdShared | MemorySourceType::MemFdOnHugeTlbFs => {
-                let fn_str = if source_type == MemFdShared {
-                    CString::new("shmem").expect("CString::new('shmem') failed")
-                } else {
-                    CString::new("hugeshmem").expect("CString::new('hugeshmem') failed")
-                };
-                let filename = fn_str.as_c_str();
-                let fd = if let Some(vm_fd) = vm_fd {
-                    Self::create_vmbound_memfd(&vm_fd, size, 0)?
-                } else {
-                    memfd::memfd_create(filename, memfd::MemFdCreateFlag::empty())
-                        .map_err(AddressSpaceError::CreateMemFd)?
-                };
-                // Safe because we have just created the fd.
-                let file: File = unsafe { File::from_raw_fd(fd) };
-                if vm_fd.is_none() {
+                let file_offset = if !kvm_mmap {
+                    let fn_str = if source_type == MemFdShared {
+                        CString::new("shmem").expect("CString::new('shmem') failed")
+                    } else {
+                        CString::new("hugeshmem").expect("CString::new('hugeshmem') failed")
+                    };
+                    let filename = fn_str.as_c_str();
+                    let fd = memfd::memfd_create(filename, memfd::MemFdCreateFlag::empty())
+                        .map_err(AddressSpaceError::CreateMemFd)?;
+                    // Safe because we have just created the fd.
+                    let file: File = unsafe { File::from_raw_fd(fd) };
                     file.set_len(size).map_err(AddressSpaceError::SetFileSize)?;
-                }
+                    Some(FileOffset::new(file, 0))
+                } else {
+                    None
+                };
                 Self::build(
                     region_type,
                     base,
                     size,
                     numa_node_id,
-                    Some(FileOffset::new(file, 0)),
+                    file_offset,
                     perm_flags,
                     prot_flags,
                     is_hotplug,
@@ -407,7 +406,11 @@ impl AddressSpaceRegion {
     }
 
     /// Call KVM_CREATE_GUEST_MEMFD to create a memfd bound to specific VM
-    pub fn create_vmbound_memfd(vm_fd: &RawFd, size: u64, flags: u64) -> Result<i32, AddressSpaceError> {
+    pub fn create_vmbound_memfd(
+        vm_fd: &RawFd,
+        size: u64,
+        flags: u64,
+    ) -> Result<i32, AddressSpaceError> {
         let create_guest_memfd = kvm_create_guest_memfd {
             size,
             flags,
@@ -416,7 +419,9 @@ impl AddressSpaceRegion {
         println!("{}", size);
         let ret = unsafe { ioctl_with_ref(vm_fd, KVM_CREATE_GUEST_MEMFD(), &create_guest_memfd) };
         if ret < 0 {
-            return Err(AddressSpaceError::CreateVmboundMemFd(std::io::Error::last_os_error()));
+            return Err(AddressSpaceError::CreateVmboundMemFd(
+                std::io::Error::last_os_error(),
+            ));
         }
 
         Ok(ret)
@@ -565,7 +570,7 @@ mod tests {
             "invalid",
             false,
             false,
-            None,
+            false,
         )
         .unwrap_err();
 
@@ -577,7 +582,7 @@ mod tests {
             "",
             false,
             false,
-            None,
+            false,
         )
         .unwrap();
         assert_eq!(reg.region_type(), AddressSpaceRegionType::DefaultMemory);
@@ -594,7 +599,7 @@ mod tests {
             "",
             true,
             false,
-            None,
+            false,
         )
         .unwrap();
         assert_eq!(reg.region_type(), AddressSpaceRegionType::DefaultMemory);
@@ -611,7 +616,7 @@ mod tests {
             "",
             true,
             false,
-            None,
+            false,
         )
         .unwrap();
         assert_eq!(reg.region_type(), AddressSpaceRegionType::DefaultMemory);

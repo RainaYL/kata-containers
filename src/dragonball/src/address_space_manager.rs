@@ -329,8 +329,7 @@ impl AddressSpaceMgr {
             if param.vmfd.is_none() {
                 return Err(AddressManagerError::MissingVmfdParam);
             }
-            let vmfd = param.vmfd.as_ref().unwrap().as_raw_fd();
-            
+
             let region = Arc::new(
                 AddressSpaceRegion::create_memory_region(
                     GuestAddress(TD_SHIM_START),
@@ -342,7 +341,7 @@ impl AddressSpaceMgr {
                     libc::PROT_READ | libc::PROT_WRITE,
                     false,
                     AddressSpaceRegionType::Firmware,
-                    Some(vmfd),
+                    true,
                 )
                 .map_err(AddressManagerError::CreateAddressSpaceRegion)?,
             );
@@ -369,9 +368,6 @@ impl AddressSpaceMgr {
                 .insert_region(mmap_reg.clone())
                 .map_err(AddressManagerError::CreateGuestMemory)?;
             self.map_to_kvm(res_mgr, &param, reg, mmap_reg)?;
-            if reg.region_type() == AddressSpaceRegionType::Firmware {
-                println!("has file: {}", reg.has_file());
-            }
         }
 
         #[cfg(feature = "atomic-guest-memory")]
@@ -410,16 +406,10 @@ impl AddressSpaceMgr {
             &mem_file_path,
             param.mem_prealloc,
             false,
-            #[cfg(not(feature = "tdx"))] None,
+            #[cfg(not(feature = "tdx"))]
+            false,
             #[cfg(feature = "tdx")]
-            if param.tdx_enabled {
-                if param.vmfd.is_none() {
-                    return Err(AddressManagerError::MissingVmfdParam);
-                }
-                Some(param.vmfd.as_ref().unwrap().as_raw_fd())
-            } else {
-                None
-            },
+            if param.tdx_enabled { true } else { false },
         )
         .map_err(AddressManagerError::CreateAddressSpaceRegion)?;
         let region = Arc::new(region);
