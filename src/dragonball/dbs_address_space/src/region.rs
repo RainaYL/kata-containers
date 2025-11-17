@@ -413,6 +413,7 @@ impl AddressSpaceRegion {
             flags,
             ..Default::default()
         };
+        println!("{}", size);
         let ret = unsafe { ioctl_with_ref(vm_fd, KVM_CREATE_GUEST_MEMFD(), &create_guest_memfd) };
         if ret < 0 {
             return Err(AddressSpaceError::CreateVmboundMemFd(std::io::Error::last_os_error()));

@@ -150,6 +150,7 @@ pub enum AddressManagerError {
     #[error("address manager failed to create Address Space Region {0}")]
     CreateAddressSpaceRegion(#[source] AddressSpaceError),
 
+    /// Missing vmfd param in tdx case
     #[cfg(feature = "tdx")]
     #[error("address manager is missing vmfd param for tdx")]
     MissingVmfdParam,
