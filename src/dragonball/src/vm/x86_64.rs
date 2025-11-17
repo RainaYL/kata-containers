@@ -449,14 +449,21 @@ impl Vm {
         let tdshim_file = kernel_config.tdshim_file_mut().unwrap();
 
         for section in sections {
+            let address = section.address;
+            let r#type = section.r#type as u32;
+            let size = section.size;
+            println!("{:#x}", address);
+            println!("{}", r#type);
+            println!("{:#x}", size);
+        }
+
+        for section in sections {
             match section.r#type {
                 TdvfSectionType::Bfv | TdvfSectionType::Cfv => {
                     tdshim_file
                         .seek(SeekFrom::Start(section.data_offset as u64))
                         .map_err(LoadTdDataError::ReadTdshim)
                         .map_err(StartMicroVmError::TdDataLoader)?;
-                    let address = section.address;
-                    println!("{:#x}", address);
                     vm_memory
                         .read_from(
                             GuestAddress(section.address),
