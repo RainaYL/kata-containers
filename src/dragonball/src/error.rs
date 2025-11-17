@@ -312,4 +312,7 @@ pub enum LoadTdDataError {
     /// Failed to load payload
     #[error("failed to load tdshim data")]
     LoadPayload,
+    /// Generate
+    #[error("failed to load data to guest memory: {0}")]
+    HobList(#[source] vm_memory::GuestMemoryError),
 }

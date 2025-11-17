@@ -379,7 +379,7 @@ impl Vm {
                     AddressManagerError::GuestMemoryNotInitialized,
                 ))?;
         self.generate_hob_list(hob_offset, vm_memory.deref(), address_space, payload_info)
-            .map_err(LoadTdDataError::LoadData)
+            .map_err(LoadTdDataError::HobList)
             .map_err(StartMicroVmError::TdDataLoader)?;
 
         for section in sections {
