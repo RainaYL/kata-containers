@@ -646,8 +646,6 @@ mod tests {
 
         vm.init_vcpu_manager(vm.vm_as().unwrap().clone(), BpfProgram::default())
             .unwrap();
-        
-        vm.init_devices(epoll_manager.clone()).unwrap();
 
         vm.vcpu_manager()
             .unwrap()
@@ -677,6 +675,8 @@ mod tests {
             None,
             cmd_line,
         ));
+
+        vm.init_devices(epoll_manager.clone()).unwrap();
 
         vm.init_tdx().unwrap();
 
