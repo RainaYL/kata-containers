@@ -177,11 +177,14 @@ impl AddressSpaceRegion {
         region_type: AddressSpaceRegionType,
         kvm_mmap: bool,
     ) -> Result<AddressSpaceRegion, AddressSpaceError> {
-        let perm_flags = if mem_prealloc {
+        let mut perm_flags = if mem_prealloc {
             libc::MAP_SHARED | libc::MAP_POPULATE
         } else {
             libc::MAP_SHARED
         };
+        if kvm_mmap {
+            perm_flags |= libc::MAP_ANONYMOUS;
+        }
         let source_type = MemorySourceType::from_str(mem_type)
             .map_err(|_e| AddressSpaceError::InvalidMemorySourceType(mem_type.to_string()))?;
         let mut reg = match source_type {
