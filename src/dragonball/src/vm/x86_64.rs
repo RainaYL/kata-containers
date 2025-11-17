@@ -738,5 +738,7 @@ mod tests {
 
         vm.init_configure_system(&vm.vm_as().unwrap().clone()).unwrap();
         vm.init_upcall().unwrap();
+        
+        vm.vcpu_manager().unwrap().start_boot_vcpus(BpfProgram::default()).unwrap();
     }
 }
