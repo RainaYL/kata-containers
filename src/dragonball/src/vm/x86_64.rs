@@ -589,10 +589,6 @@ impl Vm {
             ));
         }
 
-        println!("host address: {:#x}", host_address as u64);
-        println!("guest address: {:#x}", guest_address);
-        println!("size: {:#x}", size);
-
         dbs_tdx::tdx_init_mem_region(
             &vcpus[0].vcpu_fd().as_raw_fd(),
             host_address,
