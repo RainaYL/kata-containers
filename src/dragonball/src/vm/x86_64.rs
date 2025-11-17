@@ -301,6 +301,11 @@ impl Vm {
 
     /// Creates an in-kernel device model for the PIT.
     pub(crate) fn create_pit(&self) -> std::result::Result<(), StartMicroVmError> {
+        #[cfg(feature = "tdx")]
+        if self.is_tdx_enabled() {
+            return Ok(());
+        }
+
         info!(self.logger, "VM: create pit");
         // We need to enable the emulation of a dummy speaker port stub so that writing to port 0x61
         // (i.e. KVM_SPEAKER_BASE_ADDRESS) does not trigger an exit to user space.
