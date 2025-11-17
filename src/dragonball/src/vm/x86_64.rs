@@ -718,5 +718,7 @@ mod tests {
             )
             .unwrap();
         }
+
+        vm.finalize_tdx().unwrap();
     }
 }
