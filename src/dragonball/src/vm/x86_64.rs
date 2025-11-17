@@ -455,6 +455,8 @@ impl Vm {
                         .seek(SeekFrom::Start(section.data_offset as u64))
                         .map_err(LoadTdDataError::ReadTdshim)
                         .map_err(StartMicroVmError::TdDataLoader)?;
+                    let address = section.address;
+                    println!("{:#x}", address);
                     vm_memory
                         .read_from(
                             GuestAddress(section.address),
