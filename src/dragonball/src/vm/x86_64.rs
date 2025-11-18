@@ -26,7 +26,6 @@ use dbs_utils::time::TimestampUs;
 use kvm_bindings::{kvm_irqchip, kvm_pit_config, kvm_pit_state2, KVM_PIT_SPEAKER_DUMMY};
 use linux_loader::cmdline::Cmdline;
 use linux_loader::configurator::{linux::LinuxBootConfigurator, BootConfigurator, BootParams};
-use linux_loader::loader::{KernelLoader, KernelLoaderResult};
 use slog::info;
 #[cfg(feature = "tdx")]
 use vm_memory::Bytes;
@@ -525,26 +524,8 @@ impl Vm {
         payload_size: u64,
         vm_memory: &GuestMemoryImpl,
     ) -> std::result::Result<PayloadInfo, StartMicroVmError> {
-        let kernel_config = self
-            .kernel_config
-            .as_mut()
-            .ok_or(StartMicroVmError::MissingKernelConfig)?;
-        let high_mem_addr = GuestAddress(dbs_boot::get_kernel_start());
-
-        
-        let kernel_loader_result = linux_loader::loader::bzimage::BzImage::load(
-            vm_memory,
-            #[cfg(not(feature = "tdx"))]
-            None,
-            #[cfg(feature = "tdx")]
-            None,
-            kernel_config.kernel_file_mut(),
-            Some(high_mem_addr),
-        )
-        .map_err(StartMicroVmError::KernelLoader)?;
-
-        //let kernel_loader_result =
-        //    self.load_kernel(vm_memory, Some(GuestAddress(payload_offset)))?;
+        let kernel_loader_result =
+            self.load_kernel(vm_memory, Some(GuestAddress(payload_offset)))?;
 
         if kernel_loader_result.kernel_end > (payload_offset + payload_size) {
             Err(StartMicroVmError::TdDataLoader(
@@ -693,7 +674,7 @@ mod tests {
     #[test]
     #[cfg(feature = "tdx")]
     fn test_tdx_init() {
-        let kernel_path = "/tmp/test_resources/vmlinuz.container";
+        let kernel_path = "/tmp/test_resources/vmlinux-confidential.container";
         let tdshim_path = "/tmp/test_resources/final.bin";
 
         let boot_args = "console=ttyS0 console=ttyS1 earlyprintk=ttyS1 tty0 reboot=k debug panic=1 pci=off root=/dev/vda1";
