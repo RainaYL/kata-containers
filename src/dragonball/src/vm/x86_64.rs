@@ -515,20 +515,20 @@ impl Vm {
         payload_size: u64,
         vm_memory: &GuestMemoryImpl,
     ) -> std::result::Result<PayloadInfo, StartMicroVmError> {
-        let kernel_loader_result =
-            self.load_kernel(vm_memory, Some(GuestAddress(payload_offset)))?;
+        //let kernel_loader_result =
+        //    self.load_kernel(vm_memory, Some(GuestAddress(payload_offset)))?;
 
-        if kernel_loader_result.kernel_end > (payload_offset + payload_size) {
-            Err(StartMicroVmError::TdDataLoader(
-                LoadTdDataError::LoadPayload,
-            ))
-        } else {
+        //if kernel_loader_result.kernel_end > (payload_offset + payload_size) {
+        //    Err(StartMicroVmError::TdDataLoader(
+        //        LoadTdDataError::LoadPayload,
+        //    ))
+        //} else {
             let payload_info = PayloadInfo::new(
                 PayloadImageType::BzImage,
                 0,
             );
             Ok(payload_info)
-        }
+        //}
     }
 
     #[cfg(feature = "tdx")]
