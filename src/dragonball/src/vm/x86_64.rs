@@ -368,8 +368,9 @@ impl Vm {
         let (hob_offset, payload_offset, payload_size, cmdline_offset) =
             self.load_tdshim(vm_memory.deref(), &sections)?;
 
-        let payload_info =
-            self.load_tdx_payload(payload_offset, payload_size, vm_memory.deref())?;
+        //let payload_info =
+        //    self.load_tdx_payload(payload_offset, payload_size, vm_memory.deref())?;
+        let payload_info = PayloadInfo::new(PayloadImageType::RawVmLinux, 0x1000000);
 
         self.load_tdx_cmdline(cmdline_offset, vm_memory.deref())?;
 
@@ -523,20 +524,20 @@ impl Vm {
         payload_size: u64,
         vm_memory: &GuestMemoryImpl,
     ) -> std::result::Result<PayloadInfo, StartMicroVmError> {
-        //let kernel_loader_result =
-        //    self.load_kernel(vm_memory, Some(GuestAddress(payload_offset)))?;
+        let kernel_loader_result =
+            self.load_kernel(vm_memory, Some(GuestAddress(payload_offset)))?;
 
-        //if kernel_loader_result.kernel_end > (payload_offset + payload_size) {
-        //    Err(StartMicroVmError::TdDataLoader(
-        //        LoadTdDataError::LoadPayload,
-        //    ))
-        //} else {
+        if kernel_loader_result.kernel_end > (payload_offset + payload_size) {
+            Err(StartMicroVmError::TdDataLoader(
+                LoadTdDataError::LoadPayload,
+            ))
+        } else {
             let payload_info = PayloadInfo::new(
                 PayloadImageType::BzImage,
                 0,
             );
             Ok(payload_info)
-        //}
+        }
     }
 
     #[cfg(feature = "tdx")]
