@@ -84,7 +84,7 @@ kvm-bindings = { workspace = true }
 kvm-ioctls = { workspace = true }
 lazy_static = "1.2"
 libc = "0.2.39"
-linux-loader = {workspace = true}
+linux-loader = {workspace = true, features = ["bzimage"]}
 log = "0.4.14"
 nix = "0.24.2"
 procfs = "0.12.0"

@@ -373,7 +373,7 @@ impl Vm {
             self.load_tdx_payload(payload_offset, payload_size, vm_memory.deref())?;
         //let payload_info = PayloadInfo::new(PayloadImageType::RawVmLinux, 0x1000000);
 
-        //self.load_tdx_cmdline(cmdline_offset, vm_memory.deref())?;
+        self.load_tdx_cmdline(cmdline_offset, vm_memory.deref())?;
 
         self.vcpu_manager()
             .map_err(StartMicroVmError::Vcpu)?
@@ -531,8 +531,8 @@ impl Vm {
             .ok_or(StartMicroVmError::MissingKernelConfig)?;
         let high_mem_addr = GuestAddress(dbs_boot::get_kernel_start());
 
-        #[cfg(target_arch = "x86_64")]
-        let kernel_loader_result = linux_loader::loader::elf::Elf::load(
+        
+        let kernel_loader_result = linux_loader::loader::bzimage::BzImage::load(
             vm_memory,
             #[cfg(not(feature = "tdx"))]
             None,
@@ -693,7 +693,7 @@ mod tests {
     #[test]
     #[cfg(feature = "tdx")]
     fn test_tdx_init() {
-        let kernel_path = "/tmp/test_resources/vmlinux-confidential.container";
+        let kernel_path = "/tmp/test_resources/vmlinuz.container";
         let tdshim_path = "/tmp/test_resources/final.bin";
 
         let boot_args = "console=ttyS0 console=ttyS1 earlyprintk=ttyS1 tty0 reboot=k debug panic=1 pci=off root=/dev/vda1";
