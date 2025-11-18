@@ -163,14 +163,27 @@ pub enum PayloadImageType {
     #[default]
     ExecutablePayload,
     BzImage,
+    VmLinux,
     RawVmLinux,
 }
 #[repr(C)]
 #[derive(Copy, Clone, Default, Debug)]
 pub struct PayloadInfo {
     pub image_type: PayloadImageType,
+    pub reserved: u32,
     pub entry_point: u64,
 }
+
+impl PayloadInfo {
+    pub fn new(image_type: PayloadImageType, entry_point: u64) -> Self {
+        Self {
+            image_type,
+            reserved: 0,
+            entry_point,
+        }
+    }
+}
+
 #[repr(C)]
 #[derive(Copy, Clone, Default, Debug)]
 struct TdPayloadDescription {

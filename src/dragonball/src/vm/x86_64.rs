@@ -449,15 +449,6 @@ impl Vm {
         let tdshim_file = kernel_config.tdshim_file_mut().unwrap();
 
         for section in sections {
-            let address = section.address;
-            let r#type = section.r#type as u32;
-            let size = section.size;
-            println!("{:#x}", address);
-            println!("{}", r#type);
-            println!("{:#x}", size);
-        }
-
-        for section in sections {
             match section.r#type {
                 TdvfSectionType::Bfv | TdvfSectionType::Cfv => {
                     tdshim_file
@@ -526,10 +517,10 @@ impl Vm {
                 LoadTdDataError::LoadPayload,
             ))
         } else {
-            let payload_info = PayloadInfo {
-                image_type: PayloadImageType::RawVmLinux,
-                entry_point: kernel_loader_result.kernel_load.0,
-            };
+            let payload_info = PayloadInfo::new(
+                PayloadImageType::RawVmLinux,
+                kernel_loader_result.kernel_load.0,
+            );
             Ok(payload_info)
         }
     }
@@ -628,7 +619,7 @@ mod tests {
     use crate::vm::{BpfProgram, CpuTopology, KernelConfigInfo, VmConfigInfo};
     use std::fs::File;
     use std::path::PathBuf;
-    use std::sync::{Arc, RwLock, mpsc};
+    use std::sync::{mpsc, Arc, RwLock};
 
     #[cfg(feature = "tdx")]
     fn get_vm() -> Vm {
@@ -691,16 +682,30 @@ mod tests {
             is_read_only: false,
             ..Default::default()
         };
-        let ctx = vm.create_device_op_context(Some(vm.epoll_manager().clone())).unwrap();
+        let ctx = vm
+            .create_device_op_context(Some(vm.epoll_manager().clone()))
+            .unwrap();
         let (sender, _) = mpsc::channel();
-        vm.device_manager_mut().block_manager.insert_device(ctx, block_device_config_info, sender).unwrap();
+        vm.device_manager_mut()
+            .block_manager
+            .insert_device(ctx, block_device_config_info, sender)
+            .unwrap();
 
-        vm.init_microvm(vm.epoll_manager().clone(), vm.vm_as().unwrap().clone(), TimestampUs::default()).unwrap();
+        vm.init_microvm(
+            vm.epoll_manager().clone(),
+            vm.vm_as().unwrap().clone(),
+            TimestampUs::default(),
+        )
+        .unwrap();
 
-        vm.init_configure_system(&vm.vm_as().unwrap().clone()).unwrap();
+        vm.init_configure_system(&vm.vm_as().unwrap().clone())
+            .unwrap();
         vm.init_upcall().unwrap();
-        
-        vm.vcpu_manager().unwrap().start_boot_vcpus(BpfProgram::default()).unwrap();
+
+        vm.vcpu_manager()
+            .unwrap()
+            .start_boot_vcpus(BpfProgram::default())
+            .unwrap();
     }
 
     #[test]

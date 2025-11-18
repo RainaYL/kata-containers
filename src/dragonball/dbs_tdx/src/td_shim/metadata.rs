@@ -133,14 +133,5 @@ pub fn parse_tdvf_sections(file: &mut File) -> std::result::Result<Vec<TdvfSecti
     })
     .map_err(TdvfError::ReadDescriptor)?;
 
-    for section in sections.iter() {
-        let address = section.address;
-        let r#type = section.r#type as u32;
-        let size = section.size;
-        println!("{:#x}", address);
-        println!("{}", r#type);
-        println!("{:#x}", size);
-    }
-
     Ok(sections)
 }
