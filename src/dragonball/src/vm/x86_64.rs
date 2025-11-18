@@ -514,7 +514,25 @@ impl Vm {
         payload_size: u64,
         vm_memory: &GuestMemoryImpl,
     ) -> std::result::Result<PayloadInfo, StartMicroVmError> {
-        self.load_kernel(vm_memory, None)?;
+        let kernel_config = self
+            .kernel_config
+            .as_mut()
+            .ok_or(StartMicroVmError::MissingKernelConfig)?;
+        let kernel_file = kernel_config.kernel_file_mut();
+        let image_size = kernel_file.metadata().unwrap().len();
+
+        kernel_file
+            .seek(SeekFrom::Start(0))
+            .map_err(|_| StartMicroVmError::LoadBzImage)?;
+
+        
+        vm_memory
+            .read_exact_from(
+                GuestAddress(payload_offset),
+                kernel_file,
+                image_size as usize,
+            )
+            .map_err(|_| StartMicroVmError::LoadBzImage)?;
 
         let payload_info = PayloadInfo::new(
             PayloadImageType::BzImage,
@@ -657,7 +675,7 @@ mod tests {
     #[test]
     #[cfg(feature = "tdx")]
     fn test_tdx_init() {
-        let kernel_path = "/tmp/test_resources/kata-containers/vmlinux.container";
+        let kernel_path = "/tmp/test_resources/kata-containers/vmlinuz-6.12.47-171";
         let tdshim_path = "/tmp/test_resources/final.bin";
 
         let boot_args = "console=ttyS0 console=ttyS1 earlyprintk=ttyS1 tty0 reboot=k debug panic=1 pci=off root=/dev/vda1";
