@@ -163,7 +163,6 @@ pub enum PayloadImageType {
     #[default]
     ExecutablePayload,
     BzImage,
-    VmLinux,
     RawVmLinux,
 }
 #[repr(C)]
