@@ -217,6 +217,7 @@ impl Vm {
             #[cfg(feature = "tdx")]
             Some(GuestAddress(0x861000)),
         )?;
+        println!("Entry addr: {:#x}", kernel_loader_result.kernel_load.0);
         self.vcpu_manager()
             .map_err(StartMicroVmError::Vcpu)?
             .create_boot_vcpus(request_ts, kernel_loader_result.kernel_load)
