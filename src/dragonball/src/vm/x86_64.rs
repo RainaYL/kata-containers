@@ -237,7 +237,6 @@ impl Vm {
         cmdline: &Cmdline,
         initrd: Option<InitrdConfig>,
     ) -> std::result::Result<(), StartMicroVmError> {
-
         if self.is_tdx_enabled() {
             return Ok(());
         }
@@ -515,20 +514,29 @@ impl Vm {
         payload_size: u64,
         vm_memory: &GuestMemoryImpl,
     ) -> std::result::Result<PayloadInfo, StartMicroVmError> {
-        let kernel_loader_result =
-            self.load_kernel(vm_memory, Some(GuestAddress(payload_offset)))?;
+        let kernel_file = self
+            .kernel_config
+            .as_mut()
+            .ok_or(StartMicroVmError::MissingKernelConfig)?
+            .kernel_file_mut();
 
-        if kernel_loader_result.kernel_end > (payload_offset + payload_size) {
-            Err(StartMicroVmError::TdDataLoader(
-                LoadTdDataError::LoadPayload,
-            ))
-        } else {
-            let payload_info = PayloadInfo::new(
-                PayloadImageType::RawVmLinux,
-                kernel_loader_result.kernel_load.0,
-            );
-            Ok(payload_info)
-        }
+        kernel_file
+            .seek(SeekFrom::Start(0))
+            .map_err(|_| StartMicroVmError::LoadBzImage)?;
+
+        vm_memory
+            .read_from(
+                GuestAddress(payload_offset),
+                kernel_file,
+                payload_size as usize,
+            )
+            .map_err(|_| StartMicroVmError::LoadBzImage)?;
+
+        let payload_info = PayloadInfo::new(
+            PayloadImageType::RawVmLinux,
+            0,
+        );
+        Ok(payload_info)
     }
 
     #[cfg(feature = "tdx")]
