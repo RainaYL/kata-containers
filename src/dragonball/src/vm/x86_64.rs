@@ -515,20 +515,20 @@ impl Vm {
         payload_size: u64,
         vm_memory: &GuestMemoryImpl,
     ) -> std::result::Result<PayloadInfo, StartMicroVmError> {
-        //let kernel_loader_result =
-        //    self.load_kernel(vm_memory, Some(GuestAddress(payload_offset)))?;
+        let kernel_loader_result =
+            self.load_kernel(vm_memory, Some(GuestAddress(payload_offset)))?;
 
-        //if kernel_loader_result.kernel_end > (payload_offset + payload_size) {
-        //    Err(StartMicroVmError::TdDataLoader(
-        //        LoadTdDataError::LoadPayload,
-        //    ))
-        //} else {
+        if kernel_loader_result.kernel_end > (payload_offset + payload_size) {
+            Err(StartMicroVmError::TdDataLoader(
+                LoadTdDataError::LoadPayload,
+            ))
+        } else {
             let payload_info = PayloadInfo::new(
                 PayloadImageType::BzImage,
                 0,
             );
             Ok(payload_info)
-        //}
+        }
     }
 
     #[cfg(feature = "tdx")]
@@ -665,7 +665,7 @@ mod tests {
     #[test]
     #[cfg(feature = "tdx")]
     fn test_tdx_init() {
-        let kernel_path = "/tmp/test_resources/vmlinuz.container";
+        let kernel_path = "/tmp/test_resources/vmlinux-confidential.container";
         let tdshim_path = "/tmp/test_resources/final.bin";
 
         let boot_args = "console=ttyS0 console=ttyS1 earlyprintk=ttyS1 tty0 reboot=k debug panic=1 pci=off root=/dev/vda1";
