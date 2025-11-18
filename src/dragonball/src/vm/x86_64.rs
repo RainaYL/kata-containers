@@ -511,7 +511,7 @@ impl Vm {
         vm_memory: &GuestMemoryImpl,
     ) -> std::result::Result<PayloadInfo, StartMicroVmError> {
         let kernel_loader_result =
-            self.load_kernel(vm_memory, Some(GuestAddress(payload_offset)))?;
+            self.load_kernel(vm_memory, None)?;
 
         if kernel_loader_result.kernel_end > (payload_offset + payload_size) {
             Err(StartMicroVmError::TdDataLoader(
