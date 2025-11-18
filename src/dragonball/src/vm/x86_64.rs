@@ -26,7 +26,7 @@ use dbs_utils::time::TimestampUs;
 use kvm_bindings::{kvm_irqchip, kvm_pit_config, kvm_pit_state2, KVM_PIT_SPEAKER_DUMMY};
 use linux_loader::cmdline::Cmdline;
 use linux_loader::configurator::{linux::LinuxBootConfigurator, BootConfigurator, BootParams};
-use linux_loader::loader::{KernelLoader, KernelLoaderResult}
+use linux_loader::loader::{KernelLoader, KernelLoaderResult};
 use slog::info;
 #[cfg(feature = "tdx")]
 use vm_memory::Bytes;
