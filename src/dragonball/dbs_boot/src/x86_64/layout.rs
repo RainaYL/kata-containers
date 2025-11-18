@@ -56,7 +56,7 @@ pub const IRQ_BASE: u32 = 5;
 pub const IRQ_MAX: u32 = 15;
 
 /// Address for the TSS setup.
-pub const KVM_TSS_ADDRESS: u64 = 0xfffb_d000;
+pub const KVM_TSS_ADDRESS: u64 = 0xfeff_d000;
 
 /// Where BIOS/VGA magic would live on a real PC.
 pub const EBDA_START: u64 = 0x9fc00;
