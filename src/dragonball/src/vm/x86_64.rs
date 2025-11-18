@@ -368,9 +368,9 @@ impl Vm {
         let (hob_offset, payload_offset, payload_size, cmdline_offset) =
             self.load_tdshim(vm_memory.deref(), &sections)?;
 
-        let payload_info =
-            self.load_tdx_payload(payload_offset, payload_size, vm_memory.deref())?;
-        //let payload_info = PayloadInfo::new(PayloadImageType::RawVmLinux, 0x1000000);
+        //let payload_info =
+        //    self.load_tdx_payload(payload_offset, payload_size, vm_memory.deref())?;
+        let payload_info = PayloadInfo::new(PayloadImageType::RawVmLinux, 0x1000000);
 
         self.load_tdx_cmdline(cmdline_offset, vm_memory.deref())?;
 
