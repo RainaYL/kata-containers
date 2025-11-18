@@ -519,18 +519,16 @@ impl Vm {
             .as_mut()
             .ok_or(StartMicroVmError::MissingKernelConfig)?;
         let kernel_file = kernel_config.kernel_file_mut();
-        let image_size = kernel_file.metadata().unwrap().len();
 
         kernel_file
             .seek(SeekFrom::Start(0))
             .map_err(|_| StartMicroVmError::LoadBzImage)?;
 
-        
         vm_memory
-            .read_exact_from(
+            .read_from(
                 GuestAddress(payload_offset),
                 kernel_file,
-                image_size as usize,
+                payload_size as usize,
             )
             .map_err(|_| StartMicroVmError::LoadBzImage)?;
 
