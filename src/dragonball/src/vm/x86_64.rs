@@ -514,11 +514,11 @@ impl Vm {
         payload_size: u64,
         vm_memory: &GuestMemoryImpl,
     ) -> std::result::Result<PayloadInfo, StartMicroVmError> {
-        let kernel_file = self
+        let kernel_config = self
             .kernel_config
             .as_mut()
-            .ok_or(StartMicroVmError::MissingKernelConfig)?
-            .kernel_file_mut();
+            .ok_or(StartMicroVmError::MissingKernelConfig)?;
+        let kernel_file = kernel_config.kernel_file_mut();
 
         kernel_file
             .seek(SeekFrom::Start(0))
@@ -533,7 +533,7 @@ impl Vm {
             .map_err(|_| StartMicroVmError::LoadBzImage)?;
 
         let payload_info = PayloadInfo::new(
-            PayloadImageType::RawVmLinux,
+            PayloadImageType::BzImage,
             0,
         );
         Ok(payload_info)
