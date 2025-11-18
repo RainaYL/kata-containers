@@ -215,7 +215,7 @@ impl Vm {
         let kernel_loader_result = self.load_kernel(
             vm_memory.deref(),
             #[cfg(feature = "tdx")]
-            Some(GuestAddress(0x861000)),
+            None,
         )?;
         println!("Entry addr: {:#x}", kernel_loader_result.kernel_load.0);
         self.vcpu_manager()
