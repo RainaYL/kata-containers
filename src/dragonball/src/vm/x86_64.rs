@@ -372,7 +372,7 @@ impl Vm {
             self.load_tdx_payload(payload_offset, payload_size, vm_memory.deref())?;
         //let payload_info = PayloadInfo::new(PayloadImageType::RawVmLinux, 0x1000000);
 
-        self.load_tdx_cmdline(cmdline_offset, vm_memory.deref())?;
+        //self.load_tdx_cmdline(cmdline_offset, vm_memory.deref())?;
 
         self.vcpu_manager()
             .map_err(StartMicroVmError::Vcpu)?
