@@ -241,11 +241,6 @@ pub enum StartMicroVmError {
     /// Cannot access guest address space manager.
     #[error("cannot access guest address space manager: {0:?}")]
     GuestMemory(#[source] address_space_manager::AddressManagerError),
-
-    #[cfg(feature = "tdx")]
-    /// Fail to load BzImage
-    #[error("Failed to load BzImage")]
-    LoadBzImage,
 }
 
 /// Errors associated with starting the instance.

@@ -129,7 +129,7 @@ impl Vcpu {
             )
             .map_err(VcpuError::SREGSConfiguration)?;
         }
-        dbs_arch::interrupts::set_lint(&self.fd).map_err(VcpuError::LocalIntConfiguration)?;
+        //dbs_arch::interrupts::set_lint(&self.fd).map_err(VcpuError::LocalIntConfiguration)?;
 
         Ok(())
     }
