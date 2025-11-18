@@ -393,6 +393,14 @@ impl Vm {
                 .deref()
                 .get_host_address(GuestAddress(section.address))
                 .unwrap();
+
+            let address = section.address;
+            let r#type = section.r#type as u32;
+            let size = section.size;
+            println!("{:#x}", address);
+            println!("{}", r#type);
+            println!("{:#x}", size);
+
             self.init_tdx_memory(
                 host_address as u64,
                 section.address,
@@ -515,20 +523,20 @@ impl Vm {
         payload_size: u64,
         vm_memory: &GuestMemoryImpl,
     ) -> std::result::Result<PayloadInfo, StartMicroVmError> {
-        let kernel_loader_result =
-            self.load_kernel(vm_memory, Some(GuestAddress(payload_offset)))?;
+        //let kernel_loader_result =
+        //    self.load_kernel(vm_memory, Some(GuestAddress(payload_offset)))?;
 
-        if kernel_loader_result.kernel_end > (payload_offset + payload_size) {
-            Err(StartMicroVmError::TdDataLoader(
-                LoadTdDataError::LoadPayload,
-            ))
-        } else {
+        //if kernel_loader_result.kernel_end > (payload_offset + payload_size) {
+        //    Err(StartMicroVmError::TdDataLoader(
+        //        LoadTdDataError::LoadPayload,
+        //    ))
+        //} else {
             let payload_info = PayloadInfo::new(
                 PayloadImageType::BzImage,
                 0,
             );
             Ok(payload_info)
-        }
+        //}
     }
 
     #[cfg(feature = "tdx")]
