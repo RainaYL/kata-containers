@@ -510,6 +510,7 @@ impl Vm {
         &mut self,
         epoll_manager: EpollManager,
     ) -> std::result::Result<(), StartMicroVmError> {
+        let tdx_enabled= self.is_tdx_enabled();
         info!(self.logger, "VM: initializing devices ...");
 
         let kernel_config = self
@@ -518,8 +519,9 @@ impl Vm {
             .ok_or(StartMicroVmError::MissingKernelConfig)?;
 
         info!(self.logger, "VM: create interrupt manager");
+        
         self.device_manager
-            .create_interrupt_manager()
+            .create_interrupt_manager(tdx_enabled)
             .map_err(StartMicroVmError::DeviceManager)?;
 
         info!(self.logger, "VM: create devices");

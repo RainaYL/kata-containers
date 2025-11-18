@@ -76,10 +76,10 @@ impl KvmIrqManager {
     }
 
     /// Prepare the interrupt manager for generating interrupts into the target VM.
-    pub fn initialize(&self) -> Result<()> {
+    pub fn initialize(&self, disable_legacy: bool) -> Result<()> {
         // Safe to unwrap because there's no legal way to break the mutex.
         let mgr = self.mgr.lock().unwrap();
-        mgr.initialize()
+        mgr.initialize(disable_legacy)
     }
 
     /// Set maximum supported MSI interrupts per device.
@@ -116,8 +116,8 @@ struct KvmIrqManagerObj {
 }
 
 impl KvmIrqManagerObj {
-    fn initialize(&self) -> Result<()> {
-        self.routes.initialize()?;
+    fn initialize(&self, disable_legacy: bool) -> Result<()> {
+        self.routes.initialize(disable_legacy)?;
         Ok(())
     }
 
@@ -182,13 +182,15 @@ impl KvmIrqRouting {
         }
     }
 
-    pub(super) fn initialize(&self) -> Result<()> {
+    pub(super) fn initialize(&self, disable_legacy: bool) -> Result<()> {
         // Safe to unwrap because there's no legal way to break the mutex.
         #[allow(unused_mut)]
         let mut routes = self.routes.lock().unwrap();
 
-        //#[cfg(feature = "kvm-legacy-irq")]
-        //LegacyIrq::initialize_legacy(&mut routes)?;
+        #[cfg(feature = "kvm-legacy-irq")]
+        if !disable_legacy {
+            LegacyIrq::initialize_legacy(&mut routes)?;
+        }
 
         self.set_routing(&routes)?;
 
@@ -300,7 +302,7 @@ pub(crate) mod tests {
         let vmfd = Arc::new(create_vm_fd());
         let manager = KvmIrqManager::new(vmfd.clone());
         vmfd.create_irq_chip().unwrap();
-        manager.initialize().unwrap();
+        manager.initialize(false).unwrap();
         (vmfd, manager)
     }
 
@@ -314,7 +316,7 @@ pub(crate) mod tests {
         let vmfd = Arc::new(create_vm_fd());
         vmfd.create_irq_chip().unwrap();
         let manager = Arc::new(KvmIrqManager::new(vmfd.clone()));
-        manager.initialize().unwrap();
+        manager.initialize(false).unwrap();
 
         // set max irqs
         manager.set_max_msi_irqs(0x128);

@@ -215,7 +215,7 @@ impl Vm {
         let kernel_loader_result = self.load_kernel(
             vm_memory.deref(),
             #[cfg(feature = "tdx")]
-            None,
+            Some(GuestAddress(0x861000)),
         )?;
         self.vcpu_manager()
             .map_err(StartMicroVmError::Vcpu)?

@@ -631,7 +631,7 @@ pub(crate) mod tests {
         vm_fd.create_irq_chip().unwrap();
 
         let irq_manager = Arc::new(KvmIrqManager::new(vm_fd.clone()));
-        irq_manager.initialize().unwrap();
+        irq_manager.initialize(false).unwrap();
 
         let device = MmioDevice::new(ctrl_queue_size);
 

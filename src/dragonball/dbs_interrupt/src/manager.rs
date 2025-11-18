@@ -496,7 +496,7 @@ pub(crate) mod tests {
         let intr_mgr = Arc::new(KvmIrqManager::new(vmfd));
 
         let resource = create_init_resources();
-        intr_mgr.initialize().unwrap();
+        intr_mgr.initialize(false).unwrap();
         DeviceInterruptManager::new(intr_mgr, &resource).unwrap()
     }
 

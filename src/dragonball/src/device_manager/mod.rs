@@ -737,9 +737,9 @@ impl DeviceManager {
     }
 
     /// Create the underline interrupt manager for the device manager.
-    pub fn create_interrupt_manager(&mut self) -> Result<()> {
+    pub fn create_interrupt_manager(&mut self, disable_legacy: bool) -> Result<()> {
         self.irq_manager
-            .initialize()
+            .initialize(disable_legacy)
             .map_err(DeviceMgrError::CreateDevice)
     }
 
@@ -1694,7 +1694,7 @@ mod tests {
         guard.pio_read(0x3f8 + 3, &mut lcr).unwrap_err();
         assert_eq!(lcr[0], 0x0);
 
-        mgr.create_interrupt_manager().unwrap();
+        mgr.create_interrupt_manager(false).unwrap();
         mgr.create_devices(
             vm_as,
             event_mgr.epoll_manager(),

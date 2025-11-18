@@ -391,7 +391,7 @@ pub mod tests {
         let vmfd = Arc::new(kvm.create_vm().unwrap());
         assert!(vmfd.create_irq_chip().is_ok());
         let irq_manager = Arc::new(KvmIrqManager::new(vmfd.clone()));
-        assert!(irq_manager.initialize().is_ok());
+        assert!(irq_manager.initialize(false).is_ok());
 
         (vmfd, irq_manager)
     }

@@ -1365,7 +1365,7 @@ pub(crate) mod tests {
         vm_fd.create_irq_chip().unwrap();
 
         let irq_manager = Arc::new(KvmIrqManager::new(vm_fd.clone()));
-        irq_manager.initialize().unwrap();
+        irq_manager.initialize(false).unwrap();
 
         let vm_as = Arc::new(GuestMemoryMmap::from_ranges(&[(GuestAddress(0), 0x1000)]).unwrap());
         let address_space = create_address_space();

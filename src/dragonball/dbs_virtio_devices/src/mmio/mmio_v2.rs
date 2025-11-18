@@ -679,7 +679,7 @@ pub(crate) mod tests {
         let vm_fd = Arc::new(kvm.create_vm().unwrap());
         vm_fd.create_irq_chip().unwrap();
         let irq_manager = Arc::new(KvmIrqManager::new(vm_fd.clone()));
-        irq_manager.initialize().unwrap();
+        irq_manager.initialize(false).unwrap();
 
         let features = if doorbell {
             Some(DRAGONBALL_FEATURE_PER_QUEUE_NOTIFY)
@@ -716,7 +716,7 @@ pub(crate) mod tests {
         let vm_fd = Arc::new(kvm.create_vm().unwrap());
         vm_fd.create_irq_chip().unwrap();
         let irq_manager = Arc::new(KvmIrqManager::new(vm_fd.clone()));
-        irq_manager.initialize().unwrap();
+        irq_manager.initialize(false).unwrap();
         let address_space = create_address_space();
         let ret = MmioV2Device::new(
             vm_fd,

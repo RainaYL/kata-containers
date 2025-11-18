@@ -405,7 +405,7 @@ mod tests {
         let intr_mgr = Arc::new(KvmIrqManager::new(vmfd));
 
         let resource = create_init_resources();
-        assert!(intr_mgr.initialize().is_ok());
+        assert!(intr_mgr.initialize(false).is_ok());
         DeviceInterruptManager::new(intr_mgr, &resource).unwrap()
     }
 
