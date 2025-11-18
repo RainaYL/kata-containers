@@ -237,6 +237,11 @@ impl Vm {
         cmdline: &Cmdline,
         initrd: Option<InitrdConfig>,
     ) -> std::result::Result<(), StartMicroVmError> {
+
+        if self.is_tdx_enabled() {
+            return Ok(());
+        }
+
         let cmdline_addr = GuestAddress(dbs_boot::layout::CMDLINE_START);
         linux_loader::loader::load_cmdline(vm_memory, cmdline_addr, cmdline)
             .map_err(StartMicroVmError::LoadCommandline)?;
