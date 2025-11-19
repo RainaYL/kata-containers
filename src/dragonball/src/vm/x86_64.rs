@@ -237,6 +237,7 @@ impl Vm {
         cmdline: &Cmdline,
         initrd: Option<InitrdConfig>,
     ) -> std::result::Result<(), StartMicroVmError> {
+
         if self.is_tdx_enabled() {
             return Ok(());
         }
@@ -531,7 +532,10 @@ impl Vm {
                 LoadTdDataError::LoadPayload,
             ))
         } else {
-            let payload_info = PayloadInfo::new(PayloadImageType::BzImage, 0);
+            let payload_info = PayloadInfo::new(
+                PayloadImageType::BzImage,
+                0,
+            );
             Ok(payload_info)
         }
     }
@@ -605,30 +609,14 @@ impl Vm {
             ));
         }
 
-        loop {
-            let res = dbs_tdx::tdx_init_mem_region(
-                &vcpus[0].vcpu_fd().as_raw_fd(),
-                host_address,
-                guest_address,
-                size / dbs_boot::PAGE_SIZE as u64,
-                flags,
-            );
-
-            if let Err(dbs_tdx::TdxError::TdxIoctlError(dbs_tdx::TdxIoctlError::TdxInitMemRegion(e))) = res {
-                match e.kind() {
-                    std::io::ErrorKind::Interrupted => {
-                        continue;
-                    },
-                    _ => {
-                        return Err(StartMicroVmError::TdxError(dbs_tdx::TdxError::TdxIoctlError(dbs_tdx::TdxIoctlError::TdxInitMemRegion(e))));
-                    }
-                }
-            } else {
-                return res.map_err(StartMicroVmError::TdxError);
-            }
-        }
-
-
+        dbs_tdx::tdx_init_mem_region(
+            &vcpus[0].vcpu_fd().as_raw_fd(),
+            host_address,
+            guest_address,
+            size / dbs_boot::PAGE_SIZE as u64,
+            flags,
+        )
+        .map_err(StartMicroVmError::TdxError)
     }
 
     #[cfg(feature = "tdx")]
