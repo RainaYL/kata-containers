@@ -385,10 +385,10 @@ impl Vm {
             .init_tdx_vcpus(hob_offset)
             .map_err(StartMicroVmError::Vcpu)?;
 
-        let address_space =
-            self.vm_address_space()
-                .cloned()
-                .ok_or(StartMicroVmError::GuestMemoryNotInitialized)?;
+        let address_space = self
+            .vm_address_space()
+            .cloned()
+            .ok_or(StartMicroVmError::GuestMemoryNotInitialized)?;
         self.generate_hob_list(hob_offset, vm_memory.deref(), address_space, payload_info)?;
 
         for section in sections {
@@ -410,8 +410,10 @@ impl Vm {
     }
 
     pub(crate) fn enable_split_irqchip(&mut self) -> std::result::Result<(), StartMicroVmError> {
-        let mut enable_split_irqchip = kvm_enable_cap::default();
-        enable_split_irqchip.cap = KVM_CAP_SPLIT_IRQCHIP;
+        let mut enable_split_irqchip = kvm_enable_cap {
+            cap: KVM_CAP_SPLIT_IRQCHIP,
+            ..Default::default()
+        };
         enable_split_irqchip.args[0] = NR_ROUTES_USERSPACE_IOAPIC;
         self.vm_fd()
             .enable_cap(&enable_split_irqchip)
@@ -419,8 +421,10 @@ impl Vm {
     }
 
     pub(crate) fn enable_x2apic(&mut self) -> std::result::Result<(), StartMicroVmError> {
-        let mut enable_x2apic = kvm_enable_cap::default();
-        enable_x2apic.cap = KVM_CAP_X2APIC_API;
+        let mut enable_x2apic = kvm_enable_cap {
+            cap: KVM_CAP_X2APIC_API,
+            ..Default::default()
+        };
         enable_x2apic.args[0] =
             (KVM_X2APIC_API_USE_32BIT_IDS | KVM_X2APIC_API_DISABLE_BROADCAST_QUIRK) as u64;
         self.vm_fd()

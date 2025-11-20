@@ -46,7 +46,7 @@ pub enum TdvfSectionType {
     Bfv,
     /// CFV section type
     Cfv,
-    /// TD Hob offser
+    /// TD Hob offset
     TdHob,
     /// Temp Memory
     TempMem,

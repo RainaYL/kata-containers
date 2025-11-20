@@ -195,8 +195,8 @@ impl KvmIrqRouting {
         //
         // TDX requires split-irqchip, which does not support legacy irq
         //
-        #[cfg(feature = "kvm-legacy-irq")]
-        LegacyIrq::initialize_legacy(&mut routes)?;
+        //#[cfg(feature = "kvm-legacy-irq")]
+        //LegacyIrq::initialize_legacy(&mut routes)?;
 
         self.set_routing(&routes)?;
 

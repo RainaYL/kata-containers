@@ -128,6 +128,7 @@ const _: () = {
 /// * `guest_memfd` - Guest memfd to map the guest memory slot. Must be created via KVM_CREATE_GUEST_MEMFD with the same vm_fd
 /// * `guest_memfd_offset` - Offset from the start of memfd to begin mapping memory slot
 /// * `flags` - Mapping to guest memfd will take effect only if KVM_MEM_GUEST_MEMFD is set
+#[allow(clippy::too_many_arguments)]
 pub fn kvm_set_user_memory_region2(
     vm_fd: &RawFd,
     slot: u32,
@@ -193,9 +194,9 @@ const _: () = {
 /// Set memory attributes for a range of guest physical memory
 /// The ioctl will only take effect for ranges in memory slot created by KVM_SET_USER_MEMORY_REGION2
 /// with KVM_MEM_GUEST_MEMFD flag set.
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `vm_fd` - File descriptor to perform VM ioctl
 /// * `guest_address` - Start address of the range
 /// * `size` - Size of the range in bytes

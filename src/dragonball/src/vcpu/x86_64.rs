@@ -92,8 +92,7 @@ impl Vcpu {
         vm_as: &GuestAddressSpaceImpl,
         kernel_start_addr: Option<GuestAddress>,
         _pgtable_addr: Option<GuestAddress>,
-        #[cfg(feature = "tdx")]
-        tdx_enabled: bool,
+        #[cfg(feature = "tdx")] tdx_enabled: bool,
     ) -> Result<()> {
         self.set_cpuid(vcpu_config)?;
 

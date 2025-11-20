@@ -22,7 +22,7 @@ ioctl_iowr_nr!(KVM_MEMORY_ENCRYPT_OP, KVMIO, 0xba, std::os::raw::c_ulong);
 /// TDX ioctl related errors.
 #[derive(Error, Debug)]
 pub enum TdxIoctlError {
-    /// Failed to get TDX Capbilities
+    /// Failed to get TDX Capabilities
     #[error("Failed to get TDX Capbilities: {0}")]
     TdxCapabilities(#[source] std::io::Error),
     /// Failed to init TDX.
@@ -91,14 +91,15 @@ struct kvm_tdx_capabilities {
 impl Default for kvm_tdx_capabilities {
     fn default() -> Self {
         Self {
-            supported_attrs: 0__u64,
-            supported_xfam: 0__u64,
-            reserved: [0__u64; 254usize],
+            supported_attrs: 0u64,
+            supported_xfam: 0u64,
+            reserved: [0u64; 254usize],
             cpuid: Default::default(),
         }
     }
 }
 
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
     ["Size of kvm_tdx_capabilities"][::std::mem::size_of::<kvm_tdx_capabilities>() - 2056usize];
     ["Alignment of kvm_tdx_capabilities"][::std::mem::align_of::<kvm_tdx_capabilities>() - 8usize];
@@ -124,6 +125,7 @@ struct kvm_tdx_init_vm {
     cpuid: kvm_cpuid2,
 }
 
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
     ["Size of kvm_tdx_init_vm"][::std::mem::size_of::<kvm_tdx_init_vm>() - 264usize];
     ["Alignment of kvm_tdx_init_vm"][::std::mem::align_of::<kvm_tdx_init_vm>() - 8usize];
@@ -151,6 +153,7 @@ struct kvm_tdx_init_mem_region {
     nr_pages: __u64,
 }
 
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
     ["Size of kvm_tdx_init_mem_region"][::std::mem::size_of::<kvm_tdx_init_mem_region>() - 24usize];
     ["Alignment of kvm_tdx_init_mem_region"]
@@ -203,7 +206,7 @@ fn find_cpuid_entry(
         let entries = cpuid.entries.as_slice(cpuid.nent as usize);
         for entry in entries {
             if entry.function == function && entry.index == index {
-                return Some(entry.clone());
+                return Some(*entry);
             }
         }
     }

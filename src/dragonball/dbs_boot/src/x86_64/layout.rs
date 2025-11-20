@@ -70,7 +70,6 @@ pub const GUEST_MEM_START: u64 = 0u64;
 /// Size of memory below MMIO hole.
 pub const GUEST_MEM_LOW_SIZE: u64 = MMIO_LOW_START - GUEST_MEM_START;
 
-
 /// Lower bound of BIOS memory.
 pub const BIOS_MEM_START: u64 = MMIO_LOW_END - BIOS_MEM_SIZE + 1;
 /// Size of BIOS memory.
