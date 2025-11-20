@@ -197,6 +197,7 @@ impl KvmIrqRouting {
         //
         //#[cfg(feature = "kvm-legacy-irq")]
         //LegacyIrq::initialize_legacy(&mut routes)?;
+        println!("disable legacy irq");
 
         self.set_routing(&routes)?;
 
