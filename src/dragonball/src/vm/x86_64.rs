@@ -195,6 +195,12 @@ impl Vm {
     ) -> std::result::Result<(), StartMicroVmError> {
         info!(self.logger, "VM: start initializing microvm ...");
 
+        #[cfg(feature = "tdx")]
+        if self.is_tdx_enabled() {
+            self.enable_split_irqchip()?;
+            self.enable_x2apic()?;
+        }
+
         self.init_tss()?;
         // For x86_64 we need to create the interrupt controller before calling `KVM_CREATE_VCPUS`
         // while on aarch64 we need to do it the other way around.
@@ -353,9 +359,6 @@ impl Vm {
         &mut self,
         vm_as: GuestAddressSpaceImpl,
     ) -> std::result::Result<(), StartMicroVmError> {
-        self.enable_split_irqchip()?;
-        self.enable_x2apic()?;
-
         self.init_tdx()?;
 
         let boot_vcpu_count = self.vm_config().vcpu_count;
