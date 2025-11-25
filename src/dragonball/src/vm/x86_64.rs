@@ -562,7 +562,7 @@ impl Vm {
         } else {
             let payload_info = PayloadInfo::new(
                 PayloadImageType::RawVmLinux,
-                0,
+                kernel_loader_result.kernel_load.0,
             );
             Ok(payload_info)
         }
