@@ -2,9 +2,11 @@
 // Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+pub mod acpi;
 pub mod epoll_manager;
 pub mod guest_memfd;
 pub mod metric;
 pub mod net;
 pub mod rate_limiter;
+pub mod serial_buffer;
 pub mod time;

@@ -53,6 +53,9 @@ pub mod mem;
 #[cfg(feature = "virtio-balloon")]
 pub mod balloon;
 
+#[cfg(feature = "virtio-console")]
+pub mod console;
+
 #[cfg(feature = "vhost")]
 pub mod vhost;
 
@@ -107,6 +110,8 @@ pub const DEVICE_FAILED: u32 = 0x80;
 pub const TYPE_NET: u32 = 1;
 /// Virtio block device.
 pub const TYPE_BLOCK: u32 = 2;
+/// Virtio console device.
+pub const TYPE_VIRTIO_CONSOLE: u32 = 3;
 /// Virtio-rng device.
 pub const TYPE_RNG: u32 = 4;
 /// Virtio balloon device.

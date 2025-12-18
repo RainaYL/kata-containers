@@ -129,12 +129,13 @@ virtio-mem = [
     "atomic-guest-memory",
 ]
 virtio-balloon = ["dbs-virtio-devices/virtio-balloon", "virtio-queue"]
+virtio-console = ["dbs-virtio-devices/virtio-console", "virtio-queue"]
 vhost-net = ["dbs-virtio-devices/vhost-net"]
 vhost-user-fs = ["dbs-virtio-devices/vhost-user-fs"]
 vhost-user-net = ["dbs-virtio-devices/vhost-user-net"]
 vhost-user-blk = ["dbs-virtio-devices/vhost-user-blk"]
 host-device = ["dep:vfio-bindings", "dep:vfio-ioctls", "dep:dbs-pci"]
-tdx = ["dbs-tdx"]
+tdx = ["dbs-tdx", "virtio-console"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = [
