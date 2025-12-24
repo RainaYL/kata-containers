@@ -11,7 +11,9 @@
 //! A virtual console are composed up of two parts: frontend in virtual machine and backend in
 //! host OS. A frontend may be serial port, virtio-console etc, a backend may be stdio or Unix
 //! domain socket. The manager connects the frontend with the backend.
+use std::fs::File;
 use std::io::{self, Read};
+use std::os::fd::{AsRawFd, FromRawFd};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -21,9 +23,12 @@ use dbs_legacy_devices::{ConsoleHandler, SerialDevice};
 use dbs_utils::epoll_manager::{
     EpollManager, EventOps, EventSet, Events, MutEventSubscriber, SubscriberId,
 };
+use dbs_virtio_devices::console::{Console, ConsoleError, Endpoint};
 use vmm_sys_util::terminal::Terminal;
 
 use super::{DeviceMgrError, Result};
+use crate::address_space_manager::GuestAddressSpaceImpl;
+use crate::device_manager::{DeviceManager, DeviceOpContext};
 
 const EPOLL_EVENT_SERIAL: u32 = 0;
 const EPOLL_EVENT_SERIAL_DATA: u32 = 1;
@@ -45,6 +50,10 @@ pub enum ConsoleManagerError {
     /// Cannot set mode for terminal.
     #[error("failure while setting attribute for terminal")]
     StdinHandle(#[source] vmm_sys_util::errno::Error),
+
+    /// Cannot create virtio console
+    #[error("failure while creating virtio console")]
+    CreateVirtioConsole(#[source] ConsoleError),
 }
 
 enum Backend {
@@ -133,6 +142,32 @@ impl ConsoleManager {
         }
 
         UnixListener::bind(path)
+    }
+
+    fn create_virtio_console(
+        &self,
+        f_iommu_platform: bool,
+    ) -> Result<Box<Console<GuestAddressSpaceImpl>>> {
+        let epoll_manager = self.epoll_mgr.clone();
+
+        let stdout = unsafe { File::from_raw_fd(std::io::stdout().as_raw_fd()) };
+        let stdin = unsafe { File::from_raw_fd(std::io::stdin().as_raw_fd()) };
+        let endpoint = Endpoint::FilePair(Arc::new(stdout), Arc::new(stdin));
+
+        let console = Console::new(epoll_manager, endpoint, f_iommu_platform)
+            .map_err(ConsoleManagerError::CreateVirtioConsole)
+            .map_err(DeviceMgrError::ConsoleManager)?;
+
+        Ok(Box::new(console))
+    }
+
+    /// Attach virtio-console with stdio backend
+    pub fn attach_virtio_console(&mut self, ctx: &mut DeviceOpContext, f_iommu_platform: bool) -> Result<()> {
+        let device = self.create_virtio_console(f_iommu_platform)?;
+
+        DeviceManager::create_mmio_virtio_device(device, ctx, true, true)?;
+
+        Ok(())
     }
 }
 

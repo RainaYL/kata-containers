@@ -38,6 +38,8 @@ const CONSOLE_DRIVER_NAME: &str = "virtio-console";
 
 const VIRTIO_CONSOLE_F_SIZE: u64 = 0;
 
+const CONFIG_SPACE_SIZE: usize = 12;
+
 #[derive(Error, Debug)]
 pub enum ConsoleError {
     /// Virtio Queue related error.
@@ -61,7 +63,6 @@ pub enum ConsoleError {
 }
 
 #[derive(Copy, Clone)]
-#[repr(C, packed)]
 pub struct VirtioConsoleConfig {
     cols: u16,
     rows: u16,
@@ -357,6 +358,25 @@ where
     }
 }
 
+fn get_win_size(tty: &dyn AsRawFd) -> (u16, u16) {
+    #[repr(C)]
+    #[derive(Default)]
+    struct WindowSize {
+        rows: u16,
+        cols: u16,
+        xpixel: u16,
+        ypixel: u16,
+    }
+    let mut ws: WindowSize = WindowSize::default();
+
+    // SAFETY: FFI call with correct arguments
+    unsafe {
+        libc::ioctl(tty.as_raw_fd(), libc::TIOCGWINSZ, &mut ws);
+    }
+
+    (ws.cols, ws.rows)
+}
+
 pub struct Console<AS: GuestAddressSpace> {
     device_info: VirtioDeviceInfo,
     _config: Arc<Mutex<VirtioConsoleConfig>>,
@@ -377,14 +397,22 @@ impl<AS: GuestAddressSpace> Console<AS> {
             avail_features |= 1u64 << VIRTIO_F_IOMMU_PLATFORM;
         }
 
-        let config = VirtioConsoleConfig::default();
+        let mut config = VirtioConsoleConfig::default();
+        if let Some(tty) = endpoint.out_file().as_ref().map(|t| t.try_clone().unwrap()) {
+            let (cols, rows) = get_win_size(&tty);
+            config.cols = cols;
+            config.rows = rows;
+        }
+        
+
+        let config_space = Self::build_config_space(config);
 
         Ok(Console {
             device_info: VirtioDeviceInfo::new(
                 CONSOLE_DRIVER_NAME.to_string(),
                 avail_features,
                 Arc::new(QUEUE_SIZES.to_vec()),
-                config.as_slice().to_vec(),
+                config_space,
                 epoll_manager,
             ),
             _config: Arc::new(Mutex::new(config)),
@@ -393,6 +421,24 @@ impl<AS: GuestAddressSpace> Console<AS> {
             subscriber_id: None,
             phantom: PhantomData,
         })
+    }
+
+    fn build_config_space(console_config: VirtioConsoleConfig) -> Vec<u8> {
+        let mut config = Vec::with_capacity(CONFIG_SPACE_SIZE);
+        for i in 0..2 {
+            config.push((console_config.cols >> (8 * i)) as u8);
+        }
+        for i in 0..2 {
+            config.push((console_config.rows >> (8 * i)) as u8);
+        }
+        for i in 0..4 {
+            config.push((console_config.max_nr_ports >> (8 * i)) as u8);
+        }
+        for i in 0..4 {
+            config.push((console_config.emerg_wr >> (8 * i)) as u8);
+        }
+
+        config
     }
 }
 

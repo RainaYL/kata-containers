@@ -861,10 +861,24 @@ impl DeviceManager {
             self.shared_info.clone(),
         );
 
-        let com1_sock_path = vm_config.serial_path.clone();
+        #[cfg(not(feature = "tdx"))]
+        {
+            let com1_sock_path = vm_config.serial_path.clone();
+            self.create_legacy_devices(&mut ctx)?;
+            self.init_legacy_devices(dmesg_fifo, com1_sock_path, &mut ctx)?;
+        }
 
-        self.create_legacy_devices(&mut ctx)?;
-        self.init_legacy_devices(dmesg_fifo, com1_sock_path, &mut ctx)?;
+        #[cfg(feature = "tdx")]
+        let tdx_enabled = self.is_tdx_enabled();
+        if tdx_enabled {
+            self.con_manager
+                .attach_virtio_console(&mut ctx, tdx_enabled)
+                .map_err(StartMicroVmError::DeviceManager)?;
+        } else {
+            let com1_sock_path = vm_config.serial_path.clone();
+            self.create_legacy_devices(&mut ctx)?;
+            self.init_legacy_devices(dmesg_fifo, com1_sock_path, &mut ctx)?;
+        }
 
         #[cfg(any(feature = "virtio-blk", feature = "vhost-user-blk"))]
         self.block_manager
