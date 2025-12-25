@@ -870,9 +870,9 @@ impl DeviceManager {
 
         #[cfg(feature = "tdx")]
         {
-            self.con_manager
-                .attach_virtio_console(&mut ctx, true)
-                .map_err(StartMicroVmError::DeviceManager)?;
+            //self.con_manager
+            //    .attach_virtio_console(&mut ctx, true)
+            //    .map_err(StartMicroVmError::DeviceManager)?;
             let com1_sock_path = vm_config.serial_path.clone();
             self.create_legacy_devices(&mut ctx)?;
             self.init_legacy_devices(dmesg_fifo, com1_sock_path, &mut ctx)?;
