@@ -403,6 +403,7 @@ dependencies = [
  "serde_json",
  "thiserror 1.0.48",
  "timerfd",
+ "vm-memory",
  "vmm-sys-util",
 ]
 

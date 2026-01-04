@@ -5,7 +5,6 @@
 //
 
 /// Hob related functionality.
-
 use super::TdvfError;
 
 use vm_memory::{ByteValued, Bytes, GuestAddress, GuestMemoryMmap};
@@ -118,6 +117,16 @@ impl EfiGuid {
             data4: [0x8c, 0xd, 0xad, 0x80, 0x5a, 0x49, 0x7a, 0xc0],
         }
     }
+    /// ACPI_TABLE_HOB_GUID
+    /// 0x6a0c5870, 0xd4ed, 0x44f4, {0xa1, 0x35, 0xdd, 0x23, 0x8b, 0x6f, 0xc, 0x8d }
+    fn acpi() -> Self {
+        EfiGuid {
+            data1: 0x6a0c_5870,
+            data2: 0xd4ed,
+            data3: 0x44f4,
+            data4: [0xa1, 0x35, 0xdd, 0x23, 0x8b, 0x6f, 0xc, 0x8d],
+        }
+    }
 }
 
 /// HOB resource descriptor
@@ -203,10 +212,31 @@ impl TdPayloadDescription {
     }
 }
 
+#[repr(C)]
+#[derive(Copy, Clone, Default, Debug)]
+struct AcpiDescription {
+    header: HobHeader,
+    efi_guid_type: EfiGuid,
+}
+impl AcpiDescription {
+    fn new(length: u16) -> Self {
+        AcpiDescription {
+            header: HobHeader {
+                r#type: HobType::GuidExtension,
+                length,
+                reserved: 0,
+            },
+            // ACPI_TABLE_HOB_GUID
+            efi_guid_type: EfiGuid::acpi(),
+        }
+    }
+}
+
 unsafe impl ByteValued for HobHeader {}
 unsafe impl ByteValued for HobHandoffInfoTable {}
 unsafe impl ByteValued for HobResourceDescriptor {}
 unsafe impl ByteValued for TdPayloadDescription {}
+unsafe impl ByteValued for AcpiDescription {}
 unsafe impl ByteValued for HobEnd {}
 
 /// TD HOB
@@ -320,6 +350,41 @@ impl TdHob {
         mem.write_obj(payload, GuestAddress(self.current_offset))
             .map_err(TdvfError::WriteHobList)?;
         self.update_offset::<TdPayloadDescription>();
+        Ok(())
+    }
+
+    pub fn add_acpi_table(
+        &mut self,
+        mem: &GuestMemoryMmap,
+        table_content: &[u8],
+    ) -> Result<(), TdvfError> {
+        // We already know the HobGuidType size is 8 bytes multiple, but we
+        // need the total size to be 8 bytes multiple. That is why the ACPI
+        // table size must be 8 bytes multiple as well.
+        let length = std::mem::size_of::<AcpiDescription>() as u16
+            + align_hob(table_content.len() as u64) as u16;
+
+        let hob_guid_type = AcpiDescription::new(length);
+
+        mem.write_obj(hob_guid_type, GuestAddress(self.current_offset))
+            .map_err(TdvfError::WriteHobList)?;
+        let current_offset = self.current_offset + std::mem::size_of::<AcpiDescription>() as u64;
+
+        // In case the table is quite large, let's make sure we can handle
+        // retrying until everything has been correctly copied.
+        let mut offset: usize = 0;
+        loop {
+            let bytes_written = mem.write(
+                &table_content[offset..],
+                GuestAddress(current_offset + offset as u64),
+            ).map_err(TdvfError::WriteHobList)?;
+            offset += bytes_written;
+            if offset >= table_content.len() {
+                break;
+            }
+        }
+        self.current_offset += length as u64;
+
         Ok(())
     }
 }

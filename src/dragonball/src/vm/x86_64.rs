@@ -28,6 +28,8 @@ use dbs_tdx::td_shim::{
 };
 #[cfg(feature = "tdx")]
 use dbs_tdx::{tdx_finalize, tdx_init, tdx_init_mem_region, TdxError};
+#[cfg(feature = "tdx")]
+use dbs_utils::acpi::{madt::*, sdt::*};
 use dbs_utils::epoll_manager::EpollManager;
 use dbs_utils::time::TimestampUs;
 use kvm_bindings::{
@@ -38,9 +40,9 @@ use kvm_bindings::{
 use linux_loader::cmdline::Cmdline;
 use linux_loader::configurator::{linux::LinuxBootConfigurator, BootConfigurator, BootParams};
 use slog::info;
-#[cfg(feature = "tdx")]
-use vm_memory::Bytes;
 use vm_memory::{Address, GuestAddress, GuestAddressSpace, GuestMemory};
+#[cfg(feature = "tdx")]
+use vm_memory::{ByteValued, Bytes};
 
 use crate::address_space_manager::{GuestAddressSpaceImpl, GuestMemoryImpl};
 use crate::error::{Error, Result, StartMicroVmError};
@@ -388,11 +390,19 @@ impl Vm {
             .init_tdx_vcpus(hob_offset)
             .map_err(StartMicroVmError::Vcpu)?;
 
+        let acpi_tables = self.create_acpi_tables();
+
         let address_space = self
             .vm_address_space()
             .cloned()
             .ok_or(StartMicroVmError::GuestMemoryNotInitialized)?;
-        self.generate_hob_list(hob_offset, vm_memory.deref(), address_space, payload_info)?;
+        self.generate_hob_list(
+            hob_offset,
+            vm_memory.deref(),
+            address_space,
+            payload_info,
+            &acpi_tables,
+        )?;
 
         for section in sections {
             let host_address = vm_memory
@@ -591,6 +601,7 @@ impl Vm {
         vm_memory: &GuestMemoryImpl,
         address_space: AddressSpace,
         payload_info: PayloadInfo,
+        acpi_tables: &Vec<Sdt>,
     ) -> std::result::Result<(), StartMicroVmError> {
         let mut hob = TdHob::start(hob_offset);
 
@@ -622,10 +633,53 @@ impl Vm {
         hob.add_payload(vm_memory, payload_info)
             .map_err(TdxError::TdvfError)
             .map_err(StartMicroVmError::TdxError)?;
+        for acpi_table in acpi_tables {
+            hob.add_acpi_table(vm_memory, acpi_table.as_slice())
+                .map_err(TdxError::TdvfError)
+                .map_err(StartMicroVmError::TdxError)?;
+        }
 
         hob.finish(vm_memory)
             .map_err(TdxError::TdvfError)
             .map_err(StartMicroVmError::TdxError)
+    }
+
+    #[cfg(feature = "tdx")]
+    fn create_acpi_tables(&self) -> Vec<Sdt> {
+        let mut tables = Vec::new();
+
+        tables.push(self.create_madt_table());
+
+        tables
+    }
+
+    #[cfg(feature = "tdx")]
+    fn create_madt_table(&self) -> Sdt {
+        let header = MadtHeader::new(APIC_START, 0);
+        let mut table = Sdt::new(header.as_slice());
+
+        let max_vcpus = self.vm_config.max_vcpu_count;
+        let boot_vcpus = self.vm_config.vcpu_count;
+
+        for cpu_id in 0..max_vcpus {
+            table.append(
+                MadtEntryLocalApic::new(
+                    cpu_id,
+                    if cpu_id < boot_vcpus {
+                        1 << MADT_CPU_ENABLE_FLAG
+                    } else {
+                        0
+                    },
+                )
+                .as_slice(),
+            );
+        }
+
+        table.append(MadtEntryIoapic::new(0, IOAPIC_START, 0).as_slice());
+
+        table.append(MadtEntryIntrSrcOverride::new(0, 2, 2, 0).as_slice());
+
+        table
     }
 
     #[cfg(feature = "tdx")]
