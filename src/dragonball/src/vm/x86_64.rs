@@ -9,7 +9,7 @@
 use std::collections::HashMap;
 use std::convert::TryInto;
 #[cfg(feature = "tdx")]
-use std::io::{Seek, SeekFrom};
+use std::io::{Read, Seek, SeekFrom};
 use std::ops::Deref;
 #[cfg(feature = "tdx")]
 use std::os::fd::AsRawFd;
@@ -29,7 +29,7 @@ use dbs_tdx::td_shim::{
 #[cfg(feature = "tdx")]
 use dbs_tdx::{tdx_finalize, tdx_init, tdx_init_mem_region, TdxError};
 #[cfg(feature = "tdx")]
-use dbs_utils::acpi::{madt::*, sdt::*};
+use dbs_utils::acpi::{dsdt::*, madt::*, sdt::*};
 use dbs_utils::epoll_manager::EpollManager;
 use dbs_utils::time::TimestampUs;
 use kvm_bindings::{
@@ -649,6 +649,7 @@ impl Vm {
         let mut tables = Vec::new();
 
         tables.push(self.create_madt_table());
+        tables.push(self.create_dsdt_table());
 
         tables
     }
@@ -679,6 +680,17 @@ impl Vm {
 
         table.append(MadtEntryIntrSrcOverride::new(0, 2, 2, 0).as_slice());
 
+        table
+    }
+
+    #[cfg(feature = "tdx")]
+    fn create_dsdt_table(&self) -> Sdt {
+        let header = GenericSdtHeader::new(*b"DSDT", 36, 2);
+        let mut table = Sdt::new(header.as_slice());
+        let mut dsdt = Dsdt::new("/tmp/test_resources/DSDT.aml".to_string());
+        let mut aml = Vec::new();
+        dsdt.aml.read_to_end(&mut aml).unwrap();
+        table.append(aml.as_slice());
         table
     }
 
