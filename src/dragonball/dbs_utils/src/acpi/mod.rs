@@ -1,3 +1,4 @@
+pub mod dsdt;
 pub mod madt;
 pub mod sdt;
 
