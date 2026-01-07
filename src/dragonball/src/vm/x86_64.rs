@@ -563,7 +563,7 @@ impl Vm {
         vm_memory: &GuestMemoryImpl,
     ) -> std::result::Result<PayloadInfo, StartMicroVmError> {
         let kernel_loader_result =
-            self.load_kernel(vm_memory, None)?;
+            self.load_kernel(vm_memory, Some(GuestAddress(payload_offset)))?;
 
         if kernel_loader_result.kernel_end > (payload_offset + payload_size) {
             Err(StartMicroVmError::TdxError(TdxError::TdvfError(
@@ -571,7 +571,7 @@ impl Vm {
             )))
         } else {
             let payload_info = PayloadInfo::new(
-                PayloadImageType::RawVmLinux,
+                PayloadImageType::BzImage,
                 kernel_loader_result.kernel_load.0,
             );
             Ok(payload_info)
