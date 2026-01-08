@@ -53,5 +53,9 @@ pub enum TdvfError {
 
     /// Error loading TdShim payload
     #[error("Error loading TdShim payload")]
-    LoadTdShimPayload,
+    LoadTdShimPayload(#[source] std::io::Error),
+
+    /// Tdshim payload section is too small to hold guest kernel
+    #[error("Tdshim payload section too small")]
+    PayloadSectionTooSmall,
 }

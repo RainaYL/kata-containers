@@ -39,8 +39,6 @@ use kvm_bindings::{
 };
 use linux_loader::cmdline::Cmdline;
 use linux_loader::configurator::{linux::LinuxBootConfigurator, BootConfigurator, BootParams};
-#[cfg(feature = "tdx")]
-use linux_loader::loader::{bzimage::BzImage, KernelLoader};
 use slog::info;
 use vm_memory::{Address, GuestAddress, GuestAddressSpace, GuestMemory};
 #[cfg(feature = "tdx")]
@@ -561,33 +559,51 @@ impl Vm {
     fn load_tdx_payload(
         &mut self,
         payload_offset: u64,
-        payload_size: u64,
+        section_size: u64,
         vm_memory: &GuestMemoryImpl,
     ) -> std::result::Result<PayloadInfo, StartMicroVmError> {
-        let kernel_config = self
+        let payload_file = self
             .kernel_config
             .as_mut()
-            .ok_or(StartMicroVmError::MissingKernelConfig)?;
-        let high_mem_addr = GuestAddress(dbs_boot::get_kernel_start());
+            .ok_or(StartMicroVmError::MissingKernelConfig)?
+            .kernel_file_mut();
 
-        let kernel_loader_result = BzImage::load(
-            vm_memory,
-            Some(GuestAddress(payload_offset)),
-            kernel_config.kernel_file_mut(),
-            Some(high_mem_addr),
-        ).map_err(StartMicroVmError::KernelLoader)?;
+        let payload_size = payload_file
+            .seek(SeekFrom::End(0))
+            .map_err(TdvfError::LoadTdShimPayload)
+            .map_err(TdxError::TdvfError)
+            .map_err(StartMicroVmError::TdxError)?;
 
-        if kernel_loader_result.kernel_end > (payload_offset + payload_size) {
-            Err(StartMicroVmError::TdxError(TdxError::TdvfError(
-                TdvfError::LoadTdShimPayload,
-            )))
-        } else {
-            let payload_info = PayloadInfo::new(
-                PayloadImageType::BzImage,
-                kernel_loader_result.kernel_load.0,
-            );
-            Ok(payload_info)
+        if payload_size > section_size {
+            panic!("");
         }
+
+        payload_file.seek(SeekFrom::Start(0x1f1)).unwrap();
+        let mut payload_header = linux_loader::bootparam::setup_header::default();
+        payload_file
+            .read_exact(payload_header.as_mut_slice())
+            .unwrap();
+        if payload_header.header != 0x5372_6448 {
+            panic!("");
+        }
+        if payload_header.version < 0x0200 || (payload_header.loadflags & 0x1) == 0x0 {
+            panic!("");
+        }
+
+        payload_file.rewind().unwrap();
+        vm_memory
+            .read_exact_from(
+                GuestAddress(payload_offset),
+                payload_file,
+                payload_size as usize,
+            )
+            .unwrap();
+
+        let payload_info = PayloadInfo::new(
+            PayloadImageType::BzImage,
+            payload_offset,
+        );
+        Ok(payload_info)
     }
 
     #[cfg(feature = "tdx")]
