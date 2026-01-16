@@ -293,6 +293,25 @@ pub fn tdx_get_caps(vm_fd: &RawFd) -> std::result::Result<TdxCapabilities, TdxEr
     };
     cpu_id.as_mut_fam_struct().nent = caps[0].cpuid.nent;
     cpu_id.as_mut_fam_struct().padding = 0;
+
+    println!("Get Caps");
+    println!("supporred_attrs: {:016x}", caps[0].supported_attrs);
+    println!("supported_xfam: {:016x}", caps[0].supported_xfam);
+    println!("cpuid.nent: {}", caps[0].cpuid.nent);
+    for i in 0..caps[0].cpuid.nent as usize {
+        println!("Entry {}:", i);
+        let entry = cpu_id.as_slice()[i];
+        println!("function: {:x}", entry.function);
+        println!("index: {:x}", entry.index);
+        println!("flags: {:x}", entry.flags);
+        println!("eax: {:08x}", entry.eax);
+        println!("ebx: {:08x}", entry.ebx);
+        println!("ecx: {:08x}", entry.ecx);
+        println!("edx: {:08x}", entry.edx);
+        println!("");
+    }
+    println!("\n\n");
+
     Ok(TdxCapabilities {
         supported_attrs: caps[0].supported_attrs,
         supported_xfam: caps[0].supported_xfam,
@@ -336,7 +355,10 @@ pub fn tdx_init(
     println!("cpuid.nent: {}", init_vm[0].cpuid.nent);
     for i in 0..init_vm[0].cpuid.nent as usize {
         unsafe {
-            let entry = init_vm[0].cpuid.entries.as_slice(init_vm[0].cpuid.nent as usize)[i];
+            let entry = init_vm[0]
+                .cpuid
+                .entries
+                .as_slice(init_vm[0].cpuid.nent as usize)[i];
             println!("Entry {}:", i);
             println!("function: {:x}", entry.function);
             println!("index: {:x}", entry.index);
@@ -363,9 +385,9 @@ pub fn tdx_init(
 }
 
 /// KVM_TDX_INIT_VCPU
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `vcpu_fd` - File descriptor to perform VCPU ioctl
 /// * `hob_address` - Start address of TDVF TdHob section
 pub fn tdx_init_vcpu(vcpu_fd: &RawFd, hob_address: u64) -> Result<(), TdxError> {
@@ -377,9 +399,9 @@ pub fn tdx_init_vcpu(vcpu_fd: &RawFd, hob_address: u64) -> Result<(), TdxError> 
 }
 
 /// KVM_TDX_INIT_MEM_REGION
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `vcpu_fd` - File descriptor to perform VCPU ioctl
 /// * `source_addr`- Host address to populate data from
 /// * `gpa` - Start of guest physical address to init
@@ -411,9 +433,9 @@ pub fn tdx_init_mem_region(
 }
 
 /// KVM_TDX_FINALIZE_VM
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `vm_fd` - File descriptor to perform VM ioctl
 pub fn tdx_finalize(vm_fd: &RawFd) -> Result<(), TdxError> {
     tdx_command(vm_fd, TdxCommand::FinalizeVm, 0, 0, 0)
@@ -424,9 +446,9 @@ pub fn tdx_finalize(vm_fd: &RawFd) -> Result<(), TdxError> {
 }
 
 /// KVM_TDX_GET_CPUID
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `vcpu_fd` - File descriptor to perform VCPU ioctl
 pub fn tdx_get_cpuid(vcpu_fd: &RawFd) -> Result<CpuId, TdxError> {
     let cpu_id = CpuId::new(KVM_MAX_CPUID_ENTRIES).map_err(|e| {
