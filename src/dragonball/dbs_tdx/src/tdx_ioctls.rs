@@ -331,6 +331,24 @@ pub fn tdx_init(
         cpuid_entries.copy_from_slice(cpu_id.entries.as_slice(cpu_id.nent as usize));
     }
 
+    println!("attributes: {:012x}", init_vm[0].attributes);
+    println!("xfam: {:012x}", init_vm[0].xfam);
+    println!("cpuid.nent: {}", init_vm[0].cpuid.nent);
+    for i in 0..init_vm[0].cpuid.nent as usize {
+        unsafe {
+            let entry = init_vm[0].cpuid.entries.as_slice(init_vm[0].cpuid.nent as usize)[i];
+            println!("Entry {}:", i);
+            println!("function: {:x}", entry.function);
+            println!("index: {:x}", entry.index);
+            println!("flags: {:x}", entry.flags);
+            println!("eax: {:08x}", entry.eax);
+            println!("ebx: {:08x}", entry.ebx);
+            println!("ecx: {:08x}", entry.ecx);
+            println!("edx: {:08x}", entry.edx);
+            println!("");
+        }
+    }
+
     tdx_command(
         vm_fd,
         TdxCommand::InitVm,
