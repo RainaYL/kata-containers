@@ -506,11 +506,13 @@ pub fn tdx_init(
         },
     ];
 
+    /* 
     init_vm[0].cpuid.nent = 12;
     unsafe {
         let cpuid_entries = init_vm[0].cpuid.entries.as_mut_slice(12);
         cpuid_entries.copy_from_slice(&qemu_entries);
     }
+    */
 
     tdx_command(
         vm_fd,
