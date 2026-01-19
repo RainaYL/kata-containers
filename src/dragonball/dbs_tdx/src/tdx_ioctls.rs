@@ -371,6 +371,147 @@ pub fn tdx_init(
         }
     }
 
+    let qemu_entries = [
+        // 0
+        kvm_cpuid_entry2 {
+            function: 0x1,
+            index: 0x0,
+            flags: 0x0,
+            eax: 0x000806f6,
+            ebx: 0x00200000,
+            ecx: 0x31000000,
+            edx: 0x18005080,
+            ..Default::default()
+        },
+        // 1
+        kvm_cpuid_entry2 {
+            function: 0x4,
+            index: 0x0,
+            flags: 0x1,
+            eax: 0x7c000121,
+            ebx: 0x01c00000,
+            ecx: 0x0000003f,
+            edx: 0x00000001,
+            ..Default::default()
+        },
+        // 2
+        kvm_cpuid_entry2 {
+            function: 0x4,
+            index: 0x1,
+            flags: 0x1,
+            eax: 0x7c000122,
+            ebx: 0x01c00000,
+            ecx: 0x0000003f,
+            edx: 0x00000001,
+            ..Default::default()
+        },
+        // 3
+        kvm_cpuid_entry2 {
+            function: 0x4,
+            index: 0x2,
+            flags: 0x1,
+            eax: 0x7c000143,
+            ebx: 0x03c00000,
+            ecx: 0x00000fff,
+            edx: 0x00000001,
+            ..Default::default()
+        },
+        // 4
+        kvm_cpuid_entry2 {
+            function: 0x4,
+            index: 0x3,
+            flags: 0x1,
+            eax: 0x7c07c163,
+            ebx: 0x03c00000,
+            ecx: 0x00003fff,
+            edx: 0x00000006,
+            ..Default::default()
+        },
+        // 5
+        kvm_cpuid_entry2 {
+            function: 0x7,
+            index: 0x0,
+            flags: 0x1,
+            eax: 0x00000000,
+            ebx: 0xd02b0308,
+            ecx: 0x02415f44,
+            edx: 0x40014010,
+            ..Default::default()
+        },
+        // 6
+        kvm_cpuid_entry2 {
+            function: 0x7,
+            index: 0x1,
+            flags: 0x1,
+            eax: 0x00001c30,
+            ebx: 0x00000000,
+            ecx: 0x00000000,
+            edx: 0x00000000,
+            ..Default::default()
+        },
+        // 7
+        kvm_cpuid_entry2 {
+            function: 0x7,
+            index: 0x2,
+            flags: 0x1,
+            eax: 0x00000000,
+            ebx: 0x00000000,
+            ecx: 0x00000000,
+            edx: 0x00000000,
+            ..Default::default()
+        },
+        // 8
+        kvm_cpuid_entry2 {
+            function: 0x1f,
+            index: 0x0,
+            flags: 0x1,
+            eax: 0x00000000,
+            ebx: 0x00000001,
+            ecx: 0x00000100,
+            edx: 0x00000000,
+            ..Default::default()
+        },
+        // 9
+        kvm_cpuid_entry2 {
+            function: 0x1f,
+            index: 0x1,
+            flags: 0x1,
+            eax: 0x00000005,
+            ebx: 0x00000020,
+            ecx: 0x00000201,
+            edx: 0x00000000,
+            ..Default::default()
+        },
+        // 10
+        kvm_cpuid_entry2 {
+            function: 0x1f,
+            index: 0x2,
+            flags: 0x1,
+            eax: 0x00000000,
+            ebx: 0x00000000,
+            ecx: 0x00000002,
+            edx: 0x00000000,
+            ..Default::default()
+        },
+        // 11
+        kvm_cpuid_entry2 {
+            function: 0x80000008,
+            index: 0x0,
+            flags: 0x0,
+            eax: 0x00340034,
+            ebx: 0x00000200,
+            ecx: 0x00000000,
+            edx: 0x00000000,
+            ..Default::default()
+        },
+    ];
+
+    init_vm[0].cpuid.nent = 12;
+    unsafe {
+        let cpuid_entries = init_vm[0].cpuid.entries.as_mut_slice(cpu_id.nent as usize);
+        cpuid_entries.copy_from_slice(&qemu_entries);
+    }
+
     tdx_command(
         vm_fd,
         TdxCommand::InitVm,
