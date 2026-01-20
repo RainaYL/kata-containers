@@ -499,6 +499,7 @@ impl Vm {
         let tdshim_file = kernel_config.tdshim_file_mut().unwrap();
 
         for section in sections {
+            println!("{}", section.r#type as u32);
             match section.r#type {
                 TdvfSectionType::Bfv | TdvfSectionType::Cfv => {
                     tdshim_file
