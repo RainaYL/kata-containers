@@ -382,10 +382,10 @@ impl Vm {
         let (hob_offset, payload_offset, payload_size, cmdline_offset) =
             self.load_tdshim(vm_memory.deref(), &sections)?;
 
-        let payload_info =
-            self.load_tdx_payload(payload_offset, payload_size, vm_memory.deref())?;
+        // let payload_info =
+        //     self.load_tdx_payload(payload_offset, payload_size, vm_memory.deref())?;
 
-        self.load_tdx_cmdline(cmdline_offset, vm_memory.deref())?;
+        // self.load_tdx_cmdline(cmdline_offset, vm_memory.deref())?;
 
         self.vcpu_manager()
             .map_err(StartMicroVmError::Vcpu)?
@@ -402,7 +402,7 @@ impl Vm {
             hob_offset,
             vm_memory.deref(),
             address_space,
-            payload_info,
+            PayloadInfo::new(PayloadImageType::ExecutablePayload, 0),
             &acpi_tables,
         )?;
 
@@ -520,6 +520,20 @@ impl Vm {
                     hob_offset = Some(section.address);
                 }
                 TdvfSectionType::Payload => {
+                    tdshim_file
+                        .seek(SeekFrom::Start(section.data_offset as u64))
+                        .map_err(TdvfError::TdShimSeek)
+                        .map_err(TdxError::TdvfError)
+                        .map_err(StartMicroVmError::TdxError)?;
+                    vm_memory
+                        .read_from(
+                            GuestAddress(section.address),
+                            tdshim_file,
+                            section.data_size as usize,
+                        )
+                        .map_err(TdvfError::LoadTdShimSection)
+                        .map_err(TdxError::TdvfError)
+                        .map_err(StartMicroVmError::TdxError)?;
                     payload_offset = Some(section.address);
                     payload_size = Some(section.size);
                 }
@@ -658,9 +672,10 @@ impl Vm {
         hob.add_mmio_resource(vm_memory, MMIO_LOW_START, BIOS_MEM_START - MMIO_LOW_START)
             .map_err(TdxError::TdvfError)
             .map_err(StartMicroVmError::TdxError)?;
-        hob.add_payload(vm_memory, payload_info)
-            .map_err(TdxError::TdvfError)
-            .map_err(StartMicroVmError::TdxError)?;
+
+        // hob.add_payload(vm_memory, payload_info)
+        //     .map_err(TdxError::TdvfError)
+        //     .map_err(StartMicroVmError::TdxError)?;
         for acpi_table in acpi_tables {
             hob.add_acpi_table(vm_memory, acpi_table.as_slice())
                 .map_err(TdxError::TdvfError)
