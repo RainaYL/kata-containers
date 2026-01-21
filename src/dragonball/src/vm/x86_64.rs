@@ -617,6 +617,7 @@ impl Vm {
             .as_ref()
             .ok_or(StartMicroVmError::MissingKernelConfig)?
             .kernel_cmdline();
+        println!("{}", cmdline);
         linux_loader::loader::load_cmdline(vm_memory, GuestAddress(cmdline_offset), cmdline)
             .map_err(StartMicroVmError::LoadCommandline)?;
         Ok(())
