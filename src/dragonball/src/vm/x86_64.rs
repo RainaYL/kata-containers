@@ -542,18 +542,18 @@ impl Vm {
             )));
         }
 
-        // if cmdline_offset.is_none() {
-        //     return Err(StartMicroVmError::TdxError(TdxError::TdvfError(
-        //         TdvfError::MissingTdShimSection("PayloadParam"),
-        //     )));
-        // }
+         if cmdline_offset.is_none() {
+             return Err(StartMicroVmError::TdxError(TdxError::TdvfError(
+                 TdvfError::MissingTdShimSection("PayloadParam"),
+             )));
+        }
 
         Ok((
             // Safe to unwrap since we already checked all there fields are not none
             hob_offset.unwrap(),
             payload_offset.unwrap(),
             payload_size.unwrap(),
-            0,// cmdline_offset.unwrap(),
+            cmdline_offset.unwrap(),
         ))
     }
 
