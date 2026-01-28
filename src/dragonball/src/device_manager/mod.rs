@@ -873,12 +873,12 @@ impl DeviceManager {
         self.create_legacy_devices(&mut ctx)?;
         self.init_legacy_devices(dmesg_fifo, com1_sock_path, &mut ctx)?;
 
-        #[cfg(feature = "tdx")]
-        {
-            self.con_manager
-                .attach_virtio_console(&mut ctx, true)
-                .map_err(StartMicroVmError::DeviceManager)?;
-        }
+        // #[cfg(feature = "tdx")]
+        // {
+        //     self.con_manager
+        //         .attach_virtio_console(&mut ctx, true)
+        //         .map_err(StartMicroVmError::DeviceManager)?;
+        // }
 
         #[cfg(any(feature = "virtio-blk", feature = "vhost-user-blk"))]
         self.block_manager
