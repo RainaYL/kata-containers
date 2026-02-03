@@ -507,6 +507,9 @@ impl Vcpu {
                             Err(VcpuError::VcpuUnhandledKvmExit)
                         }
                     },
+                    VcpuExit::Hypercall => {
+                        loop {}
+                    },
                     r => {
                         self.metrics.failures.inc();
                         // TODO: Are we sure we want to finish running a vcpu upon
