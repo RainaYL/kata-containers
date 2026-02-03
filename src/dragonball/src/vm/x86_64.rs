@@ -206,7 +206,7 @@ impl Vm {
         if self.is_tdx_enabled() {
             self.enable_split_irqchip()?;
             self.enable_x2apic()?;
-            //self.enable_hc_map_gpa_range()?;
+            self.enable_hc_map_gpa_range()?;
         }
 
         self.init_tss()?;
