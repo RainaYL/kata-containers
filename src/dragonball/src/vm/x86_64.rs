@@ -27,7 +27,10 @@ use dbs_tdx::td_shim::{
     TdvfSectionType,
 };
 #[cfg(feature = "tdx")]
-use dbs_tdx::{tdx_finalize, tdx_init, tdx_init_mem_region, TdxError};
+use dbs_tdx::{
+    tdx_finalize, tdx_init, tdx_init_mem_region, TdxError, KVM_CAP_EXIT_HYPERCALL,
+    KVM_HC_MAP_GPA_RANGE,
+};
 #[cfg(feature = "tdx")]
 use dbs_utils::acpi::{dsdt::*, madt::*, sdt::*};
 use dbs_utils::epoll_manager::EpollManager;
@@ -203,6 +206,7 @@ impl Vm {
         if self.is_tdx_enabled() {
             self.enable_split_irqchip()?;
             self.enable_x2apic()?;
+            self.enable_hc_map_gpa_range()?;
         }
 
         self.init_tss()?;
@@ -447,6 +451,17 @@ impl Vm {
             .map_err(StartMicroVmError::EnableX2apic)
     }
 
+    pub(crate) fn enable_hc_map_gpa_range(&mut self) -> std::result::Result<(), StartMicroVmError> {
+        let mut enable_hc_map_gpa_range = kvm_enable_cap {
+            cap: KVM_CAP_EXIT_HYPERCALL as u32,
+            ..Default::default()
+        };
+        enable_hc_map_gpa_range.args[0] = 1 << KVM_HC_MAP_GPA_RANGE;
+        self.vm_fd()
+            .enable_cap(&enable_hc_map_gpa_range)
+            .map_err(StartMicroVmError::EnableHcMapGpaRange)
+    }
+
     #[cfg(feature = "tdx")]
     fn init_tdx(&self) -> std::result::Result<(), StartMicroVmError> {
         // Safe to unwrap because this function will only be called when initializing TDX VM
@@ -542,10 +557,10 @@ impl Vm {
             )));
         }
 
-         if cmdline_offset.is_none() {
-             return Err(StartMicroVmError::TdxError(TdxError::TdvfError(
-                 TdvfError::MissingTdShimSection("PayloadParam"),
-             )));
+        if cmdline_offset.is_none() {
+            return Err(StartMicroVmError::TdxError(TdxError::TdvfError(
+                TdvfError::MissingTdShimSection("PayloadParam"),
+            )));
         }
 
         Ok((
@@ -570,9 +585,7 @@ impl Vm {
             .ok_or(StartMicroVmError::MissingKernelConfig)?
             .kernel_file_mut();
 
-        let payload_size = payload_file
-            .seek(SeekFrom::End(0))
-            .unwrap();
+        let payload_size = payload_file.seek(SeekFrom::End(0)).unwrap();
 
         if payload_size > section_size {
             panic!("");
@@ -599,10 +612,7 @@ impl Vm {
             )
             .unwrap();
 
-        let payload_info = PayloadInfo::new(
-            PayloadImageType::BzImage,
-            payload_offset,
-        );
+        let payload_info = PayloadInfo::new(PayloadImageType::BzImage, payload_offset);
         Ok(payload_info)
     }
 
@@ -662,7 +672,7 @@ impl Vm {
         hob.add_payload(vm_memory, payload_info)
             .map_err(TdxError::TdvfError)
             .map_err(StartMicroVmError::TdxError)?;
-        /* 
+        /*
         for acpi_table in acpi_tables {
             hob.add_acpi_table(vm_memory, acpi_table.as_slice())
                 .map_err(TdxError::TdvfError)

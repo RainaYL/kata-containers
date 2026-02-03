@@ -244,6 +244,10 @@ pub enum StartMicroVmError {
     #[error("Failed to enable X2APIC: {0}")]
     EnableX2apic(#[source] vmm_sys_util::errno::Error),
 
+    /// Cannot enable hypercall map gpa range
+    #[error("Failed to enable hypercall map gpa range: {0}")]
+    EnableHcMapGpaRange(#[source] vmm_sys_util::errno::Error),
+
     /// Guest memory not initialized
     #[error("Guest memory has not been initialized")]
     GuestMemoryNotInitialized,
