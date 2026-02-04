@@ -498,11 +498,11 @@ impl AddressSpaceMgr {
                 )
                 .map_err(AddressManagerError::KvmSetMemorySlotWithMemfd)?;
 
-                // if kvm_guest_memfd_private {
-                //     let attributes = KVM_MEMORY_ATTRIBUTE_PRIVATE;
-                //     kvm_set_memory_attributes(&vm_fd, guest_address, size, attributes, 0)
-                //         .map_err(AddressManagerError::KvmSetMemoryAttributes)?;
-                // }
+                if kvm_guest_memfd_private {
+                    let attributes = KVM_MEMORY_ATTRIBUTE_PRIVATE;
+                    kvm_set_memory_attributes(&vm_fd, guest_address, size, attributes, 0)
+                        .map_err(AddressManagerError::KvmSetMemoryAttributes)?;
+                }
             }
         }
 
