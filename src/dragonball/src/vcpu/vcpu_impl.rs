@@ -844,7 +844,7 @@ pub mod tests {
     fn create_vcpu() -> (Vcpu, Receiver<VcpuStateEvent>) {
         let kvm_context = KvmContext::new(None).unwrap();
         let vm = kvm_context.kvm().create_vm().unwrap();
-        let vcpu_fd = Arc::new(vm.create_vcpu(0).unwrap());
+        let vcpu_fd = Arc::new(VcpuFd::new(&vm, 0).unwrap());
         let io_manager = IoManagerCached::new(Arc::new(ArcSwap::new(Arc::new(IoManager::new()))));
         let supported_cpuid = kvm_context
             .supported_cpuid(kvm_bindings::KVM_MAX_CPUID_ENTRIES)

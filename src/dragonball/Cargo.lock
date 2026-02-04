@@ -282,6 +282,7 @@ dependencies = [
 name = "dbs-arch"
 version = "0.2.3"
 dependencies = [
+ "dbs-utils",
  "kvm-bindings",
  "kvm-ioctls",
  "libc",
@@ -297,6 +298,7 @@ version = "0.4.0"
 dependencies = [
  "dbs-arch",
  "dbs-device",
+ "dbs-utils",
  "device_tree",
  "kvm-bindings",
  "kvm-ioctls",

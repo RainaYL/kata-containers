@@ -6,7 +6,7 @@
 // found in the THIRD-PARTY file.
 
 use kvm_bindings::kvm_lapic_state;
-use kvm_ioctls::VcpuFd;
+use dbs_utils::vcpu::VcpuFd;
 
 /// Errors thrown while configuring the LAPIC.
 #[derive(Debug)]
@@ -105,7 +105,7 @@ mod tests {
         let vm = kvm.create_vm().unwrap();
         //the get_lapic ioctl will fail if there is no irqchip created beforehand.
         assert!(vm.create_irq_chip().is_ok());
-        let vcpu = vm.create_vcpu(0).unwrap();
+        let vcpu = VcpuFd::new(&vm, 0).unwrap();
         let klapic_before: kvm_lapic_state = vcpu.get_lapic().unwrap();
 
         // Compute the value that is expected to represent LVT0 and LVT1.
@@ -128,7 +128,7 @@ mod tests {
     fn test_setlint_fails() {
         let kvm = Kvm::new().unwrap();
         let vm = kvm.create_vm().unwrap();
-        let vcpu = vm.create_vcpu(0).unwrap();
+        let vcpu = VcpuFd::new(&vm, 0).unwrap();
         // 'get_lapic' ioctl triggered by the 'set_lint' function will fail if there is no
         // irqchip created beforehand.
         assert!(set_lint(&vcpu).is_err());

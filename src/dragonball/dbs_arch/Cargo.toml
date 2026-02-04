@@ -18,6 +18,7 @@ thiserror = "1"
 vm-memory = { workspace = true }
 vmm-sys-util = {workspace = true}
 libc = ">=0.2.39"
+dbs-utils = { workspace = true }
 
 [dev-dependencies]
 vm-memory = { workspace = true, features = ["backend-mmap"] }

@@ -19,6 +19,7 @@ libc = "0.2.39"
 thiserror = "1"
 vm-memory = {workspace = true}
 vm-fdt = {workspace= true}
+dbs-utils = { workspace = true }
 
 [dev-dependencies]
 vm-memory = { workspace = true, features = ["backend-mmap"] }

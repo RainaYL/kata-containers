@@ -260,7 +260,7 @@ mod tests {
     fn test_setup_page_tables() {
         let kvm = Kvm::new().unwrap();
         let vm = kvm.create_vm().unwrap();
-        let vcpu = vm.create_vcpu(0).unwrap();
+        let vcpu = dbs_utils::vcpu::VcpuFd::new(&vm, 0).unwrap();
         let gm = create_guest_mem();
         let gdt_table: [u64; layout::BOOT_GDT_MAX] = [
             gdt_entry(0, 0, 0),            // NULL

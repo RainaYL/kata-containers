@@ -11,7 +11,7 @@
 use std::mem;
 
 use kvm_bindings::{kvm_fpu, kvm_msr_entry, kvm_regs, kvm_sregs, Msrs};
-use kvm_ioctls::VcpuFd;
+use dbs_utils::vcpu::VcpuFd;
 use vm_memory::{Address, Bytes, GuestAddress, GuestMemory};
 
 use super::gdt::kvm_segment_from_gdt;
@@ -336,7 +336,7 @@ mod tests {
     fn test_setup_fpu() {
         let kvm = Kvm::new().unwrap();
         let vm = kvm.create_vm().unwrap();
-        let vcpu = vm.create_vcpu(0).unwrap();
+        let vcpu = VcpuFd::new(&vm, 0).unwrap();
         setup_fpu(&vcpu).unwrap();
 
         let expected_fpu: kvm_fpu = kvm_fpu {
@@ -358,7 +358,7 @@ mod tests {
     fn test_setup_msrs() {
         let kvm = Kvm::new().unwrap();
         let vm = kvm.create_vm().unwrap();
-        let vcpu = vm.create_vcpu(0).unwrap();
+        let vcpu = VcpuFd::new(&vm, 0).unwrap();
         setup_msrs(&vcpu).unwrap();
 
         // This test will check against the last MSR entry configured (the tenth one).
@@ -386,7 +386,7 @@ mod tests {
     fn test_setup_regs() {
         let kvm = Kvm::new().unwrap();
         let vm = kvm.create_vm().unwrap();
-        let vcpu = vm.create_vcpu(0).unwrap();
+        let vcpu = VcpuFd::new(&vm, 0).unwrap();
 
         let expected_regs: kvm_regs = kvm_regs {
             rflags: 0x0000_0000_0000_0002u64,

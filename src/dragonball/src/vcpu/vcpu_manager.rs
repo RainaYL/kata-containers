@@ -22,7 +22,8 @@ use dbs_tdx::{tdx_get_max_vcpus, tdx_init_vcpu, TdxError};
 use dbs_upcall::{DevMgrService, UpcallClient};
 use dbs_utils::epoll_manager::{EpollManager, EventOps, EventSet, Events, MutEventSubscriber};
 use dbs_utils::time::TimestampUs;
-use kvm_ioctls::{Cap, VcpuFd, VmFd};
+use dbs_utils::vcpu::VcpuFd;
+use kvm_ioctls::{Cap, VmFd};
 use log::{debug, error, info};
 use seccompiler::{apply_filter, BpfProgram, Error as SecError};
 use vm_memory::GuestAddress;
@@ -595,8 +596,7 @@ impl VcpuManager {
             Some(vcpu_fd) => vcpu_fd.clone(),
             None => {
                 let vcpu_fd = Arc::new(
-                    self.vm_fd
-                        .create_vcpu(cpu_index as u64)
+                    VcpuFd::new(&self.vm_fd, cpu_index as u64)
                         .map_err(VcpuError::VcpuFd)
                         .map_err(VcpuManagerError::Vcpu)?,
                 );

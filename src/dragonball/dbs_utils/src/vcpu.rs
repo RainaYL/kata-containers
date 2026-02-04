@@ -8,7 +8,8 @@
 use kvm_bindings::*;
 use libc::EINVAL;
 use std::fs::File;
-use std::os::unix::io::{AsRawFd, RawFd};
+use std::os::unix::io::{AsRawFd, RawFd, FromRawFd};
+use std::os::raw::c_ulong;
 
 use kvm_ioctls::*;
 use vmm_sys_util::errno;
@@ -47,6 +48,7 @@ ioctl_io_nr!(KVM_RUN, KVMIO, 0x80);
 ioctl_io_nr!(KVM_GET_TSC_KHZ, KVMIO, 0xa3);
 ioctl_io_nr!(KVM_SET_TSC_KHZ, KVMIO, 0xa2);
 ioctl_iowr_nr!(KVM_TRANSLATE, KVMIO, 0x85, kvm_translation);
+ioctl_io_nr!(KVM_CREATE_VCPU, KVMIO, 0x41);
 
 /// Reasons for vCPU exits.
 ///
@@ -154,6 +156,23 @@ pub enum SyncReg {
 }
 
 impl VcpuFd {
+    pub fn new(vm_fd: &VmFd, id: u64) -> Result<Self> {
+        // Safe because we know that vm is a VM fd and we verify the return result.
+        #[allow(clippy::cast_lossless)]
+        let vcpu_fd = unsafe { ioctl_with_val(&vm_fd.as_raw_fd(), KVM_CREATE_VCPU(), id as c_ulong) };
+        if vcpu_fd < 0 {
+            return Err(errno::Error::last());
+        }
+
+        // Wrap the vCPU now in case the following ? returns early. This is safe because we verified
+        // the value of the fd and we own the fd.
+        let vcpu = unsafe { File::from_raw_fd(vcpu_fd) };
+
+        let kvm_run_ptr = KvmRunWrapper::mmap_from_fd(&vcpu, vm_fd.run_size())?;
+
+        Ok(new_vcpu(vcpu, kvm_run_ptr))
+    }
+
     /// Returns the vCPU general purpose registers.
     ///
     /// The registers are returned in a `kvm_regs` structure as defined in the
