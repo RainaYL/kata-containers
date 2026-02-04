@@ -9,6 +9,7 @@
 //! The implementation for per vcpu
 
 use std::cell::Cell;
+use std::os::fd::AsRawFd;
 use std::result;
 use std::sync::atomic::{fence, Ordering};
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
@@ -17,7 +18,9 @@ use std::thread;
 
 use dbs_utils::metric::IncMetric;
 use dbs_utils::time::TimestampUs;
+use dbs_utils::guest_memfd::kvm_set_memory_attributes;
 use kvm_bindings::{KVM_SYSTEM_EVENT_RESET, KVM_SYSTEM_EVENT_SHUTDOWN};
+use kvm_ioctls::VmFd;
 use dbs_utils::vcpu::{VcpuExit, VcpuFd,  KVM_HC_MAP_GPA_RANGE};
 use libc::{c_int, c_void, siginfo_t};
 use log::{error, info};
@@ -282,6 +285,8 @@ pub struct Vcpu {
     // Records vCPU create time stamp
     create_ts: TimestampUs,
 
+    vm_fd: Arc<VmFd>,
+
     // The receiving end of events channel owned by the vcpu side.
     event_receiver: Receiver<VcpuEvent>,
     // The transmitting end of the events channel which will be given to the handler.
@@ -509,6 +514,10 @@ impl Vcpu {
                     },
                     VcpuExit::Hypercall(hc_exit) => {
                         if hc_exit.nr == KVM_HC_MAP_GPA_RANGE {
+                            let gpa = hc_exit.args[0];
+                            let size = hc_exit.args[1] * dbs_boot::PAGE_SIZE as u64;
+                            let attributes = hc_exit.args[2];
+                            kvm_set_memory_attributes(&self.vm_fd.as_raw_fd(), gpa, size, attributes, 0).unwrap();
                             loop {}
                         } else {
                             Err(VcpuError::VcpuUnhandledKvmExit)
@@ -868,6 +877,7 @@ pub mod tests {
             tx,
             time_stamp,
             false,
+            Arc::new(vm),
         )
         .unwrap();
 

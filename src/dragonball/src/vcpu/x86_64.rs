@@ -54,6 +54,7 @@ impl Vcpu {
         vcpu_state_sender: Sender<VcpuStateEvent>,
         create_ts: TimestampUs,
         support_immediate_exit: bool,
+        vm_fd: Arc<VmFd>,
     ) -> Result<Self> {
         let (event_sender, event_receiver) = channel();
         let (response_sender, response_receiver) = channel();
@@ -73,6 +74,7 @@ impl Vcpu {
             support_immediate_exit,
             metrics: Arc::new(VcpuMetrics::default()),
             cpuid,
+            vm_fd,
         })
     }
 

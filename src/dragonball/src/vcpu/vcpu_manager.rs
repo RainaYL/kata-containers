@@ -847,6 +847,7 @@ impl VcpuManager {
             self.vcpu_state_sender.clone(),
             request_ts,
             self.support_immediate_exit,
+            self.vm_fd.clone(),
         )
         .map_err(VcpuManagerError::Vcpu)
     }
