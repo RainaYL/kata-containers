@@ -50,6 +50,19 @@ ioctl_io_nr!(KVM_SET_TSC_KHZ, KVMIO, 0xa2);
 ioctl_iowr_nr!(KVM_TRANSLATE, KVMIO, 0x85, kvm_translation);
 ioctl_io_nr!(KVM_CREATE_VCPU, KVMIO, 0x41);
 
+/// Information about a [`VcpuExit`] triggered by an Hypercall (`KVM_EXIT_HYPERCALL`).
+#[derive(Debug)]
+pub struct HypercallExit<'a> {
+    /// The hypercall number.
+    pub nr: u64,
+    /// The arguments for the hypercall.
+    pub args: [u64; 6],
+    /// The return code to be indicated to the guest.
+    pub ret: &'a mut u64,
+    /// Whether the hypercall was executed in long mode.
+    pub longmode: u32,
+}
+
 /// Reasons for vCPU exits.
 ///
 /// The exit reasons are mapped to the `KVM_EXIT_*` defines in the
@@ -75,7 +88,7 @@ pub enum VcpuExit<'a> {
     /// Corresponds to KVM_EXIT_EXCEPTION.
     Exception,
     /// Corresponds to KVM_EXIT_HYPERCALL.
-    Hypercall,
+    Hypercall(HypercallExit<'a>),
     /// Corresponds to KVM_EXIT_DEBUG.
     ///
     /// Provides architecture specific information for the debug event.
@@ -1403,7 +1416,17 @@ impl VcpuFd {
                         _ => Err(errno::Error::new(EINVAL)),
                     }
                 }
-                KVM_EXIT_HYPERCALL => Ok(VcpuExit::Hypercall),
+                KVM_EXIT_HYPERCALL => {
+                    // SAFETY: Safe because the exit_reason (which comes from the kernel) told us
+                    // which union field to use.
+                    let hypercall = unsafe { &mut run.__bindgen_anon_1.hypercall };
+                    Ok(VcpuExit::Hypercall(HypercallExit {
+                        nr: hypercall.nr,
+                        args: hypercall.args,
+                        ret: &mut hypercall.ret,
+                        longmode: hypercall.longmode,
+                    }))
+                },
                 KVM_EXIT_DEBUG => {
                     // Safe because the exit_reason (which comes from the kernel) told us which
                     // union field to use.
