@@ -16,12 +16,12 @@ use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 use std::sync::{Arc, Barrier};
 use std::thread;
 
+use dbs_utils::guest_memfd::kvm_set_memory_attributes;
 use dbs_utils::metric::IncMetric;
 use dbs_utils::time::TimestampUs;
-use dbs_utils::guest_memfd::kvm_set_memory_attributes;
+use dbs_utils::vcpu::{VcpuExit, VcpuFd, KVM_HC_MAP_GPA_RANGE};
 use kvm_bindings::{KVM_SYSTEM_EVENT_RESET, KVM_SYSTEM_EVENT_SHUTDOWN};
 use kvm_ioctls::VmFd;
-use dbs_utils::vcpu::{VcpuExit, VcpuFd,  KVM_HC_MAP_GPA_RANGE};
 use libc::{c_int, c_void, siginfo_t};
 use log::{error, info};
 use seccompiler::{apply_filter, BpfProgram, Error as SecError};
@@ -120,6 +120,10 @@ pub enum VcpuError {
     /// The call to KVM_SET_CPUID2 failed on x86_64.
     #[error("failure while calling KVM_SET_CPUID2 on x86_64")]
     SetSupportedCpusFailed(#[source] kvm_ioctls::Error),
+
+    /// Fail to set memory attributes for hypercall
+    #[error("failure while setting memory attributes")]
+    SetMemoryAttributes(#[source] std::io::Error),
 }
 
 #[cfg(target_arch = "aarch64")]
@@ -517,12 +521,19 @@ impl Vcpu {
                             let gpa = hc_exit.args[0];
                             let size = hc_exit.args[1] * dbs_boot::PAGE_SIZE as u64;
                             let attributes = hc_exit.args[2];
-                            kvm_set_memory_attributes(&self.vm_fd.as_raw_fd(), gpa, size, attributes, 0).unwrap();
+                            kvm_set_memory_attributes(
+                                &self.vm_fd.as_raw_fd(),
+                                gpa,
+                                size,
+                                attributes,
+                                0,
+                            )
+                            .map_err(VcpuError::SetMemoryAttributes)?;
                             loop {}
                         } else {
                             Err(VcpuError::VcpuUnhandledKvmExit)
                         }
-                    },
+                    }
                     r => {
                         self.metrics.failures.inc();
                         // TODO: Are we sure we want to finish running a vcpu upon
