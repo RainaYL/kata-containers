@@ -19,6 +19,10 @@ use vmm_sys_util::ioctl::{ioctl_with_mut_ptr, ioctl_with_ptr, ioctl_with_val};
 use vmm_sys_util::{ioctl_io_nr, ioctl_ioc_nr, ioctl_ior_nr, ioctl_iow_nr, ioctl_iowr_nr};
 
 pub type Result<T> = std::result::Result<T, errno::Error>;
+
+pub const KVM_CAP_EXIT_HYPERCALL: u64 = 201;
+pub const KVM_HC_MAP_GPA_RANGE: u64 = 12;
+
 ioctl_ior_nr!(KVM_GET_REGS, KVMIO, 0x81, kvm_regs);
 ioctl_iow_nr!(KVM_SET_REGS, KVMIO, 0x82, kvm_regs);
 ioctl_ior_nr!(KVM_GET_SREGS, KVMIO, 0x83, kvm_sregs);

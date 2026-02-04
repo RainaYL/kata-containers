@@ -27,14 +27,13 @@ use dbs_tdx::td_shim::{
     TdvfSectionType,
 };
 #[cfg(feature = "tdx")]
-use dbs_tdx::{
-    tdx_finalize, tdx_init, tdx_init_mem_region, TdxError, KVM_CAP_EXIT_HYPERCALL,
-    KVM_HC_MAP_GPA_RANGE,
-};
+use dbs_tdx::{tdx_finalize, tdx_init, tdx_init_mem_region, TdxError};
 #[cfg(feature = "tdx")]
 use dbs_utils::acpi::{dsdt::*, madt::*, sdt::*};
 use dbs_utils::epoll_manager::EpollManager;
 use dbs_utils::time::TimestampUs;
+#[cfg(feature = "tdx")]
+use dbs_utils::vcpu::{KVM_CAP_EXIT_HYPERCALL, KVM_HC_MAP_GPA_RANGE};
 use kvm_bindings::{
     kvm_enable_cap, kvm_irqchip, kvm_pit_config, kvm_pit_state2, KVM_CAP_SPLIT_IRQCHIP,
     KVM_CAP_X2APIC_API, KVM_PIT_SPEAKER_DUMMY, KVM_X2APIC_API_DISABLE_BROADCAST_QUIRK,

@@ -18,7 +18,7 @@ use std::thread;
 use dbs_utils::metric::IncMetric;
 use dbs_utils::time::TimestampUs;
 use kvm_bindings::{KVM_SYSTEM_EVENT_RESET, KVM_SYSTEM_EVENT_SHUTDOWN};
-use dbs_utils::vcpu::{VcpuExit, VcpuFd, HypercallExit};
+use dbs_utils::vcpu::{VcpuExit, VcpuFd,  KVM_HC_MAP_GPA_RANGE};
 use libc::{c_int, c_void, siginfo_t};
 use log::{error, info};
 use seccompiler::{apply_filter, BpfProgram, Error as SecError};
@@ -508,7 +508,11 @@ impl Vcpu {
                         }
                     },
                     VcpuExit::Hypercall(hc_exit) => {
-                        loop {}
+                        if hc_exit.nr == KVM_HC_MAP_GPA_RANGE {
+                            loop {}
+                        } else {
+                            Err(VcpuError::VcpuUnhandledKvmExit)
+                        }
                     },
                     r => {
                         self.metrics.failures.inc();

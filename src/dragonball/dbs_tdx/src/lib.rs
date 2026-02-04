@@ -23,10 +23,7 @@ pub mod td_shim;
 
 pub const KVM_X86_TDX_VM: u64 = 5;
 
-pub const KVM_CAP_EXIT_HYPERCALL: u64 = 201;
 pub const KVM_CAP_VM_TYPES: u64 = 235;
-
-pub const KVM_HC_MAP_GPA_RANGE: u64 = 12;
 
 pub const KVM_TDX_MEASURE_MEMORY_REGION: u32 = 1u32 << 0;
 
