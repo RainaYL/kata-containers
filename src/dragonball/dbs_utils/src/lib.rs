@@ -10,3 +10,4 @@ pub mod net;
 pub mod rate_limiter;
 pub mod serial_buffer;
 pub mod time;
+pub mod vcpu;

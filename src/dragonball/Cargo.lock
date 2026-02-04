@@ -397,6 +397,7 @@ dependencies = [
  "anyhow",
  "event-manager",
  "kvm-bindings",
+ "kvm-ioctls",
  "libc",
  "log",
  "serde",

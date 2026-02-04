@@ -18,7 +18,7 @@ use std::thread;
 use dbs_utils::metric::IncMetric;
 use dbs_utils::time::TimestampUs;
 use kvm_bindings::{KVM_SYSTEM_EVENT_RESET, KVM_SYSTEM_EVENT_SHUTDOWN};
-use kvm_ioctls::{VcpuExit, VcpuFd};
+use dbs_utils::vcpu::{VcpuExit, VcpuFd};
 use libc::{c_int, c_void, siginfo_t};
 use log::{error, info};
 use seccompiler::{apply_filter, BpfProgram, Error as SecError};
