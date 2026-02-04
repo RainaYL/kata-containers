@@ -528,7 +528,7 @@ impl Vcpu {
                                 attributes,
                                 0,
                             )
-                            .map_err(VcpuError::SetMemoryAttributes)?;
+                            .map_err(|_| loop{})?;
                             Ok(VcpuEmulation::Handled)
                         } else {
                             Err(VcpuError::VcpuUnhandledKvmExit)
