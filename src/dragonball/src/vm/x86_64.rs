@@ -671,12 +671,12 @@ impl Vm {
         hob.add_payload(vm_memory, payload_info)
             .map_err(TdxError::TdvfError)
             .map_err(StartMicroVmError::TdxError)?;
-        /*
+        
         for acpi_table in acpi_tables {
             hob.add_acpi_table(vm_memory, acpi_table.as_slice())
                 .map_err(TdxError::TdvfError)
                 .map_err(StartMicroVmError::TdxError)?;
-        }*/
+        }
 
         hob.finish(vm_memory)
             .map_err(TdxError::TdvfError)
