@@ -356,6 +356,7 @@ impl AddressSpaceMgr {
         // Create GuestMemory object
         let mut vm_memory = GuestMemoryMmap::new();
         for reg in regions.iter() {
+            println!("{:?}", reg.region_type());
             if reg.region_type() != AddressSpaceRegionType::FirmwareMemory {
                 // Allocate used guest memory addresses.
                 // These addresses are statically allocated, resource allocation/update should not fail.
