@@ -473,12 +473,12 @@ impl Vcpu {
                     VcpuExit::MmioRead(addr, data) => {
                         let _ = self.io_mgr.mmio_read(addr, data);
                         self.metrics.exit_mmio_read.inc();
+                        loop {}
                         Ok(VcpuEmulation::Handled)
                     }
                     VcpuExit::MmioWrite(addr, data) => {
                         let _ = self.io_mgr.mmio_write(addr, data);
                         self.metrics.exit_mmio_write.inc();
-                        loop {}
                         Ok(VcpuEmulation::Handled)
                     }
                     VcpuExit::Hlt => {
