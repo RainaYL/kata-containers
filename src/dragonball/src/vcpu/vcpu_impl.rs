@@ -455,6 +455,7 @@ impl Vcpu {
     fn run_emulation(&mut self) -> Result<VcpuEmulation> {
         match Vcpu::emulate(&self.fd) {
             Ok(run) => {
+                println!("VcpuExit");
                 match run {
                     #[cfg(target_arch = "x86_64")]
                     VcpuExit::IoIn(addr, data) => {
