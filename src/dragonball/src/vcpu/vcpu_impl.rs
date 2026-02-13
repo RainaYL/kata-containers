@@ -471,7 +471,7 @@ impl Vcpu {
                         Ok(VcpuEmulation::Handled)
                     }
                     VcpuExit::MmioRead(addr, data) => {
-                        println("Received MMIO read");
+                        println!("Received MMIO read");
                         let _ = self.io_mgr.mmio_read(addr, data);
                         self.metrics.exit_mmio_read.inc();
                         Ok(VcpuEmulation::Handled)
