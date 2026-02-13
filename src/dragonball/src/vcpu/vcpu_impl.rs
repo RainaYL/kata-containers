@@ -517,6 +517,7 @@ impl Vcpu {
                         }
                     },
                     VcpuExit::Hypercall(hc_exit) => {
+                        println!("Received hypercall");
                         if hc_exit.nr == KVM_HC_MAP_GPA_RANGE {
                             let gpa = hc_exit.args[0];
                             let size = hc_exit.args[1] * dbs_boot::PAGE_SIZE as u64;
