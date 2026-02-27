@@ -342,7 +342,7 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
                 }
             }
         }
-        println!("notify");
+        println!("notify after io_complete");
         self.queue.notify()
     }
 
