@@ -307,6 +307,7 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
     }
 
     pub(crate) fn io_complete(&mut self) -> Result<()> {
+        println!("io_complete");
         let as_mem = self.vm_as.memory();
         let mem: &AS::M = as_mem.deref();
         let iovs = self.disk_image.io_complete()?;
