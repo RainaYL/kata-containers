@@ -471,13 +471,11 @@ impl Vcpu {
                         Ok(VcpuEmulation::Handled)
                     }
                     VcpuExit::MmioRead(addr, data) => {
-                        println!("Received MMIO read");
                         let _ = self.io_mgr.mmio_read(addr, data);
                         self.metrics.exit_mmio_read.inc();
                         Ok(VcpuEmulation::Handled)
                     }
                     VcpuExit::MmioWrite(addr, data) => {
-                        println!("Received MMIO write");
                         let _ = self.io_mgr.mmio_write(addr, data);
                         self.metrics.exit_mmio_write.inc();
                         Ok(VcpuEmulation::Handled)
@@ -519,7 +517,6 @@ impl Vcpu {
                         }
                     },
                     VcpuExit::Hypercall(hc_exit) => {
-                        println!("Received hypercall");
                         if hc_exit.nr == KVM_HC_MAP_GPA_RANGE {
                             let gpa = hc_exit.args[0];
                             let size = hc_exit.args[1] * dbs_boot::PAGE_SIZE as u64;
