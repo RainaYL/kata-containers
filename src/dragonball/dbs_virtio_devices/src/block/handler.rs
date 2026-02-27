@@ -342,6 +342,7 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
                 }
             }
         }
+        println!("notify");
         self.queue.notify()
     }
 
@@ -395,8 +396,9 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> EpollHelperHandler for InnerBlockEpoll
                 // may use different Events, and complete may depend on the count of reads from
                 // within io event. so leave it to IoEngine::complete to drain event fd.
                 // io_complete() only returns permanent errors.
-                self.io_complete()
-                    .expect("virtio-blk: failed to complete IO requests");
+                if let Err(_) = self.io_complete() {
+                    println!("Error notify");
+                }
             }
             RATE_LIMITER_EVENT => {
                 // Upon rate limiter event, call the rate limiter handler
