@@ -374,6 +374,7 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
 impl<AS: DbsGuestAddressSpace, Q: QueueT> EpollHelperHandler for InnerBlockEpollHandler<AS, Q> {
     fn handle_event(&mut self, _helper: &mut EpollHelper, event: &epoll::Event) -> bool {
         let slot = event.data as u32;
+        println!("handle_event");
         match slot {
             QUEUE_AVAIL_EVENT => {
                 if let Err(e) = self.queue.consume_event() {
