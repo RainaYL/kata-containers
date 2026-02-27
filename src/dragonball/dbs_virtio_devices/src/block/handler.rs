@@ -52,6 +52,7 @@ pub(crate) struct InnerBlockEpollHandler<AS: DbsGuestAddressSpace, Q: QueueT> {
 
 impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
     pub(crate) fn process_queue(&mut self) -> bool {
+        println!("process queue");
         let as_mem = self.vm_as.memory();
         let mem = as_mem.deref();
         let mut queue = self.queue.queue_mut().lock();
@@ -383,6 +384,7 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> EpollHelperHandler for InnerBlockEpoll
                 } else if self.rate_limiter.is_blocked() {
                     // While limiter is blocked, don't process any more requests.
                 } else if self.process_queue() {
+                    println!("notify");
                     self.queue
                         .notify()
                         .expect("virtio-blk: failed to notify guest");
