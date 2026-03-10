@@ -29,7 +29,7 @@ use dbs_tdx::td_shim::{
 #[cfg(feature = "tdx")]
 use dbs_tdx::{tdx_finalize, tdx_init, tdx_init_mem_region, TdxError};
 #[cfg(feature = "tdx")]
-use dbs_utils::acpi::{dsdt::*, madt::*, sdt::*};
+use dbs_utils::acpi::{dsdt::*, fadt::*, madt::*, sdt::*};
 use dbs_utils::epoll_manager::EpollManager;
 use dbs_utils::time::TimestampUs;
 #[cfg(feature = "tdx")]
@@ -733,6 +733,11 @@ impl Vm {
         table.append(aml.as_slice());
         */
         table
+    }
+
+    #[cfg(feature = "tdx")]
+    fn create_fadt_table(&self) -> Sdt {
+        Sdt::new(Fadt::new().as_slice())
     }
 
     #[cfg(feature = "tdx")]
