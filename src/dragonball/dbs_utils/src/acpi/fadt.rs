@@ -76,7 +76,7 @@ unsafe impl ByteValued for Fadt {}
 
 impl Fadt {
     pub fn new() -> Self {
-        let mut fadt = unsafe { core::mem::zeroed() };
+        let mut fadt: Fadt = unsafe { core::mem::zeroed() };
         fadt.h = GenericSdtHeader::new(*b"FACP", core::mem::size_of::<Fadt>() as u32, 6);
         
         fadt.SCI_Interrupt = 9;
