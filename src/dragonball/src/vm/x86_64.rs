@@ -726,7 +726,7 @@ impl Vm {
     #[cfg(feature = "tdx")]
     fn create_dsdt_table(&self) -> Sdt {
         let header = GenericSdtHeader::new(*b"DSDT", 36, 2);
-        let table = Sdt::new(header.as_slice());
+        let mut table = Sdt::new(header.as_slice());
         let aml_data = [0u8; 4];
         table.append(&aml_data);
         /*
