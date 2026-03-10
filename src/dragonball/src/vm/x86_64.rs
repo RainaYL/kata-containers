@@ -672,11 +672,11 @@ impl Vm {
             .map_err(TdxError::TdvfError)
             .map_err(StartMicroVmError::TdxError)?;
         
-        // for acpi_table in acpi_tables {
-        //     hob.add_acpi_table(vm_memory, acpi_table.as_slice())
-        //         .map_err(TdxError::TdvfError)
-        //         .map_err(StartMicroVmError::TdxError)?;
-        // }
+        for acpi_table in acpi_tables {
+            hob.add_acpi_table(vm_memory, acpi_table.as_slice())
+                .map_err(TdxError::TdvfError)
+                .map_err(StartMicroVmError::TdxError)?;
+        }
 
         hob.finish(vm_memory)
             .map_err(TdxError::TdvfError)
@@ -687,8 +687,9 @@ impl Vm {
     fn create_acpi_tables(&self) -> Vec<Sdt> {
         let mut tables = Vec::new();
 
-        tables.push(self.create_madt_table());
-        tables.push(self.create_dsdt_table());
+        //tables.push(self.create_madt_table());
+        //tables.push(self.create_dsdt_table());
+        tables.push(self.create_fadt_table());
 
         tables
     }
