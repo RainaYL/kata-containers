@@ -727,6 +727,8 @@ impl Vm {
     fn create_dsdt_table(&self) -> Sdt {
         let header = GenericSdtHeader::new(*b"DSDT", 36, 2);
         let table = Sdt::new(header.as_slice());
+        let aml_data = [0u8; 4];
+        table.append(&aml_data);
         /*
         let mut dsdt = Dsdt::new("/tmp/test_resources/DSDT.aml".to_string());
         let mut aml = Vec::new();
