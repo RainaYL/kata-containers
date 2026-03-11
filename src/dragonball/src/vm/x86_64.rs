@@ -687,7 +687,7 @@ impl Vm {
     fn create_acpi_tables(&self) -> Vec<Sdt> {
         let mut tables = Vec::new();
 
-        //tables.push(self.create_madt_table());
+        tables.push(self.create_madt_table());
         tables.push(self.create_dsdt_table());
         tables.push(self.create_fadt_table());
 
