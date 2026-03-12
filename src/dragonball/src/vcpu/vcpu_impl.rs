@@ -29,6 +29,7 @@ use log::{error, info};
 use seccompiler::{apply_filter, BpfProgram, Error as SecError};
 use vmm_sys_util::eventfd::EventFd;
 use vmm_sys_util::signal::{register_signal_handler, Killable};
+use vm_memory::ByteValued;
 
 use super::sm::StateMachine;
 use crate::metric::{VcpuMetrics, METRICS};
