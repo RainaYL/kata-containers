@@ -476,8 +476,22 @@ impl Vcpu {
                         Ok(VcpuEmulation::Handled)
                     }
                     VcpuExit::MmioRead(addr, data) => {
-                        if cfg!(feature = "tdx") && addr >= 0xfec0_0000 && addr < 0xfec0_0100 {
-                            println!("MMIO with ioapic");
+                        #[cfg(feature = "tdx")]
+                        if addr >= 0xfec0_0000 && addr < 0xfec0_0100 {
+                            println!("MMIO read with ioapic");
+                            let mut val = 0;
+                            match self.ioapic_registers.ioapic_select {
+                                0x00 => {
+                                    val = 0;
+                                },
+                                0x01 => {
+                                    val = IOAPIC_VERSION | (self.ioapic_registers.max_redir_entry << 8);
+                                },
+                                _ => {
+                                    val = 0;
+                                }
+                            }
+                            println!("mmio read result: %d", val);
 
                         }
                         let _ = self.io_mgr.mmio_read(addr, data);
