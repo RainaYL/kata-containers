@@ -502,6 +502,12 @@ impl Vcpu {
                         #[cfg(feature = "tdx")]
                         if addr >= 0xfec0_0000 && addr < 0xfec0_0100 {
                             println!("MMIO write with ioapic");
+                            if addr == 0xfec0_0000 {
+                                if addr.len == 4 {
+                                    let val = *(data.as_ptr() as *const u32);
+                                    println("val: {}", val);
+                                }
+                            }
                         }
                         let _ = self.io_mgr.mmio_write(addr, data);
                         self.metrics.exit_mmio_write.inc();
