@@ -230,7 +230,7 @@ pub struct IoapicRegisters {
 }
 
 impl IoapicRegisters {
-    fn new(max_redir_entry: u32) -> Self {
+    pub fn new(max_redir_entry: u32) -> Self {
         Self {
             ioapic_select: 0,
             max_redir_entry,
