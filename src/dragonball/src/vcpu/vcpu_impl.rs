@@ -493,6 +493,8 @@ impl Vcpu {
                             }
                             data.copy_from_slice(val.as_slice());
                             println!("mmio read result: {}", val);
+                            self.metrics.exit_mmio_read.inc();
+                            Ok(VcpuEmulation::Handled)
 
                         }
                         let _ = self.io_mgr.mmio_read(addr, data);
