@@ -503,7 +503,7 @@ impl Vcpu {
                         if addr >= 0xfec0_0000 && addr < 0xfec0_0100 {
                             println!("MMIO write with ioapic");
                             if addr == 0xfec0_0000 {
-                                if data.len == 4 {
+                                if data.len() == 4 {
                                     let val = *(data.as_ptr() as *const u32);
                                     println!("val: {}", val);
                                 }
