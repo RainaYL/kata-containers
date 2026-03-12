@@ -499,6 +499,10 @@ impl Vcpu {
                         Ok(VcpuEmulation::Handled)
                     }
                     VcpuExit::MmioWrite(addr, data) => {
+                        #[cfg(feature = "tdx")]
+                        if addr >= 0xfec0_0000 && addr < 0xfec0_0100 {
+                            println!("MMIO write with ioapic");
+                        }
                         let _ = self.io_mgr.mmio_write(addr, data);
                         self.metrics.exit_mmio_write.inc();
                         Ok(VcpuEmulation::Handled)
