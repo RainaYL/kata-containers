@@ -485,7 +485,7 @@ impl Vcpu {
                                     val = 0;
                                 },
                                 0x01 => {
-                                    val = IOAPIC_VERSION | (self.ioapic_registers.max_redir_entry << 8);
+                                    val = IOAPIC_VERSION | (self.ioapic_registers.max_redir_entry << 16);
                                 },
                                 _ => {
                                     val = 0;
