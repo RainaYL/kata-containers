@@ -491,7 +491,7 @@ impl Vcpu {
                                     val = 0;
                                 }
                             }
-                            println!("mmio read result: %d", val);
+                            println!("mmio read result: {}", val);
 
                         }
                         let _ = self.io_mgr.mmio_read(addr, data);
