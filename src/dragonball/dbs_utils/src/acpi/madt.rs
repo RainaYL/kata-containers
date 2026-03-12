@@ -4,6 +4,10 @@ use vm_memory::ByteValued;
 
 /// start of IOAPIC
 pub const IOAPIC_START: u32 = 0xfec0_0000;
+/// IOAPIC version
+pub const IOAPIC_VERSION: u32 = 0x20;
+/// IOAPIC max redir entry
+pub const IOAPIC_MAX_REDIR_ENTRY: u32 = 23;
 /// start of APIC
 pub const APIC_START: u32 = 0xfee0_0000;
 
@@ -218,3 +222,19 @@ unsafe impl ByteValued for MadtEntryLocalApic {}
 unsafe impl ByteValued for MadtEntryIoapic {}
 unsafe impl ByteValued for MadtEntryIntrSrcOverride {}
 unsafe impl ByteValued for MadtEntryLocalX2Apic {}
+
+pub struct IoapicRegisters {
+    pub ioapic_select: u32,
+    pub max_redir_entry: u32,
+    pub redir_table_entries: [u32; 256],
+}
+
+impl IoapicRegisters {
+    fn new(max_redir_entry: u32) -> Self {
+        Self {
+            ioapic_select: 0,
+            max_redir_entry,
+            redir_table_entries: [u32; 256],
+        }
+    }
+}
