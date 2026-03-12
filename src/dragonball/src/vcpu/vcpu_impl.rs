@@ -488,8 +488,9 @@ impl Vcpu {
                                 },
                                 _ => {
                                     val = 0;
-                                }
+                                },
                             }
+                            data.copy_from_slice(val.as_slice());
                             println!("mmio read result: {}", val);
 
                         }
