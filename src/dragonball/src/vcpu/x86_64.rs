@@ -13,6 +13,8 @@ use dbs_arch::cpuid::{process_cpuid, VmSpec};
 use dbs_arch::gdt::gdt_entry;
 use dbs_utils::metric::IncMetric;
 use dbs_utils::time::TimestampUs;
+#[cfg(feature = "tdx")]
+use dbs_utils::acpi::*;
 use kvm_bindings::CpuId;
 use kvm_ioctls::VmFd;
 use dbs_utils::vcpu::VcpuFd;
@@ -75,6 +77,8 @@ impl Vcpu {
             metrics: Arc::new(VcpuMetrics::default()),
             cpuid,
             vm_fd,
+            #[cfg(feature = "tdx")]
+            ioapic_registers: IoapicRegisters::new(IOAPIC_MAX_REDIR_ENTRY),
         })
     }
 
