@@ -14,7 +14,7 @@ use dbs_arch::gdt::gdt_entry;
 use dbs_utils::metric::IncMetric;
 use dbs_utils::time::TimestampUs;
 #[cfg(feature = "tdx")]
-use dbs_utils::acpi::*;
+use dbs_utils::acpi::madt::*;
 use kvm_bindings::CpuId;
 use kvm_ioctls::VmFd;
 use dbs_utils::vcpu::VcpuFd;
