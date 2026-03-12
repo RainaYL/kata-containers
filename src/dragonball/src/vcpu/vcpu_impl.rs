@@ -476,8 +476,9 @@ impl Vcpu {
                         Ok(VcpuEmulation::Handled)
                     }
                     VcpuExit::MmioRead(addr, data) => {
-                        if addr >= 0xfec00000 && addr < 0xfec00100 {
+                        if cfg!(feature = "tdx") && addr >= 0xfec0_0000 && addr < 0xfec0_0100 {
                             println!("MMIO with ioapic");
+
                         }
                         let _ = self.io_mgr.mmio_read(addr, data);
                         self.metrics.exit_mmio_read.inc();
