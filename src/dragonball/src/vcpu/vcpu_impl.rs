@@ -20,6 +20,8 @@ use dbs_utils::guest_memfd::kvm_set_memory_attributes;
 use dbs_utils::metric::IncMetric;
 use dbs_utils::time::TimestampUs;
 use dbs_utils::vcpu::{VcpuExit, VcpuFd, KVM_HC_MAP_GPA_RANGE};
+#[cfg(feature = "tdx")]
+use dbs_utils::acpi::madt::*;
 use kvm_bindings::{KVM_SYSTEM_EVENT_RESET, KVM_SYSTEM_EVENT_SHUTDOWN};
 use kvm_ioctls::VmFd;
 use libc::{c_int, c_void, siginfo_t};
@@ -323,6 +325,9 @@ pub struct Vcpu {
     /// Multiprocessor affinity register recorded for aarch64
     #[cfg(target_arch = "aarch64")]
     pub(crate) mpidr: u64,
+
+    #[cfg(feature = "tdx")]
+    ioapic_registers: IoapicRegisters,
 }
 
 // Using this for easier explicit type-casting to help IDEs interpret the code.
