@@ -234,7 +234,7 @@ impl IoapicRegisters {
         Self {
             ioapic_select: 0,
             max_redir_entry,
-            redir_table_entries: [u32; 256],
+            redir_table_entries: [0; 256],
         }
     }
 }
