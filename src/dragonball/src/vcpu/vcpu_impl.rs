@@ -478,7 +478,6 @@ impl Vcpu {
                     VcpuExit::MmioRead(addr, data) => {
                         #[cfg(feature = "tdx")]
                         if addr >= 0xfec0_0000 && addr < 0xfec0_0100 {
-                            println!("MMIO read with ioapic");
                             let mut val = 0;
                             match self.ioapic_registers.ioapic_select {
                                 0x00 => {
@@ -501,11 +500,10 @@ impl Vcpu {
                     VcpuExit::MmioWrite(addr, data) => {
                         #[cfg(feature = "tdx")]
                         if addr >= 0xfec0_0000 && addr < 0xfec0_0100 {
-                            println!("MMIO write with ioapic");
                             if addr == 0xfec0_0000 {
                                 if data.len() == 4 {
                                     let val = unsafe { *(data.as_ptr() as *const u32) };
-                                    println!("val: {}", val);
+                                    self.ioapic_registers.ioapic_select = val;
                                 }
                             }
                         }
