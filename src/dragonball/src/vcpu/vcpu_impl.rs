@@ -500,7 +500,6 @@ impl Vcpu {
                                 },
                             }
                             data.copy_from_slice(val.as_slice());
-                            println!("mmio read result: {}", val);
                             self.metrics.exit_mmio_read.inc();
                             return Ok(VcpuEmulation::Handled);
                         }
