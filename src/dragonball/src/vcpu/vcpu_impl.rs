@@ -489,6 +489,11 @@ impl Vcpu {
                                 },
                                 ioapic_select => {
                                     let offset = (ioapic_select - 0x10) as usize;
+                                    if offset < 48 {
+                                        val = self.ioapic_registers.redir_table_entries[offset];
+                                    } else {
+                                        val = 0;
+                                    }
                                 },
                             }
                             data.copy_from_slice(val.as_slice());
