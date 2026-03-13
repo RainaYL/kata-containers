@@ -10,6 +10,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use vmm_sys_util::eventfd::EventFd;
+use kvm_ioctls::VmFd;
 
 use crate::{InterruptIndex, InterruptSourceGroup, InterruptStatusRegister32};
 
@@ -222,6 +223,24 @@ impl InterruptNotifier for NoopNotifier {
         self
     }
 }
+
+pub struct VirtioNotifierSplitIrqchip {
+    pub(crate) redir_entry_low: u32,
+    pub(crate) redir_entry_high: u32,
+    pub(crate) vm_fd: Arc<VmFd>,
+}
+
+impl VirtioNotifierSplitIrqchip {
+    pub fn new(redir_entry_low: u32, redir_entry_high: u32, vm_fd: Arc<VmFd>) -> Self {
+        Self {
+            redir_entry_low,
+            redir_entry_high,
+            vm_fd,
+        }
+    }
+}
+
+
 
 /// Clone a boxed interrupt notifier object.
 pub fn clone_notifier(notifier: &dyn InterruptNotifier) -> Box<dyn InterruptNotifier> {
