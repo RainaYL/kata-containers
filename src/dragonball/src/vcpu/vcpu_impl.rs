@@ -487,6 +487,9 @@ impl Vcpu {
                                 0x01 => {
                                     val = IOAPIC_VERSION | (self.ioapic_registers.max_redir_entry << 16);
                                 },
+                                0x02 => {
+                                    val = 0;
+                                },
                                 ioapic_select => {
                                     let offset = (ioapic_select - 0x10) as usize;
                                     if offset < 48 {
