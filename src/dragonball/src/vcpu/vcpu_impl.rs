@@ -514,7 +514,8 @@ impl Vcpu {
                                     let offset = (ioapic_select - 0x10) as usize;
                                     let val = unsafe { *(data.as_ptr() as *const u32) };
                                     self.ioapic_registers.redir_table_entries[offset] = val;
-                                    println!("Ioapic MMIO write: write {} to offset: {}", val, offset);
+                                    self.metrics.exit_mmio_write.inc();
+                                    return Ok(VcpuEmulation::Handled);
                                 }
                             }
                         }
