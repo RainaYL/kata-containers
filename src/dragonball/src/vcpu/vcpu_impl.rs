@@ -487,8 +487,8 @@ impl Vcpu {
                                 0x01 => {
                                     val = IOAPIC_VERSION | (self.ioapic_registers.max_redir_entry << 16);
                                 },
-                                _ => {
-                                    val = 0;
+                                ioapic_select => {
+                                    let offset = (ioapic_select - 0x10) as usize;
                                 },
                             }
                             data.copy_from_slice(val.as_slice());
