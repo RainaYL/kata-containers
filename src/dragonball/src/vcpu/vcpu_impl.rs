@@ -511,8 +511,10 @@ impl Vcpu {
                             } else if addr == 0xfec0_0010 {
                                 let ioapic_select = self.ioapic_registers.ioapic_select;
                                 if ioapic_select >= 0x10 && ioapic_select < 0x10 + 2 * 24 {
-                                    let idx = (ioapic_select - 0x10) / 2;
-                                    println!("MMIO Write to ioapic entry {}", idx);
+                                    let offset = (ioapic_select - 0x10);
+                                    let val = unsafe { *(data.as_ptr() as *const u32) };
+                                    self.ioapic_registers.ioapic_registers[offset] = val;
+                                    println!("Ioapic MMIO write: write {} to offset: {}", val, offset);
                                 }
                             }
                         }
