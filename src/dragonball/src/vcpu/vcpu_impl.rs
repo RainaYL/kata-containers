@@ -513,7 +513,7 @@ impl Vcpu {
                                 if ioapic_select >= 0x10 && ioapic_select < 0x10 + 2 * 24 {
                                     let offset = (ioapic_select - 0x10);
                                     let val = unsafe { *(data.as_ptr() as *const u32) };
-                                    self.ioapic_registers.ioapic_registers[offset] = val;
+                                    self.ioapic_registers.redir_table_entries[offset] = val;
                                     println!("Ioapic MMIO write: write {} to offset: {}", val, offset);
                                 }
                             }
