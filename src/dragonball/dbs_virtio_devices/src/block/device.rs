@@ -297,6 +297,9 @@ where
 
             i += 1;
         }
+        let vm_fd = config.vm_fd.clone();
+        let resources = config.resources.clone();
+        let irq = resources.get_legacy_irq().unwrap();
         let block_handler = Box::new(BlockEpollHandler {
             kill_evts,
             evt_senders: self.evt_senders.clone(),
@@ -305,6 +308,7 @@ where
 
         // subscribe this handler for io drain.
         self.subscriber_id = Some(self.device_info.register_event_handler(block_handler));
+        
 
         Ok(())
     }
