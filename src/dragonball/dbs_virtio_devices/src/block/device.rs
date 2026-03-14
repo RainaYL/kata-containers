@@ -300,6 +300,7 @@ where
         let vm_fd = config.vm_fd.clone();
         let resources = config.resources.clone();
         let irq = resources.get_legacy_irq().unwrap();
+        println!("Block irq: {}", irq);
         let block_handler = Box::new(BlockEpollHandler {
             kill_evts,
             evt_senders: self.evt_senders.clone(),
