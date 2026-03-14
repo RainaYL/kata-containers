@@ -347,7 +347,7 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
                 }
             }
         }
-        println!("notify after io_complete irq: {}", self.irq.unwrap());
+        self.vm_fd.clone().unwrap().set_irq_line(self.irq.unwrap(), true).unwrap();
         self.queue.notify()
     }
 
