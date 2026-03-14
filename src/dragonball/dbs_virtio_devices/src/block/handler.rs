@@ -8,7 +8,9 @@
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::os::unix::io::AsRawFd;
+use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender};
+use kvm_ioctls::VmFd;
 
 use dbs_utils::{
     epoll_manager::{EventOps, Events, MutEventSubscriber},
@@ -48,6 +50,8 @@ pub(crate) struct InnerBlockEpollHandler<AS: DbsGuestAddressSpace, Q: QueueT> {
 
     pub(crate) vm_as: AS,
     pub(crate) queue: VirtioQueueConfig<Q>,
+    pub(crate) vm_fd: Option<Arc<VmFd>>,
+    pub(crate) irq: Option<u32>,
 }
 
 impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
@@ -343,7 +347,7 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
                 }
             }
         }
-        println!("notify after io_complete");
+        println!("notify after io_complete irq: {}", self.irq.unwrap());
         self.queue.notify()
     }
 

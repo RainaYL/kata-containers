@@ -277,6 +277,8 @@ where
                 vm_as: config.vm_as.clone(),
                 queue,
                 kill_evt: kill_evt.try_clone().unwrap(),
+                vm_fd: Some(config.vm_fd.clone()),
+                irq: config.resources.get_legacy_irq(),
             });
             info!("register handler");
 
@@ -1091,6 +1093,8 @@ mod tests {
 
             vm_as: mem,
             queue,
+            vm_fd: None,
+            irq: None,
         }
     }
 
