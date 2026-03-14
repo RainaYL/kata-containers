@@ -356,6 +356,7 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
     }
 
     pub(crate) fn run(&mut self) -> std::result::Result<(), EpollHelperError> {
+        println!("run");
         let mut helper = EpollHelper::new()?;
         helper.add_event(self.queue.eventfd.as_raw_fd(), QUEUE_AVAIL_EVENT)?;
         helper.add_event_custom(
