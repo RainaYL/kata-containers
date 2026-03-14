@@ -278,7 +278,7 @@ where
                 queue,
                 kill_evt: kill_evt.try_clone().unwrap(),
             });
-            println!("register handler");
+            info!("register handler");
 
             kill_evts.push(kill_evt.try_clone().unwrap());
             self.kill_evts.push(kill_evt);
