@@ -520,7 +520,7 @@ impl Vcpu {
                                 if ioapic_select >= 0x10 && ioapic_select < 0x10 + 2 * 24 {
                                     let offset = (ioapic_select - 0x10) as usize;
                                     let val = unsafe { *(data.as_ptr() as *const u32) };
-                                    println!("offset: {}, val: {:#b}", offset, val);
+                                    println!("offset: {}, data: [{:#08b}, {:#08b}, {:#08b}, {:#08b}], val: {:#032b}", offset, data[0], data[1], data[2], data[3], val);
                                     self.ioapic_registers.redir_table_entries[offset] = val;
                                     self.metrics.exit_mmio_write.inc();
                                     return Ok(VcpuEmulation::Handled);
