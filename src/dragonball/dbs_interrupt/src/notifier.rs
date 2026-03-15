@@ -65,7 +65,8 @@ mod legacy {
         fn notify(&self) -> Result<(), Error> {
             println!("Legacy notify");
             self.intr_status.set_bits(self.status_bits);
-            self.intr_group.trigger(0)
+            //self.intr_group.trigger(0)
+            Ok(())
         }
 
         fn notifier(&self) -> Option<&EventFd> {
