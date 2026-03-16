@@ -250,3 +250,13 @@ impl Default for IoapicRegisters {
         registers
     }
 }
+
+impl IoapicRedirEntry {
+    pub fn get_vector(&self) -> u8 {
+        (self.low & 0xff) as u8
+    }
+
+    pub fn is_masked(&self) -> bool {
+        ((self.low >> 16) & 1) == 1
+    }
+}
