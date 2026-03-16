@@ -352,16 +352,7 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
                 }
             }
         }
-        let mut irq_level = kvm_irq_level::default();
-        irq_level.__bindgen_anon_1.irq = self.irq.unwrap();
-        irq_level.level = 1;
-        let fd = self.vm_fd.as_ref().unwrap().as_raw_fd();
-
-        // Safe because we know that our file is a VM fd, we know the kernel will only read the
-        // correct amount of memory from our pointer, and we verify the return result.
-        let ret = unsafe { ioctl_with_ref(&fd, KVM_IRQ_LINE_STATUS(), &irq_level) };
-        unsafe { println!("ret: {}, status: {}", ret, irq_level.__bindgen_anon_1.status) };
-        //self.vm_fd.clone().unwrap().set_irq_line(self.irq.unwrap(), true).unwrap();
+        
         self.queue.notify()
     }
 
