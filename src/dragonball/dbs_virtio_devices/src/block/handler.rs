@@ -11,8 +11,8 @@ use std::os::unix::io::AsRawFd;
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender};
 use kvm_ioctls::VmFd;
-use kvm_bindings::{KVMIO, kvm_irq_level};
-use vmm_sys_util::{ioctl_ioc_nr, ioctl_iowr_nr};
+use kvm_bindings::{KVMIO, kvm_interrupt};
+use vmm_sys_util::{ioctl_ioc_nr, ioctl_iow_nr};
 use vmm_sys_util::ioctl::ioctl_with_ref;
 
 use dbs_utils::{
@@ -41,7 +41,7 @@ pub const END_IO_EVENT: u32 = 2;
 // trigger the thread to deal with some specific event
 pub const KILL_EVENT: u32 = 4;
 
-ioctl_iowr_nr!(KVM_IRQ_LINE_STATUS, KVMIO, 0x67, kvm_irq_level);
+ioctl_iow_nr!(KVM_INTERRUPT, KVMIO, 0x86, kvm_interrupt);
 
 pub(crate) struct InnerBlockEpollHandler<AS: DbsGuestAddressSpace, Q: QueueT> {
     pub(crate) disk_image: Box<dyn Ufile>,

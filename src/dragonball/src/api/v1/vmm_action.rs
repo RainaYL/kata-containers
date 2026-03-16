@@ -707,6 +707,8 @@ impl VmmService {
             VmmData::Empty
         };
 
+
+        let vcpu = vm.vcpu_manager().unwrap().vcpus()[0];
         vm.device_manager_mut()
             .block_manager
             .insert_device(ctx, config, sender.clone())
