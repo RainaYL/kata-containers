@@ -71,7 +71,6 @@ pub struct Block<AS: DbsGuestAddressSpace> {
     evt_senders: Vec<mpsc::Sender<KillEvent>>,
     epoll_threads: Vec<thread::JoinHandle<()>>,
     phantom: PhantomData<AS>,
-    vcpu_fd: Option<RawFd>,
 }
 
 impl<AS: DbsGuestAddressSpace> Block<AS> {
@@ -137,7 +136,6 @@ impl<AS: DbsGuestAddressSpace> Block<AS> {
             evt_senders: Vec::with_capacity(num_queues),
             kill_evts: Vec::with_capacity(num_queues),
             epoll_threads: Vec::with_capacity(num_queues),
-            vcpu_fd: None,
         })
     }
 
@@ -203,10 +201,6 @@ impl<AS: DbsGuestAddressSpace> Block<AS> {
         }
 
         Ok(())
-    }
-
-    pub fn update_vcpu_fd(&mut self, vcpu_fd: RawFd) {
-        self.vcpu_fd = Some(vcpu_fd);
     }
 }
 
@@ -284,7 +278,7 @@ where
                 vm_as: config.vm_as.clone(),
                 queue,
                 kill_evt: kill_evt.try_clone().unwrap(),
-                vcpu_fd: self.vcpu_fd.clone(),
+                vcpu_fd: config.vcpu_fd,
                 irq: config.resources.get_legacy_irq(),
             });
             info!("register handler");
@@ -307,10 +301,6 @@ where
 
             i += 1;
         }
-        let vm_fd = config.vm_fd.clone();
-        let resources = config.resources.clone();
-        let irq = resources.get_legacy_irq().unwrap();
-        println!("Block irq: {}", irq);
         let block_handler = Box::new(BlockEpollHandler {
             kill_evts,
             evt_senders: self.evt_senders.clone(),

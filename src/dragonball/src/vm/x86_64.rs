@@ -397,6 +397,15 @@ impl Vm {
             .map_err(StartMicroVmError::Vcpu)?;
 
         let vcpu_fd = self.vcpu_manager().unwrap().vcpus()[0].vcpu_fd().as_raw_fd();
+        let iter = self.device_manager().block_manager.iter();
+        for config in iter {
+            use crate::device_manager::DbsMmioV2Device;
+
+            let device = config.device.as_ref().unwrap().clone();
+            let device = device.as_any().downcast_ref::<DbsMmioV2Device>().unwrap();
+            device.update_vcpu_fd(vcpu_fd);
+            
+        }
 
         let acpi_tables = self.create_acpi_tables();
 

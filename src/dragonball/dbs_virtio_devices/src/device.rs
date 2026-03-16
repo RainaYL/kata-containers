@@ -18,6 +18,7 @@ use std::cmp;
 use std::io::Write;
 use std::ops::Deref;
 use std::sync::Arc;
+use std::os::unix::io::RawFd;
 
 use dbs_address_space::AddressSpace;
 use dbs_device::resources::{DeviceResources, ResourceConstraint};
@@ -190,6 +191,8 @@ pub struct VirtioDeviceConfig<
     pub device_change_notifier: Arc<dyn InterruptNotifier>,
     /// Shared memory region for Virtio-fs etc.
     pub shm_regions: Option<VirtioSharedMemoryList<R>>,
+    /// vcpu fd
+    pub vcpu_fd: Option<RawFd>,
 }
 
 impl<AS, Q, R> VirtioDeviceConfig<AS, Q, R>
@@ -217,6 +220,7 @@ where
             ctrl_queue,
             device_change_notifier,
             shm_regions: None,
+            vcpu_fd: None,
         }
     }
 

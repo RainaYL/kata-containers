@@ -4,7 +4,8 @@
 
 use std::any::Any;
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock};
+use std::os::unix::io::RawFd;
 
 use byteorder::{ByteOrder, LittleEndian};
 use dbs_address_space::AddressSpace;
@@ -49,6 +50,7 @@ pub struct MmioV2Device<AS: GuestAddressSpace + Clone, Q: QueueT, R: GuestMemory
     driver_status: AtomicU32,
     config_generation: AtomicU32,
     interrupt_status: Arc<InterruptStatusRegister32>,
+    vcpu_fd: RwLock<Option<RawFd>>,
 }
 
 impl<AS, Q, R> MmioV2Device<AS, Q, R>
@@ -132,6 +134,7 @@ where
             driver_status: AtomicU32::new(DEVICE_INIT),
             config_generation: AtomicU32::new(0),
             interrupt_status: Arc::new(InterruptStatusRegister32::new()),
+            vcpu_fd: RwLock::new(None)
         })
     }
 
@@ -346,6 +349,11 @@ where
             None => 0,
         };
         state.get_shm_field(0xffff_ffff, |s| ((s.offset + guest_addr) >> 32) as u32)
+    }
+
+    pub fn update_vcpu_fd(&self, vcpu_fd: RawFd) {
+        *self.vcpu_fd.write().unwrap() = Some(vcpu_fd);
+        println!("update vcpu fd: {}", vcpu_fd);
     }
 }
 
