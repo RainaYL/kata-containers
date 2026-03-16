@@ -12,6 +12,7 @@ use std::io::{Seek, SeekFrom};
 use std::marker::PhantomData;
 use std::sync::{mpsc, Arc};
 use std::thread;
+use std::os::unix::io::RawFd;
 
 use dbs_device::resources::ResourceConstraint;
 use dbs_utils::{
@@ -70,6 +71,7 @@ pub struct Block<AS: DbsGuestAddressSpace> {
     evt_senders: Vec<mpsc::Sender<KillEvent>>,
     epoll_threads: Vec<thread::JoinHandle<()>>,
     phantom: PhantomData<AS>,
+    vcpu_fd: Option<RawFd>,
 }
 
 impl<AS: DbsGuestAddressSpace> Block<AS> {
@@ -135,6 +137,7 @@ impl<AS: DbsGuestAddressSpace> Block<AS> {
             evt_senders: Vec::with_capacity(num_queues),
             kill_evts: Vec::with_capacity(num_queues),
             epoll_threads: Vec::with_capacity(num_queues),
+            vcpu_fd: None,
         })
     }
 
@@ -200,6 +203,10 @@ impl<AS: DbsGuestAddressSpace> Block<AS> {
         }
 
         Ok(())
+    }
+
+    pub fn update_vcpu_fd(&mut self, vcpu_fd: RawFd) {
+        self.vcpu_fd = Some(vcpu_fd);
     }
 }
 
@@ -277,7 +284,7 @@ where
                 vm_as: config.vm_as.clone(),
                 queue,
                 kill_evt: kill_evt.try_clone().unwrap(),
-                vm_fd: Some(config.vm_fd.clone()),
+                vcpu_fd: self.vcpu_fd.clone(),
                 irq: config.resources.get_legacy_irq(),
             });
             info!("register handler");
@@ -1093,7 +1100,7 @@ mod tests {
 
             vm_as: mem,
             queue,
-            vm_fd: None,
+            vcpu_fd: None,
             irq: None,
         }
     }

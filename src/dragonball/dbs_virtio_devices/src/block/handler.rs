@@ -7,10 +7,8 @@
 
 use std::collections::HashMap;
 use std::ops::Deref;
-use std::os::unix::io::AsRawFd;
-use std::sync::Arc;
+use std::os::unix::io::{RawFd, AsRawFd};
 use std::sync::mpsc::{Receiver, Sender};
-use kvm_ioctls::VmFd;
 use kvm_bindings::{KVMIO, kvm_interrupt};
 use vmm_sys_util::{ioctl_ioc_nr, ioctl_iow_nr};
 use vmm_sys_util::ioctl::ioctl_with_ref;
@@ -55,7 +53,7 @@ pub(crate) struct InnerBlockEpollHandler<AS: DbsGuestAddressSpace, Q: QueueT> {
 
     pub(crate) vm_as: AS,
     pub(crate) queue: VirtioQueueConfig<Q>,
-    pub(crate) vm_fd: Option<Arc<VmFd>>,
+    pub(crate) vcpu_fd: Option<RawFd>,
     pub(crate) irq: Option<u32>,
 }
 

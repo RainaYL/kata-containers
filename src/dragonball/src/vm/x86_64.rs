@@ -7,6 +7,7 @@
 // found in the THIRD-PARTY file.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::convert::TryInto;
 #[cfg(feature = "tdx")]
 use std::io::{Read, Seek, SeekFrom};
@@ -33,7 +34,7 @@ use dbs_utils::acpi::{dsdt::*, fadt::*, madt::*, sdt::*};
 use dbs_utils::epoll_manager::EpollManager;
 use dbs_utils::time::TimestampUs;
 #[cfg(feature = "tdx")]
-use dbs_utils::vcpu::{KVM_CAP_EXIT_HYPERCALL, KVM_HC_MAP_GPA_RANGE};
+use dbs_utils::vcpu::{KVM_CAP_EXIT_HYPERCALL, KVM_HC_MAP_GPA_RANGE, VcpuFd};
 use kvm_bindings::{
     kvm_enable_cap, kvm_irqchip, kvm_pit_config, kvm_pit_state2, KVM_CAP_SPLIT_IRQCHIP,
     KVM_CAP_X2APIC_API, KVM_PIT_SPEAKER_DUMMY, KVM_X2APIC_API_DISABLE_BROADCAST_QUIRK,
@@ -394,6 +395,8 @@ impl Vm {
             .map_err(StartMicroVmError::Vcpu)?
             .init_tdx_vcpus(hob_offset)
             .map_err(StartMicroVmError::Vcpu)?;
+
+        let vcpu_fd = self.vcpu_manager().unwrap().vcpus()[0].vcpu_fd().as_raw_fd();
 
         let acpi_tables = self.create_acpi_tables();
 
