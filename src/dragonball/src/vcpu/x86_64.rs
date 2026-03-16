@@ -78,7 +78,7 @@ impl Vcpu {
             cpuid,
             vm_fd,
             #[cfg(feature = "tdx")]
-            ioapic_registers: IoapicRegisters::new(IOAPIC_MAX_REDIR_ENTRY),
+            ioapic_registers: IoapicRegisters::default(),
         })
     }
 

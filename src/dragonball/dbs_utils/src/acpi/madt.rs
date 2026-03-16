@@ -7,7 +7,7 @@ pub const IOAPIC_START: u32 = 0xfec0_0000;
 /// IOAPIC version
 pub const IOAPIC_VERSION: u32 = 0x20;
 /// IOAPIC max redir entry
-pub const IOAPIC_MAX_REDIR_ENTRY: u32 = 23;
+pub const IOAPIC_MAX_REDIR_ENTRIES: u32 = 23;
 /// start of APIC
 pub const APIC_START: u32 = 0xfee0_0000;
 
@@ -223,18 +223,30 @@ unsafe impl ByteValued for MadtEntryIoapic {}
 unsafe impl ByteValued for MadtEntryIntrSrcOverride {}
 unsafe impl ByteValued for MadtEntryLocalX2Apic {}
 
-pub struct IoapicRegisters {
-    pub ioapic_select: u32,
-    pub max_redir_entry: u32,
-    pub redir_table_entries: [u32; 256],
+#[derive(Default)]
+pub struct IoapicRedirEntry {
+    pub low: u32,
+    pub high: u32,
 }
 
-impl IoapicRegisters {
-    pub fn new(max_redir_entry: u32) -> Self {
-        Self {
+pub struct IoapicRegisters {
+    pub ioapic_select: u32,
+    pub ioapic_version: u32,
+    pub max_redir_entries: u32,
+    pub redir_table_entries: Vec<IoapicRedirEntry>,
+}
+
+impl Default for IoapicRegisters {
+    fn default() -> Self {
+        let mut registers = Self {
             ioapic_select: 0,
-            max_redir_entry,
-            redir_table_entries: [0; 256],
+            ioapic_version: IOAPIC_VERSION,
+            max_redir_entries: IOAPIC_MAX_REDIR_ENTRIES,
+            redir_table_entries: Vec::with_capacity(IOAPIC_MAX_REDIR_ENTRIES as usize),
+        };
+        for _ in 0..IOAPIC_MAX_REDIR_ENTRIES {
+            registers.redir_table_entries.push(IoapicRedirEntry::default());
         }
+        registers
     }
 }

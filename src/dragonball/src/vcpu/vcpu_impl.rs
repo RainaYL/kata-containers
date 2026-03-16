@@ -480,20 +480,26 @@ impl Vcpu {
                         #[cfg(feature = "tdx")]
                         if addr >= 0xfec0_0000 && addr < 0xfec0_0100 {
                             let mut val = 0;
+                            let registers = &self.ioapic_registers;
                             match self.ioapic_registers.ioapic_select {
                                 0x00 => {
                                     val = 0;
                                 },
                                 0x01 => {
-                                    val = IOAPIC_VERSION | (self.ioapic_registers.max_redir_entry << 16);
+                                    val = registers.ioapic_version | (registers.max_redir_entries << 16);
                                 },
                                 0x02 => {
                                     val = 0;
                                 },
                                 ioapic_select => {
-                                    let offset = (ioapic_select - 0x10) as usize;
-                                    if offset < 48 {
-                                        val = self.ioapic_registers.redir_table_entries[offset];
+                                    let offset = ioapic_select - 0x10;
+                                    if offset < 2 * registers.max_redir_entries {
+                                        let idx = (offset >> 1) as usize;
+                                        if (offset & 1) == 0 {
+                                            val = registers.redir_table_entries[idx].low;
+                                        } else {
+                                            val = registers.redir_table_entries[idx].high;
+                                        }
                                     } else {
                                         val = 0;
                                     }
@@ -510,20 +516,23 @@ impl Vcpu {
                     VcpuExit::MmioWrite(addr, data) => {
                         #[cfg(feature = "tdx")]
                         if addr >= 0xfec0_0000 && addr < 0xfec0_0100 {
+                            let registers = &mut self.ioapic_registers;
                             if addr == 0xfec0_0000 {
                                 if data.len() == 4 {
                                     let val = unsafe { *(data.as_ptr() as *const u32) };
-                                    self.ioapic_registers.ioapic_select = val;
+                                    registers.ioapic_select = val;
                                 }
                             } else if addr == 0xfec0_0010 {
-                                let ioapic_select = self.ioapic_registers.ioapic_select;
-                                if ioapic_select >= 0x10 && ioapic_select < 0x10 + 2 * 24 {
-                                    let offset = (ioapic_select - 0x10) as usize;
+                                let ioapic_select = registers.ioapic_select;
+                                if ioapic_select >= 0x10 && ioapic_select < 0x10 + 2 * registers.max_redir_entries {
+                                    let offset = ioapic_select - 0x10;
                                     let val = unsafe { *(data.as_ptr() as *const u32) };
-                                    println!("offset: {}, data: [{:#08b}, {:#08b}, {:#08b}, {:#08b}], val: {:#032b}", offset, data[0], data[1], data[2], data[3], val);
-                                    self.ioapic_registers.redir_table_entries[offset] = val;
-                                    self.metrics.exit_mmio_write.inc();
-                                    return Ok(VcpuEmulation::Handled);
+                                    let idx = (offset >> 1) as usize;
+                                    if (offset & 1) == 0 {
+                                        registers.redir_table_entries[idx].low = val;
+                                    } else {
+                                        registers.redir_table_entries[idx].high = val;
+                                    }
                                 }
                             }
                         }
