@@ -26,6 +26,7 @@ use dbs_utils::epoll_manager::EpollManager;
 use kvm_ioctls::VmFd;
 use log::error;
 use virtio_queue::QueueSync;
+use dbs_utils::acpi::madt::IoapicRegisters;
 
 #[cfg(feature = "dbs-virtio-devices")]
 use dbs_device::resources::ResourceConstraint;
@@ -858,6 +859,7 @@ impl DeviceManager {
         dmesg_fifo: Option<Box<dyn io::Write + Send>>,
         address_space: Option<&AddressSpace>,
         vm_config: &VmConfigInfo,
+        ioapic_registers: Option<Arc<RwLock<IoapicRegisters>>>,
     ) -> std::result::Result<(), StartMicroVmError> {
         let mut ctx = DeviceOpContext::new(
             Some(epoll_mgr),
@@ -882,7 +884,7 @@ impl DeviceManager {
 
         #[cfg(any(feature = "virtio-blk", feature = "vhost-user-blk"))]
         self.block_manager
-            .attach_devices(&mut ctx)
+            .attach_devices(&mut ctx, ioapic_registers)
             .map_err(StartMicroVmError::BlockDeviceError)?;
 
         #[cfg(any(feature = "virtio-fs", feature = "vhost-user-fs"))]
@@ -1716,6 +1718,7 @@ mod tests {
             None,
             address_space.as_ref(),
             &vm_config,
+            None,
         )
         .unwrap();
         let guard = mgr.io_manager.load();

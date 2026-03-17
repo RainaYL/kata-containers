@@ -10,15 +10,15 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::io::{Seek, SeekFrom};
 use std::marker::PhantomData;
-use std::sync::{mpsc, Arc};
+use std::sync::{mpsc, Arc, RwLock};
 use std::thread;
-use std::os::unix::io::RawFd;
 
 use dbs_device::resources::ResourceConstraint;
 use dbs_utils::{
     epoll_manager::{EpollManager, SubscriberId},
     rate_limiter::{BucketUpdate, RateLimiter},
 };
+use dbs_utils::acpi::madt::IoapicRegisters;
 use log::{debug, error, info, warn};
 use virtio_bindings::bindings::virtio_blk::*;
 use virtio_queue::QueueT;
@@ -71,6 +71,7 @@ pub struct Block<AS: DbsGuestAddressSpace> {
     evt_senders: Vec<mpsc::Sender<KillEvent>>,
     epoll_threads: Vec<thread::JoinHandle<()>>,
     phantom: PhantomData<AS>,
+    ioapic_registers: Option<Arc<RwLock<IoapicRegisters>>>,
 }
 
 impl<AS: DbsGuestAddressSpace> Block<AS> {
@@ -84,6 +85,7 @@ impl<AS: DbsGuestAddressSpace> Block<AS> {
         epoll_mgr: EpollManager,
         rate_limiters: Vec<RateLimiter>,
         f_iommu_platform: bool,
+        ioapic_registers: Option<Arc<RwLock<IoapicRegisters>>>,
     ) -> Result<Self> {
         let num_queues = disk_images.len();
 
@@ -136,6 +138,7 @@ impl<AS: DbsGuestAddressSpace> Block<AS> {
             evt_senders: Vec::with_capacity(num_queues),
             kill_evts: Vec::with_capacity(num_queues),
             epoll_threads: Vec::with_capacity(num_queues),
+            ioapic_registers,
         })
     }
 
@@ -879,6 +882,7 @@ mod tests {
             epoll_mgr,
             vec![],
             false,
+            None,
         )
         .unwrap();
 
@@ -936,6 +940,7 @@ mod tests {
                 epoll_mgr.clone(),
                 vec![],
                 false,
+                None,
             )
             .unwrap();
 
@@ -975,6 +980,7 @@ mod tests {
                 epoll_mgr.clone(),
                 vec![],
                 false,
+                None,
             )
             .unwrap();
             dev.disk_images = vec![];
@@ -1015,6 +1021,7 @@ mod tests {
                 epoll_mgr,
                 vec![],
                 false,
+                None,
             )
             .unwrap();
 
@@ -1054,6 +1061,7 @@ mod tests {
             epoll_mgr,
             vec![],
             false,
+            None,
         )
         .unwrap();
 

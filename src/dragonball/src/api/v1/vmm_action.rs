@@ -706,10 +706,11 @@ impl VmmService {
         } else {
             VmmData::Empty
         };
-
+        
+        let ioapic_registers = vm.ioapic_registers();
         vm.device_manager_mut()
             .block_manager
-            .insert_device(ctx, config, sender.clone())
+            .insert_device(ctx, config, sender.clone(), ioapic_registers)
             .map(|_| vmm_data)
             .map_err(VmmActionError::Block)
     }

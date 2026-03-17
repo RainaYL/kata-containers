@@ -458,6 +458,10 @@ impl Vm {
             .expect("Failed to determine if TDX is enabled because shared info couldn't be read due to poisoned lock");
         shared_info.tdx_enabled
     }
+
+    pub fn ioapic_registers(&self) -> Option<Arc<RwLock<IoapicRegisters>>> {
+        self.ioapic_registers.clone()
+    }
 }
 
 impl Vm {
@@ -550,6 +554,7 @@ impl Vm {
             self.dmesg_fifo.take(),
             self.address_space.address_space(),
             &self.vm_config,
+            self.ioapic_registers.clone()
         )?;
 
         info!(self.logger, "VM: start devices");
