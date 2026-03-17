@@ -548,6 +548,9 @@ impl Vcpu {
                             return Ok(VcpuEmulation::Handled);
                         }
                         let _ = self.io_mgr.mmio_write(addr, data);
+                        if addr >= 0xe000_0000 && addr <= 0xe000_1fff {
+                            println!("Finish MMIO Write for virtio_blk");
+                        }
                         self.metrics.exit_mmio_write.inc();
                         Ok(VcpuEmulation::Handled)
                     }
