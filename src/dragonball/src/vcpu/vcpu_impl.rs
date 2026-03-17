@@ -477,6 +477,9 @@ impl Vcpu {
                         Ok(VcpuEmulation::Handled)
                     }
                     VcpuExit::MmioRead(addr, data) => {
+                        if addr >= 0xe000_0000 && addr <= 0xe000_1fff {
+                            println!("MMIO Read for virtio_blk");
+                        }
                         #[cfg(feature = "tdx")]
                         if addr >= 0xfec0_0000 && addr < 0xfec0_0100 {
                             let mut val = 0;
@@ -514,6 +517,9 @@ impl Vcpu {
                         Ok(VcpuEmulation::Handled)
                     }
                     VcpuExit::MmioWrite(addr, data) => {
+                        if addr >= 0xe000_0000 && addr <= 0xe000_1fff {
+                            println!("MMIO Write for virtio_blk");
+                        }
                         #[cfg(feature = "tdx")]
                         if addr >= 0xfec0_0000 && addr < 0xfec0_0100 {
                             let registers = &mut self.ioapic_registers;
@@ -538,6 +544,8 @@ impl Vcpu {
                                     }
                                 }
                             }
+                            self.metrics.exit_mmio_write.inc();
+                            return Ok(VcpuEmulation::Handled);
                         }
                         let _ = self.io_mgr.mmio_write(addr, data);
                         self.metrics.exit_mmio_write.inc();
