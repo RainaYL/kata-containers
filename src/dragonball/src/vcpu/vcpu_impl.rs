@@ -13,7 +13,7 @@ use std::os::fd::AsRawFd;
 use std::result;
 use std::sync::atomic::{fence, Ordering};
 use std::sync::mpsc::{Receiver, Sender, TryRecvError};
-use std::sync::{Arc, Barrier};
+use std::sync::{Arc, Barrier, RwLock};
 use std::thread;
 
 use dbs_utils::guest_memfd::kvm_set_memory_attributes;
@@ -328,7 +328,7 @@ pub struct Vcpu {
     pub(crate) mpidr: u64,
 
     #[cfg(feature = "tdx")]
-    ioapic_registers: IoapicRegisters,
+    ioapic_registers: Option<Arc<RwLock<IoapicRegisters>>>,
 }
 
 // Using this for easier explicit type-casting to help IDEs interpret the code.
@@ -480,8 +480,8 @@ impl Vcpu {
                         #[cfg(feature = "tdx")]
                         if addr >= 0xfec0_0000 && addr < 0xfec0_0100 {
                             let mut val = 0;
-                            let registers = &self.ioapic_registers;
-                            match self.ioapic_registers.ioapic_select {
+                            let registers = &self.ioapic_registers.as_ref().unwrap().read().unwrap();
+                            match registers.ioapic_select {
                                 0x00 => {
                                     val = 0;
                                 },
@@ -516,7 +516,7 @@ impl Vcpu {
                     VcpuExit::MmioWrite(addr, data) => {
                         #[cfg(feature = "tdx")]
                         if addr >= 0xfec0_0000 && addr < 0xfec0_0100 {
-                            let registers = &mut self.ioapic_registers;
+                            let mut registers = self.ioapic_registers.as_ref().unwrap().write().unwrap();
                             if addr == 0xfec0_0000 {
                                 if data.len() == 4 {
                                     let val = unsafe { *(data.as_ptr() as *const u32) };
@@ -954,6 +954,7 @@ pub mod tests {
             time_stamp,
             false,
             Arc::new(vm),
+            None,
         )
         .unwrap();
 

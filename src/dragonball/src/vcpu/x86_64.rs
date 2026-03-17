@@ -7,7 +7,7 @@
 // found in the THIRD-PARTY file.
 
 use std::sync::mpsc::{channel, Sender};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use dbs_arch::cpuid::{process_cpuid, VmSpec};
 use dbs_arch::gdt::gdt_entry;
@@ -57,6 +57,7 @@ impl Vcpu {
         create_ts: TimestampUs,
         support_immediate_exit: bool,
         vm_fd: Arc<VmFd>,
+        ioapic_registers: Option<Arc<RwLock<IoapicRegisters>>>,
     ) -> Result<Self> {
         let (event_sender, event_receiver) = channel();
         let (response_sender, response_receiver) = channel();
@@ -77,8 +78,7 @@ impl Vcpu {
             metrics: Arc::new(VcpuMetrics::default()),
             cpuid,
             vm_fd,
-            #[cfg(feature = "tdx")]
-            ioapic_registers: IoapicRegisters::default(),
+            ioapic_registers,
         })
     }
 

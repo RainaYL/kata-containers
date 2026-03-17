@@ -7,6 +7,7 @@ use std::ops::Deref;
 use std::os::unix::io::{AsRawFd, RawFd};
 
 use std::sync::{Arc, Mutex, RwLock};
+use dbs_utils::acpi::madt::IoapicRegisters;
 
 use dbs_address_space::AddressSpace;
 #[cfg(target_arch = "aarch64")]
@@ -219,6 +220,8 @@ pub struct Vm {
 
     #[cfg(feature = "tdx")]
     tdx_caps: Option<TdxCapabilities>,
+
+    ioapic_registers: Option<Arc<RwLock<IoapicRegisters>>>,
 }
 
 impl Vm {
@@ -295,6 +298,8 @@ impl Vm {
 
             #[cfg(feature = "tdx")]
             tdx_caps,
+
+            ioapic_registers: Some(Arc::new(RwLock::new(IoapicRegisters::default()))),
         })
     }
 

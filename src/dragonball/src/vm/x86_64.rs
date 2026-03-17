@@ -236,7 +236,7 @@ impl Vm {
         let kernel_loader_result = self.load_kernel(vm_memory.deref(), None)?;
         self.vcpu_manager()
             .map_err(StartMicroVmError::Vcpu)?
-            .create_boot_vcpus(request_ts, kernel_loader_result.kernel_load)
+            .create_boot_vcpus(request_ts, kernel_loader_result.kernel_load, None)
             .map_err(StartMicroVmError::Vcpu)?;
 
         info!(self.logger, "VM: initializing microvm done");
@@ -378,6 +378,7 @@ impl Vm {
                 None,
                 #[cfg(feature = "tdx")]
                 true,
+                self.ioapic_registers.clone(),
             )
             .map_err(StartMicroVmError::Vcpu)?;
 

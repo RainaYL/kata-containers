@@ -14,6 +14,7 @@ use std::os::unix::io::AsRawFd;
 use std::sync::mpsc::{channel, Receiver, RecvError, RecvTimeoutError, Sender};
 use std::sync::{Arc, Barrier, Mutex, RwLock};
 use std::time::Duration;
+use dbs_utils::acpi::madt::IoapicRegisters;
 
 use dbs_arch::VpmuFeatureLevel;
 #[cfg(feature = "tdx")]
@@ -394,6 +395,7 @@ impl VcpuManager {
         &mut self,
         request_ts: TimestampUs,
         entry_addr: GuestAddress,
+        ioapic_registers: Option<Arc<RwLock<IoapicRegisters>>>,
     ) -> Result<()> {
         info!("create boot vcpus");
         let boot_vcpu_count = if cfg!(target_arch = "aarch64") {
@@ -412,6 +414,7 @@ impl VcpuManager {
             Some(entry_addr),
             #[cfg(feature = "tdx")]
             false,
+            ioapic_registers,
         )?;
 
         Ok(())
@@ -434,6 +437,7 @@ impl VcpuManager {
         request_ts: Option<TimestampUs>,
         entry_addr: Option<GuestAddress>,
         #[cfg(feature = "tdx")] tdx_enabled: bool,
+        ioapic_registers: Option<Arc<RwLock<IoapicRegisters>>>,
     ) -> Result<Vec<u8>> {
         info!("create vcpus");
         if vcpu_count > self.vcpu_config.max_vcpu_count {
@@ -449,6 +453,7 @@ impl VcpuManager {
                 entry_addr,
                 #[cfg(feature = "tdx")]
                 tdx_enabled,
+                ioapic_registers.clone(),
             )?;
             created_cpus.push(cpu_id);
         }
@@ -585,6 +590,7 @@ impl VcpuManager {
         request_ts: TimestampUs,
         entry_addr: Option<GuestAddress>,
         #[cfg(feature = "tdx")] tdx_enabled: bool,
+        ioapic_registers: Option<Arc<RwLock<IoapicRegisters>>>,
     ) -> Result<()> {
         info!("creating vcpu {}", cpu_index);
         if self.vcpu_infos.get(cpu_index as usize).is_none() {
@@ -606,7 +612,7 @@ impl VcpuManager {
             }
         };
 
-        let mut vcpu = self.create_vcpu_arch(cpu_index, kvm_vcpu, request_ts)?;
+        let mut vcpu = self.create_vcpu_arch(cpu_index, kvm_vcpu, request_ts, ioapic_registers)?;
         METRICS
             .write()
             .unwrap()
@@ -835,6 +841,7 @@ impl VcpuManager {
         cpu_index: u8,
         vcpu_fd: Arc<VcpuFd>,
         request_ts: TimestampUs,
+        ioapic_registers: Option<Arc<RwLock<IoapicRegisters>>>,
     ) -> Result<Vcpu> {
         // It's safe to unwrap because guest_kernel always exist until vcpu manager done
         Vcpu::new_x86_64(
@@ -849,6 +856,7 @@ impl VcpuManager {
             request_ts,
             self.support_immediate_exit,
             self.vm_fd.clone(),
+            ioapic_registers,
         )
         .map_err(VcpuManagerError::Vcpu)
     }
@@ -955,6 +963,7 @@ mod hotplug {
                     None,
                     #[cfg(feature = "tdx")]
                     false,
+                    None,
                 )
                 .map_err(VcpuResizeError::Vcpu)?;
             let cpu_ids = self
@@ -1290,7 +1299,7 @@ mod tests {
 
         // test create boot vcpu
         assert!(vcpu_manager
-            .create_boot_vcpus(TimestampUs::default(), GuestAddress(0))
+            .create_boot_vcpus(TimestampUs::default(), GuestAddress(0), None)
             .is_ok());
         #[cfg(target_arch = "x86_64")]
         assert_eq!(get_present_unstart_vcpus(&vcpu_manager), 1);
@@ -1314,6 +1323,7 @@ mod tests {
             None,
             #[cfg(feature = "tdx")]
             false,
+            None,
         );
         assert!(matches!(res, Err(VcpuManagerError::ExpectedVcpuExceedMax)));
 
@@ -1324,7 +1334,8 @@ mod tests {
                 None,
                 None,
                 #[cfg(feature = "tdx")]
-                false
+                false,
+                None,
             )
             .is_ok());
         assert_eq!(vcpu_manager.present_vcpus_count(), 0);
@@ -1361,7 +1372,7 @@ mod tests {
         let vm = get_vm();
         let mut vcpu_manager = vm.vcpu_manager().unwrap();
         assert!(vcpu_manager
-            .create_boot_vcpus(TimestampUs::default(), GuestAddress(0))
+            .create_boot_vcpus(TimestampUs::default(), GuestAddress(0), None)
             .is_ok());
         #[cfg(target_arch = "x86_64")]
         assert_eq!(get_present_unstart_vcpus(&vcpu_manager), 1);
@@ -1404,7 +1415,7 @@ mod tests {
         let mut vcpu_manager = vm.vcpu_manager().unwrap();
 
         assert!(vcpu_manager
-            .create_boot_vcpus(TimestampUs::default(), GuestAddress(0))
+            .create_boot_vcpus(TimestampUs::default(), GuestAddress(0), None)
             .is_ok());
         #[cfg(target_arch = "x86_64")]
         assert_eq!(get_present_unstart_vcpus(&vcpu_manager), 1);
@@ -1435,7 +1446,7 @@ mod tests {
         let mut vcpu_manager = vm.vcpu_manager().unwrap();
 
         assert!(vcpu_manager
-            .create_boot_vcpus(TimestampUs::default(), GuestAddress(0))
+            .create_boot_vcpus(TimestampUs::default(), GuestAddress(0), None)
             .is_ok());
         #[cfg(target_arch = "x86_64")]
         assert_eq!(get_present_unstart_vcpus(&vcpu_manager), 1);
@@ -1461,7 +1472,7 @@ mod tests {
         let mut vcpu_manager = vm.vcpu_manager().unwrap();
 
         assert!(vcpu_manager
-            .create_boot_vcpus(TimestampUs::default(), GuestAddress(0))
+            .create_boot_vcpus(TimestampUs::default(), GuestAddress(0), None)
             .is_ok());
         #[cfg(target_arch = "x86_64")]
         assert_eq!(get_present_unstart_vcpus(&vcpu_manager), 1);
@@ -1492,7 +1503,7 @@ mod tests {
         let mut vcpu_manager = vm.vcpu_manager().unwrap();
 
         assert!(vcpu_manager
-            .create_boot_vcpus(TimestampUs::default(), GuestAddress(0))
+            .create_boot_vcpus(TimestampUs::default(), GuestAddress(0), None)
             .is_ok());
         #[cfg(target_arch = "x86_64")]
         assert_eq!(get_present_unstart_vcpus(&vcpu_manager), 1);
@@ -1515,7 +1526,7 @@ mod tests {
         let mut vcpu_manager = vm.vcpu_manager().unwrap();
 
         assert!(vcpu_manager
-            .create_boot_vcpus(TimestampUs::default(), GuestAddress(0))
+            .create_boot_vcpus(TimestampUs::default(), GuestAddress(0), None)
             .is_ok());
         #[cfg(target_arch = "x86_64")]
         assert_eq!(get_present_unstart_vcpus(&vcpu_manager), 1);
