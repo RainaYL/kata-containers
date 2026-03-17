@@ -350,6 +350,8 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
                 }
             }
         }
+
+        println!("IO complete vcpu_fd: {}", self.vcpu_fd.unwrap());
         
         self.queue.notify()
     }
