@@ -530,7 +530,9 @@ impl Vcpu {
                                     let idx = (offset >> 1) as usize;
                                     if (offset & 1) == 0 {
                                         registers.redir_table_entries[idx].low = val;
-                                        println!("gsi: {}, vector: {:#x}, masked: {}", idx, registers.redir_table_entries[idx].get_vector(), registers.redir_table_entries[idx].is_masked());
+                                        if (idx == 5) {
+                                            println!("gsi: {}, vector: {:#x}, masked: {}", idx, registers.redir_table_entries[idx].get_vector(), registers.redir_table_entries[idx].is_masked());
+                                        }
                                     } else {
                                         registers.redir_table_entries[idx].high = val;
                                     }
