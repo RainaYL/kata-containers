@@ -364,6 +364,7 @@ mod tests {
             queues,
             None,
             Arc::new(NoopNotifier::new()),
+            None,
         );
 
         // Test activation.

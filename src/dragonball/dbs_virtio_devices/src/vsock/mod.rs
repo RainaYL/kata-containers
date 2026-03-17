@@ -441,6 +441,7 @@ mod tests {
                 self.queues.drain(..).collect(),
                 None,
                 Arc::new(NoopNotifier::new()),
+                None,
             );
 
             let epoll_handler = self.device.mock_activate(config).unwrap();

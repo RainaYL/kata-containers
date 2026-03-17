@@ -210,6 +210,7 @@ where
         queues: Vec<VirtioQueueConfig<Q>>,
         ctrl_queue: Option<VirtioQueueConfig<Q>>,
         device_change_notifier: Arc<dyn InterruptNotifier>,
+        vcpu_fd: Option<RawFd>,
     ) -> Self {
         VirtioDeviceConfig {
             vm_as,
@@ -220,7 +221,7 @@ where
             ctrl_queue,
             device_change_notifier,
             shm_regions: None,
-            vcpu_fd: None,
+            vcpu_fd,
         }
     }
 
@@ -628,6 +629,7 @@ pub(crate) mod tests {
             queues,
             None,
             device_change_notifier,
+            None,
         )
     }
 
@@ -906,6 +908,7 @@ pub(crate) mod tests {
             queues,
             None,
             Arc::new(NoopNotifier::new()),
+            None,
         );
         device.activate(device_config).unwrap();
     }

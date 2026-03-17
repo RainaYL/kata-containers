@@ -770,6 +770,7 @@ pub(crate) mod tests {
             queues,
             None,
             Arc::new(NoopNotifier::new()),
+            None,
         );
 
         let inflate = VirtioQueueConfig::create(128, 0).unwrap();
@@ -885,6 +886,7 @@ pub(crate) mod tests {
                 queues,
                 None,
                 Arc::new(NoopNotifier::new()),
+                None,
             );
             assert!(dev.activate(config).is_err());
         }
@@ -916,6 +918,7 @@ pub(crate) mod tests {
                 queues,
                 None,
                 Arc::new(NoopNotifier::new()),
+                None,
             );
             assert!(dev.activate(config).is_ok());
         }

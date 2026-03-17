@@ -266,6 +266,7 @@ where
             self.evt_senders.push(evt_sender);
 
             let kill_evt = EventFd::new(EFD_NONBLOCK)?;
+            println!("activate vcpu_fd: {}", config.vcpu_fd.unwrap());
 
             let mut handler = Box::new(InnerBlockEpollHandler {
                 rate_limiter,
@@ -953,6 +954,7 @@ mod tests {
                 queues,
                 None,
                 Arc::new(NoopNotifier::new()),
+                None,
             );
 
             assert!(matches!(
@@ -992,6 +994,7 @@ mod tests {
                 queues,
                 None,
                 Arc::new(NoopNotifier::new()),
+                None,
             );
 
             assert!(matches!(
@@ -1030,6 +1033,7 @@ mod tests {
                 queues,
                 None,
                 Arc::new(NoopNotifier::new()),
+                None
             );
 
             dev.activate(config).unwrap();

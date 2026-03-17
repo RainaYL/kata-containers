@@ -218,6 +218,7 @@ where
             queues,
             ctrl_queue,
             notifier,
+            device.get_vcpu_fd(),
         );
         if let Some(shm_regions) = self.shm_regions.as_ref() {
             config.set_shm_regions((*shm_regions).clone());

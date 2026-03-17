@@ -355,6 +355,10 @@ where
         *self.vcpu_fd.write().unwrap() = Some(vcpu_fd);
         println!("update vcpu fd: {}", vcpu_fd);
     }
+
+    pub fn get_vcpu_fd(&self) -> Option<RawFd> {
+        *self.vcpu_fd.read().unwrap()
+    }
 }
 
 impl<AS, Q, R> DeviceIo for MmioV2Device<AS, Q, R>

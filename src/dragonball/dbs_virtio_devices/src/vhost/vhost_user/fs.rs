@@ -920,6 +920,7 @@ mod tests {
                 queues,
                 None,
                 Arc::new(NoopNotifier::new()),
+                None,
             );
             assert!(dev.activate(config).is_err());
         }
@@ -964,6 +965,7 @@ mod tests {
                 queues,
                 None,
                 Arc::new(NoopNotifier::new()),
+                None,
             );
 
             dev.activate(config).unwrap();

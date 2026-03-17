@@ -1058,6 +1058,7 @@ pub mod tests {
             queues,
             None,
             Arc::new(NoopNotifier::new()),
+            None,
         );
         VirtioFsEpollHandler::new(
             config,
@@ -1225,6 +1226,7 @@ pub mod tests {
                 queues,
                 None,
                 Arc::new(NoopNotifier::new()),
+                None,
             );
             assert!(matches!(
                 fs.activate(config),
@@ -1272,6 +1274,7 @@ pub mod tests {
                 queues,
                 None,
                 Arc::new(NoopNotifier::new()),
+                None,
             );
 
             let result = fs.activate(config);

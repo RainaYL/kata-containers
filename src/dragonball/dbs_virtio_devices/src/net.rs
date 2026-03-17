@@ -885,6 +885,7 @@ mod tests {
             queues,
             None,
             Arc::new(NoopNotifier::new()),
+            None,
         );
         NetEpollHandler {
             tap,
@@ -994,6 +995,7 @@ mod tests {
                     queues,
                     None,
                     Arc::new(NoopNotifier::new()),
+                    None,
                 );
 
             matches!(dev.activate(config), Err(ActivateError::InvalidParam));
@@ -1031,6 +1033,7 @@ mod tests {
                     queues,
                     None,
                     Arc::new(NoopNotifier::new()),
+                    None,
                 );
 
             matches!(dev.activate(config), Err(ActivateError::InvalidParam));
@@ -1067,6 +1070,7 @@ mod tests {
                     queues,
                     None,
                     Arc::new(NoopNotifier::new()),
+                    None,
                 );
 
             matches!(dev.activate(config), Err(ActivateError::InvalidParam));
@@ -1104,6 +1108,7 @@ mod tests {
                     queues,
                     None,
                     Arc::new(NoopNotifier::new()),
+                    None,
                 );
 
             assert!(dev.activate(config).is_ok());

@@ -1426,6 +1426,7 @@ pub(crate) mod tests {
             queues,
             None,
             Arc::new(NoopNotifier::new()),
+            None,
         );
         let mem_config = Arc::new(Mutex::new(VirtioMemConfig::default()));
         let map_regions = vec![(0, Some((0, 0)))];
@@ -1909,6 +1910,7 @@ pub(crate) mod tests {
                 queues,
                 None,
                 Arc::new(NoopNotifier::new()),
+                None,
             );
             let result = dev.activate(config);
             assert!(matches!(result, Err(ActivateError::InvalidParam)));
@@ -1942,6 +1944,7 @@ pub(crate) mod tests {
                 queues,
                 None,
                 Arc::new(NoopNotifier::new()),
+                None,
             );
             let result = dev.activate(config);
             assert!(matches!(result, Err(ActivateError::InternalError)));
@@ -1968,6 +1971,7 @@ pub(crate) mod tests {
                 queues,
                 None,
                 Arc::new(NoopNotifier::new()),
+                None,
             );
             dev.map_regions.lock().unwrap().push((0, None));
             assert!(dev.activate(config).is_ok());
@@ -1998,6 +2002,7 @@ pub(crate) mod tests {
             queues,
             None,
             Arc::new(NoopNotifier::new()),
+            None,
         );
         dev.map_regions.lock().unwrap().push((0, None));
 

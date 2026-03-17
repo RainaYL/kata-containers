@@ -792,6 +792,7 @@ impl<
             queues,
             ctrl_queue,
             config_notifier,
+            None,
         );
 
         if let Some(shm_regions) = self.shm_regions.as_ref() {
