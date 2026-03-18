@@ -259,4 +259,8 @@ impl IoapicRedirEntry {
     pub fn is_masked(&self) -> bool {
         ((self.low >> 16) & 1) == 1
     }
+
+    pub fn get_apicid(&self) -> u32 {
+        (self.high >> 24) & 0xff
+    }
 }

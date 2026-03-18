@@ -272,6 +272,7 @@ where
             println!("activate vcpu_fd: {}", config.vcpu_fd.unwrap());
             let idx = config.resources.get_legacy_irq().unwrap() as usize;
             let irq = self.ioapic_registers.as_ref().unwrap().read().unwrap().redir_table_entries[idx].get_vector();
+            println!("apicid: {}", self.ioapic_registers.as_ref().unwrap().read().unwrap().redir_table_entries[idx].get_apicid());
 
             let mut handler = Box::new(InnerBlockEpollHandler {
                 rate_limiter,
