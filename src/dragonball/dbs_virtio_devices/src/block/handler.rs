@@ -351,7 +351,13 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
             }
         }
 
-        println!("IO complete vcpu_fd: {}, vector: {:#x}", self.vcpu_fd.unwrap(), self.irq.unwrap());
+        let kvm_interrupt = kvm_interrupt {
+            irq: self.irq.unwrap(),
+        };
+        let vcpu_fd = self.vcpu_fd.unwrap();
+
+        let ret = unsafe { ioctl_with_ref(&vcpu_fd, KVM_INTERRUPT(), &kvm_interrupt) };
+        println!("KVM_INTERRUPT ret: {}", ret);
         
         self.queue.notify()
     }
