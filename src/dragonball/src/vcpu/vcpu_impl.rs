@@ -500,6 +500,9 @@ impl Vcpu {
                                         } else {
                                             val = registers.redir_table_entries[idx].high;
                                         }
+                                        if idx == 5 {
+                                            println!("gsi: {}, vector: {:#x}, masked: {}", idx, registers.redir_table_entries[idx].get_vector(), registers.redir_table_entries[idx].is_masked());
+                                        }
                                     } else {
                                         val = 0;
                                     }
