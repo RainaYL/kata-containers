@@ -270,6 +270,8 @@ where
 
             let kill_evt = EventFd::new(EFD_NONBLOCK)?;
             println!("activate vcpu_fd: {}", config.vcpu_fd.unwrap());
+            let idx = config.resources.get_legacy_irq().unwrap() as usize;
+            let irq = self.ioapic_registers.as_ref().unwrap().read().unwrap().redir_table_entries[idx].get_vector();
 
             let mut handler = Box::new(InnerBlockEpollHandler {
                 rate_limiter,
@@ -283,7 +285,7 @@ where
                 queue,
                 kill_evt: kill_evt.try_clone().unwrap(),
                 vcpu_fd: config.vcpu_fd,
-                irq: config.resources.get_legacy_irq(),
+                irq: Some(irq as u32),
             });
             info!("register handler");
 
