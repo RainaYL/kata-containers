@@ -10,8 +10,8 @@ use std::ops::Deref;
 use std::os::unix::io::{RawFd, AsRawFd};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, RwLock};
-use kvm_bindings::{KVMIO, kvm_irq_level};
-use vmm_sys_util::{ioctl_ioc_nr, ioctl_iowr_nr};
+use kvm_bindings::{KVMIO, kvm_irq_level, kvm_interrupt};
+use vmm_sys_util::{ioctl_ioc_nr, ioctl_iowr_nr, ioctl_iow_nr};
 use vmm_sys_util::ioctl::ioctl_with_ref;
 use dbs_utils::acpi::madt::IoapicRegisters;
 use kvm_ioctls::VmFd;
@@ -43,6 +43,7 @@ pub const END_IO_EVENT: u32 = 2;
 pub const KILL_EVENT: u32 = 4;
 
 ioctl_iowr_nr!(KVM_IRQ_LINE_STATUS, KVMIO, 0x67, kvm_irq_level);
+ioctl_iow_nr!(KVM_INTERRUPT, KVMIO, 0x86, kvm_interrupt);
 
 pub(crate) struct InnerBlockEpollHandler<AS: DbsGuestAddressSpace, Q: QueueT> {
     pub(crate) disk_image: Box<dyn Ufile>,
@@ -359,29 +360,15 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
             }
         }
 
-        // let kvm_interrupt = kvm_interrupt {
-        //     irq: self.irq.unwrap(),
-        // };
-        // let vcpu_fd = self.vcpu_fd.unwrap();
+        let kvm_interrupt = kvm_interrupt {
+            irq: self.ioapic_registers.as_ref().unwrap().read().unwrap().redir_table_entries[self.irq.unwrap() as usize].get_vector() as u32,
+        };
+        let vcpu_fd = self.vcpu_fd.unwrap();
 
-        println!("irq: {}, trigger mode: {}, vm_fd: {}", self.irq.unwrap(), self.ioapic_registers.as_ref().unwrap().read().unwrap().redir_table_entries[self.irq.unwrap() as usize].get_trigger_mode(), self.vm_fd.as_ref().unwrap().as_raw_fd());
-        let mut kvm_irq_level = kvm_irq_level::default();
-        kvm_irq_level.__bindgen_anon_1.irq = self.irq.unwrap();
-        kvm_irq_level.level = 1;
+        unsafe { ioctl_with_ref(&vcpu_fd, KVM_INTERRUPT(), &kvm_interrupt) };
+        
         
         self.queue.notify().unwrap();
-        let vm_fd = self.vm_fd.as_ref().unwrap().as_raw_fd();
-        let trigger_mode = self.ioapic_registers.as_ref().unwrap().read().unwrap().redir_table_entries[self.irq.unwrap() as usize].get_trigger_mode();
-
-        let ret = unsafe { ioctl_with_ref(&vm_fd, KVM_IRQ_LINE_STATUS(), &kvm_irq_level) };
-        unsafe { println!("ret: {}, status: {}", ret, kvm_irq_level.__bindgen_anon_1.status); }
-        
-        if trigger_mode == 0 {
-            kvm_irq_level.__bindgen_anon_1.irq = self.irq.unwrap();
-            kvm_irq_level.level = 0;
-            let ret = unsafe { ioctl_with_ref(&vm_fd, KVM_IRQ_LINE_STATUS(), &kvm_irq_level) };
-            unsafe { println!("ret: {}, status: {}", ret, kvm_irq_level.__bindgen_anon_1.status); }
-        }
 
         Ok(())
     }
