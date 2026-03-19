@@ -417,6 +417,7 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> EpollHelperHandler for InnerBlockEpoll
         println!("handle_event: {}", slot);
         match slot {
             QUEUE_AVAIL_EVENT => {
+                println!("QUEUE_AVAIL_EVENT");
                 if let Err(e) = self.queue.consume_event() {
                     error!("virtio-blk: failed to get queue event: {:?}", e);
                     return true;
@@ -430,6 +431,7 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> EpollHelperHandler for InnerBlockEpoll
                 }
             }
             END_IO_EVENT => {
+                println!("END_IO_EVENT");
                 // NOTE: Here we should drain io event fd, but different Ufile implementations
                 // may use different Events, and complete may depend on the count of reads from
                 // within io event. so leave it to IoEngine::complete to drain event fd.
@@ -439,6 +441,7 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> EpollHelperHandler for InnerBlockEpoll
                 }
             }
             RATE_LIMITER_EVENT => {
+                println!("RATE_LIMITER_EVENT");
                 // Upon rate limiter event, call the rate limiter handler
                 // and restart processing the queue.
                 if self.rate_limiter.event_handler().is_ok() && self.process_queue() {
@@ -448,6 +451,7 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> EpollHelperHandler for InnerBlockEpoll
                 }
             }
             KILL_EVENT => {
+                println!("KILL_EVENT");
                 let _ = self.kill_evt.read();
                 while let Ok(evt) = self.evt_receiver.try_recv() {
                     match evt {
