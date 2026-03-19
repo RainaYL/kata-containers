@@ -263,4 +263,8 @@ impl IoapicRedirEntry {
     pub fn get_apicid(&self) -> u32 {
         (self.high >> 24) & 0xff
     }
+
+    pub fn get_trigger_mode(&self) -> u32 {
+        (self.low >> 15) & 1
+    }
 }

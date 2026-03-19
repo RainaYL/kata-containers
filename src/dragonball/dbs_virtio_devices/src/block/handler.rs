@@ -9,9 +9,11 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::os::unix::io::{RawFd, AsRawFd};
 use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{Arc, RwLock};
 use kvm_bindings::{KVMIO, kvm_interrupt};
 use vmm_sys_util::{ioctl_ioc_nr, ioctl_iow_nr};
 use vmm_sys_util::ioctl::ioctl_with_ref;
+use dbs_utils::acpi::madt::IoapicRegisters;
 
 use dbs_utils::{
     epoll_manager::{EventOps, Events, MutEventSubscriber},
@@ -54,6 +56,7 @@ pub(crate) struct InnerBlockEpollHandler<AS: DbsGuestAddressSpace, Q: QueueT> {
     pub(crate) vm_as: AS,
     pub(crate) queue: VirtioQueueConfig<Q>,
     pub(crate) vcpu_fd: Option<RawFd>,
+    pub(crate) ioapic_registers: Option<Arc<RwLock<IoapicRegisters>>>,
     pub(crate) irq: Option<u32>,
 }
 
@@ -351,14 +354,15 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
             }
         }
 
-        let kvm_interrupt = kvm_interrupt {
-            irq: self.irq.unwrap(),
-        };
-        let vcpu_fd = self.vcpu_fd.unwrap();
+        // let kvm_interrupt = kvm_interrupt {
+        //     irq: self.irq.unwrap(),
+        // };
+        // let vcpu_fd = self.vcpu_fd.unwrap();
 
-        println!("irq: {}", self.irq.unwrap());
+        println!("irq: {}, trigger mode: {}", self.irq.unwrap(), self.ioapic_registers.as_ref().unwrap().read().unwrap().redir_table_entries[self.irq.unwrap() as usize].get_trigger_mode());
         
-        self.queue.notify()
+        self.queue.notify().unwrap();
+        Ok(())
     }
 
     pub(crate) fn get_patch_rate_limiters(&mut self, bytes: BucketUpdate, ops: BucketUpdate) {

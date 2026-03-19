@@ -285,6 +285,7 @@ where
                 kill_evt: kill_evt.try_clone().unwrap(),
                 vcpu_fd: config.vcpu_fd,
                 irq: Some(irq as u32),
+                ioapic_registers: self.ioapic_registers.clone(),
             });
             info!("register handler");
 
@@ -1105,6 +1106,7 @@ mod tests {
             queue,
             vcpu_fd: None,
             irq: None,
+            ioapic_registers: None,
         }
     }
 
