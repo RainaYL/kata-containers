@@ -370,11 +370,14 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
         let vm_fd = self.vm_fd.as_ref().unwrap().as_raw_fd();
         let trigger_mode = self.ioapic_registers.as_ref().unwrap().read().unwrap().redir_table_entries[self.irq.unwrap() as usize].get_trigger_mode();
 
-        unsafe { ioctl_with_ref(&vm_fd, KVM_IRQ_LINE_STATUS(), &kvm_irq_level) };
+        let ret = unsafe { ioctl_with_ref(&vm_fd, KVM_IRQ_LINE_STATUS(), &kvm_irq_level) };
+        unsafe { println!("ret: {}, status: {}", ret, kvm_irq_level.__bindgen_anon_1.status); }
         
         if trigger_mode == 0 {
+            kvm_irq_level.__bindgen_anon_1.irq = self.irq.unwrap();
             kvm_irq_level.level = 0;
-            unsafe { ioctl_with_ref(&vm_fd, KVM_IRQ_LINE_STATUS(), &kvm_irq_level) };
+            let ret = unsafe { ioctl_with_ref(&vm_fd, KVM_IRQ_LINE_STATUS(), &kvm_irq_level) };
+            unsafe { println!("ret: {}, status: {}", ret, kvm_irq_level.__bindgen_anon_1.status); }
         }
 
         Ok(())
