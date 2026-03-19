@@ -84,6 +84,7 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
         'next_desc: for mut desc_chain in &mut iter {
             // Safe to index data_desc_vec with index, as index has been checked in iterator
             let index = desc_chain.head_index();
+            println!("desc chain index: {}", index);
             let data_descs = &mut self.data_desc_vec[index as usize];
             let iovecs = &mut self.iovecs_vec[index as usize];
             data_descs.clear();
