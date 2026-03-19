@@ -424,7 +424,7 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> EpollHelperHandler for InnerBlockEpoll
                 } else if self.rate_limiter.is_blocked() {
                     // While limiter is blocked, don't process any more requests.
                 } else if self.process_queue() {
-                    println!("notify");
+                    println!("notify after process queue");
                     self.queue
                         .notify()
                         .expect("virtio-blk: failed to notify guest");
