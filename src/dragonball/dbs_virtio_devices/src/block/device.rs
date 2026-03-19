@@ -12,6 +12,7 @@ use std::io::{Seek, SeekFrom};
 use std::marker::PhantomData;
 use std::sync::{mpsc, Arc, RwLock};
 use std::thread;
+use kvm_ioctls::VmFd;
 
 use dbs_device::resources::ResourceConstraint;
 use dbs_utils::{
@@ -72,6 +73,7 @@ pub struct Block<AS: DbsGuestAddressSpace> {
     epoll_threads: Vec<thread::JoinHandle<()>>,
     phantom: PhantomData<AS>,
     ioapic_registers: Option<Arc<RwLock<IoapicRegisters>>>,
+    vm_fd: Option<Arc<VmFd>>,
 }
 
 impl<AS: DbsGuestAddressSpace> Block<AS> {
@@ -86,6 +88,7 @@ impl<AS: DbsGuestAddressSpace> Block<AS> {
         rate_limiters: Vec<RateLimiter>,
         f_iommu_platform: bool,
         ioapic_registers: Option<Arc<RwLock<IoapicRegisters>>>,
+        vm_fd: Option<Arc<VmFd>>,
     ) -> Result<Self> {
         let num_queues = disk_images.len();
 
@@ -139,6 +142,7 @@ impl<AS: DbsGuestAddressSpace> Block<AS> {
             kill_evts: Vec::with_capacity(num_queues),
             epoll_threads: Vec::with_capacity(num_queues),
             ioapic_registers,
+            vm_fd,
         })
     }
 
@@ -286,6 +290,7 @@ where
                 vcpu_fd: config.vcpu_fd,
                 irq: Some(irq as u32),
                 ioapic_registers: self.ioapic_registers.clone(),
+                vm_fd: self.vm_fd.clone(),
             });
             info!("register handler");
 
@@ -885,6 +890,7 @@ mod tests {
             vec![],
             false,
             None,
+            None,
         )
         .unwrap();
 
@@ -943,6 +949,7 @@ mod tests {
                 vec![],
                 false,
                 None,
+                None,
             )
             .unwrap();
 
@@ -982,6 +989,7 @@ mod tests {
                 epoll_mgr.clone(),
                 vec![],
                 false,
+                None,
                 None,
             )
             .unwrap();
@@ -1024,6 +1032,7 @@ mod tests {
                 vec![],
                 false,
                 None,
+                None,
             )
             .unwrap();
 
@@ -1063,6 +1072,7 @@ mod tests {
             epoll_mgr,
             vec![],
             false,
+            None,
             None,
         )
         .unwrap();
@@ -1107,6 +1117,7 @@ mod tests {
             vcpu_fd: None,
             irq: None,
             ioapic_registers: None,
+            vm_fd: None,
         }
     }
 

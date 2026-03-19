@@ -10,10 +10,11 @@ use std::ops::Deref;
 use std::os::unix::io::{RawFd, AsRawFd};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, RwLock};
-use kvm_bindings::{KVMIO, kvm_interrupt};
-use vmm_sys_util::{ioctl_ioc_nr, ioctl_iow_nr};
+use kvm_bindings::{KVMIO, kvm_irq_level};
+use vmm_sys_util::{ioctl_ioc_nr, ioctl_iowr_nr};
 use vmm_sys_util::ioctl::ioctl_with_ref;
 use dbs_utils::acpi::madt::IoapicRegisters;
+use kvm_ioctls::VmFd;
 
 use dbs_utils::{
     epoll_manager::{EventOps, Events, MutEventSubscriber},
@@ -41,7 +42,7 @@ pub const END_IO_EVENT: u32 = 2;
 // trigger the thread to deal with some specific event
 pub const KILL_EVENT: u32 = 4;
 
-ioctl_iow_nr!(KVM_INTERRUPT, KVMIO, 0x86, kvm_interrupt);
+ioctl_iowr_nr!(KVM_IRQ_LINE_STATUS, KVMIO, 0x67, kvm_irq_level);
 
 pub(crate) struct InnerBlockEpollHandler<AS: DbsGuestAddressSpace, Q: QueueT> {
     pub(crate) disk_image: Box<dyn Ufile>,
@@ -58,6 +59,7 @@ pub(crate) struct InnerBlockEpollHandler<AS: DbsGuestAddressSpace, Q: QueueT> {
     pub(crate) vcpu_fd: Option<RawFd>,
     pub(crate) ioapic_registers: Option<Arc<RwLock<IoapicRegisters>>>,
     pub(crate) irq: Option<u32>,
+    pub(crate) vm_fd: Option<Arc<VmFd>>,
 }
 
 impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
@@ -359,9 +361,13 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
         // };
         // let vcpu_fd = self.vcpu_fd.unwrap();
 
-        println!("irq: {}, trigger mode: {}", self.irq.unwrap(), self.ioapic_registers.as_ref().unwrap().read().unwrap().redir_table_entries[self.irq.unwrap() as usize].get_trigger_mode());
+        println!("irq: {}, trigger mode: {}, vm_fd: {}", self.irq.unwrap(), self.ioapic_registers.as_ref().unwrap().read().unwrap().redir_table_entries[self.irq.unwrap() as usize].get_trigger_mode(), self.vm_fd.as_ref().unwrap().as_raw_fd());
+        let mut kvm_irq_level = kvm_irq_level::default();
+        kvm_irq_level.__bindgen_anon_1.irq = self.irq.unwrap();
+        kvm_irq_level.level = 1;
         
         self.queue.notify().unwrap();
+
         Ok(())
     }
 

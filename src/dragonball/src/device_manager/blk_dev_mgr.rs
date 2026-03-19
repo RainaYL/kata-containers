@@ -30,6 +30,7 @@ use dbs_virtio_devices::vhost::vhost_user::block::VhostUserBlock;
 use serde_derive::{Deserialize, Serialize};
 use virtio_queue::QueueSync;
 use vm_memory::GuestRegionMmap;
+use kvm_ioctls::VmFd;
 
 use crate::address_space_manager::GuestAddressSpaceImpl;
 use crate::config_manager::{ConfigItem, DeviceConfigInfo, RateLimiterConfigInfo};
@@ -738,6 +739,7 @@ impl BlockDeviceMgr {
             limiters,
             ctx.is_tdx_enabled(),
             ioapic_registers,
+            Some(ctx.vm_fd.clone()),
         )?))
     }
 
