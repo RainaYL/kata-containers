@@ -156,8 +156,10 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
             for entry in &used_desc_vec {
                 self.queue.add_used(mem, entry.0, entry.1);
             }
+            println!("used_desc_vec not empty");
             true
         } else {
+            println!("used_desc_vec empty");
             false
         }
     }
