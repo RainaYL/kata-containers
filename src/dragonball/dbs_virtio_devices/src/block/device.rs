@@ -270,9 +270,7 @@ where
 
             let kill_evt = EventFd::new(EFD_NONBLOCK)?;
             println!("activate vcpu_fd: {}", config.vcpu_fd.unwrap());
-            let idx = config.resources.get_legacy_irq().unwrap() as usize;
-            let irq = self.ioapic_registers.as_ref().unwrap().read().unwrap().redir_table_entries[idx].get_vector();
-            println!("apicid: {}", self.ioapic_registers.as_ref().unwrap().read().unwrap().redir_table_entries[idx].get_apicid());
+            let irq = config.resources.get_legacy_irq().unwrap() as usize;
 
             let mut handler = Box::new(InnerBlockEpollHandler {
                 rate_limiter,

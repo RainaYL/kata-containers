@@ -356,8 +356,7 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
         };
         let vcpu_fd = self.vcpu_fd.unwrap();
 
-        let ret = unsafe { ioctl_with_ref(&vcpu_fd, KVM_INTERRUPT(), &kvm_interrupt) };
-        println!("KVM_INTERRUPT ret: {}", ret);
+        println!("irq: {}", self.irq.unwrap());
         
         self.queue.notify()
     }
