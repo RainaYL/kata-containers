@@ -442,7 +442,6 @@ impl DeviceOpContext {
                     .map_err(DeviceMgrError::Cmdline)?;
                 let mmiov2_dev = device.as_any().downcast_ref::<DbsMmioV2Device>().unwrap();
                 let dev_type = mmiov2_dev.get_device_type();
-                println!("device type: {}, {:08x}", dev_type, mmio_base);
             }
         }
 

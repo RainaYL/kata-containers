@@ -606,7 +606,6 @@ impl VcpuManager {
                         .map_err(VcpuError::VcpuFd)
                         .map_err(VcpuManagerError::Vcpu)?,
                 );
-                println!("Created vcpu_fd: {}", vcpu_fd.as_raw_fd());
                 self.vcpu_infos[cpu_index as usize].vcpu_fd = Some(vcpu_fd.clone());
                 vcpu_fd
             }

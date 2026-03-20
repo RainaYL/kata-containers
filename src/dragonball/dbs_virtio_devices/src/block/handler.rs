@@ -65,7 +65,6 @@ pub(crate) struct InnerBlockEpollHandler<AS: DbsGuestAddressSpace, Q: QueueT> {
 
 impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
     pub(crate) fn process_queue(&mut self) -> bool {
-        println!("process queue");
         let as_mem = self.vm_as.memory();
         let mem = as_mem.deref();
         let mut queue = self.queue.queue_mut().lock();
@@ -85,7 +84,6 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
         'next_desc: for mut desc_chain in &mut iter {
             // Safe to index data_desc_vec with index, as index has been checked in iterator
             let index = desc_chain.head_index();
-            println!("desc chain index: {}", index);
             let data_descs = &mut self.data_desc_vec[index as usize];
             let iovecs = &mut self.iovecs_vec[index as usize];
             data_descs.clear();
@@ -157,10 +155,8 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
             for entry in &used_desc_vec {
                 self.queue.add_used(mem, entry.0, entry.1);
             }
-            println!("used_desc_vec not empty");
             true
         } else {
-            println!("used_desc_vec empty");
             false
         }
     }
@@ -323,7 +319,6 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
     }
 
     pub(crate) fn io_complete(&mut self) -> Result<()> {
-        println!("io_complete");
         let as_mem = self.vm_as.memory();
         let mem: &AS::M = as_mem.deref();
         let iovs = self.disk_image.io_complete()?;
@@ -368,7 +363,6 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
         // unsafe { ioctl_with_ref(&vcpu_fd, KVM_INTERRUPT(), &kvm_interrupt) };
 
         let enabled = self.vm_fd.as_ref().unwrap().check_extension(kvm_ioctls::Cap::SignalMsi);
-        println!("Signal msi enabled: {}", enabled);
         
         let redir_entry = self.ioapic_registers.as_ref().unwrap().read().unwrap().get_redir_entry(self.irq.unwrap() as usize);
         let vector = redir_entry.get_vector();
@@ -398,7 +392,6 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
     }
 
     pub(crate) fn run(&mut self) -> std::result::Result<(), EpollHelperError> {
-        println!("run");
         let mut helper = EpollHelper::new()?;
         helper.add_event(self.queue.eventfd.as_raw_fd(), QUEUE_AVAIL_EVENT)?;
         helper.add_event_custom(
@@ -420,34 +413,28 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
 impl<AS: DbsGuestAddressSpace, Q: QueueT> EpollHelperHandler for InnerBlockEpollHandler<AS, Q> {
     fn handle_event(&mut self, _helper: &mut EpollHelper, event: &epoll::Event) -> bool {
         let slot = event.data as u32;
-        println!("handle_event: {}", slot);
         match slot {
             QUEUE_AVAIL_EVENT => {
-                println!("QUEUE_AVAIL_EVENT");
                 if let Err(e) = self.queue.consume_event() {
                     error!("virtio-blk: failed to get queue event: {:?}", e);
                     return true;
                 } else if self.rate_limiter.is_blocked() {
                     // While limiter is blocked, don't process any more requests.
                 } else if self.process_queue() {
-                    println!("notify after process queue");
                     self.queue
                         .notify()
                         .expect("virtio-blk: failed to notify guest");
                 }
             }
             END_IO_EVENT => {
-                println!("END_IO_EVENT");
                 // NOTE: Here we should drain io event fd, but different Ufile implementations
                 // may use different Events, and complete may depend on the count of reads from
                 // within io event. so leave it to IoEngine::complete to drain event fd.
                 // io_complete() only returns permanent errors.
                 if let Err(_) = self.io_complete() {
-                    println!("Error notify");
                 }
             }
             RATE_LIMITER_EVENT => {
-                println!("RATE_LIMITER_EVENT");
                 // Upon rate limiter event, call the rate limiter handler
                 // and restart processing the queue.
                 if self.rate_limiter.event_handler().is_ok() && self.process_queue() {
@@ -457,7 +444,6 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> EpollHelperHandler for InnerBlockEpoll
                 }
             }
             KILL_EVENT => {
-                println!("KILL_EVENT");
                 let _ = self.kill_evt.read();
                 while let Ok(evt) = self.evt_receiver.try_recv() {
                     match evt {

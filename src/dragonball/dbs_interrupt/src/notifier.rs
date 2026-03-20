@@ -63,7 +63,6 @@ mod legacy {
 
     impl InterruptNotifier for LegacyNotifier {
         fn notify(&self) -> Result<(), Error> {
-            println!("Legacy notify");
             self.intr_status.set_bits(self.status_bits);
             self.intr_group.trigger(0)
         }
@@ -108,7 +107,6 @@ mod msi {
 
     impl InterruptNotifier for MsiNotifier {
         fn notify(&self) -> Result<(), Error> {
-            println!("MSI notify");
             self.intr_group.trigger(self.intr_index)
         }
 

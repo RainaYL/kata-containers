@@ -353,7 +353,6 @@ where
 
     pub fn update_vcpu_fd(&self, vcpu_fd: RawFd) {
         *self.vcpu_fd.write().unwrap() = Some(vcpu_fd);
-        println!("update vcpu fd: {}", vcpu_fd);
     }
 
     pub fn get_vcpu_fd(&self) -> Option<RawFd> {

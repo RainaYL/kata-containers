@@ -236,13 +236,11 @@ impl Request {
         for io in data_descs {
             match self.request_type {
                 RequestType::In => {
-                    println!("Virtio block: IN");
                     mem.read_from(GuestAddress(io.data_addr), disk, io.data_len)
                         .map_err(ExecuteError::Read)?;
                     len += io.data_len;
                 }
                 RequestType::Out => {
-                    println!("Virtio block: OUT");
                     mem.write_to(GuestAddress(io.data_addr), disk, io.data_len)
                         .map_err(ExecuteError::Write)?;
                 }

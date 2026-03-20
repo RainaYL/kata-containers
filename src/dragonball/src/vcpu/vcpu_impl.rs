@@ -500,9 +500,6 @@ impl Vcpu {
                                         } else {
                                             val = registers.redir_table_entries[idx].high;
                                         }
-                                        if idx == 5 {
-                                            println!("gsi: {}, vector: {:#x}, masked: {}", idx, registers.redir_table_entries[idx].get_vector(), registers.redir_table_entries[idx].is_masked());
-                                        }
                                     } else {
                                         val = 0;
                                     }
@@ -533,9 +530,6 @@ impl Vcpu {
                                     let idx = (offset >> 1) as usize;
                                     if (offset & 1) == 0 {
                                         registers.redir_table_entries[idx].low = val;
-                                        if idx == 5 {
-                                            println!("gsi: {}, vector: {:#x}, masked: {}", idx, registers.redir_table_entries[idx].get_vector(), registers.redir_table_entries[idx].is_masked());
-                                        }
                                     } else {
                                         registers.redir_table_entries[idx].high = val;
                                     }
@@ -589,7 +583,6 @@ impl Vcpu {
                             let gpa = hc_exit.args[0];
                             let size = hc_exit.args[1] * dbs_boot::PAGE_SIZE as u64;
                             let attributes = hc_exit.args[2];
-                            println!("gpa: {:#18x}, size: {:#18x}, attributes: {}", gpa, size, attributes);
                             kvm_set_memory_attributes(
                                 &self.vm_fd.as_raw_fd(),
                                 gpa,
@@ -598,7 +591,6 @@ impl Vcpu {
                                 0,
                             )
                             .map_err(|e| {
-                                println!("Error set memory attributes");
                                 VcpuError::SetMemoryAttributes(e)
                             })?;
                             Ok(VcpuEmulation::Handled)
