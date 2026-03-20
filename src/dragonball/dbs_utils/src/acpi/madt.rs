@@ -223,7 +223,7 @@ unsafe impl ByteValued for MadtEntryIoapic {}
 unsafe impl ByteValued for MadtEntryIntrSrcOverride {}
 unsafe impl ByteValued for MadtEntryLocalX2Apic {}
 
-#[derive(Default)]
+#[derive(Default, Copy, Clone)]
 pub struct IoapicRedirEntry {
     pub low: u32,
     pub high: u32,
@@ -251,9 +251,15 @@ impl Default for IoapicRegisters {
     }
 }
 
+impl IoapicRegisters {
+    pub fn get_redir_entry(&self, idx: usize) -> IoapicRedirEntry {
+        self.redir_table_entries[idx]
+    }
+}
+
 impl IoapicRedirEntry {
-    pub fn get_vector(&self) -> u8 {
-        (self.low & 0xff) as u8
+    pub fn get_vector(&self) -> u32 {
+        self.low & 0xff
     }
 
     pub fn is_masked(&self) -> bool {
@@ -266,5 +272,13 @@ impl IoapicRedirEntry {
 
     pub fn get_trigger_mode(&self) -> u32 {
         (self.low >> 15) & 1
+    }
+
+    pub fn get_delivery_mode(&self) -> u32 {
+        (self.low >> 8) & 0x7
+    }
+
+    pub fn get_dest_mode(&self) -> u32 {
+        (self.low >> 11) & 0x1
     }
 }

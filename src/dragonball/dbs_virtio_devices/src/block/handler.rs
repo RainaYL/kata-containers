@@ -10,7 +10,7 @@ use std::ops::Deref;
 use std::os::unix::io::{RawFd, AsRawFd};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, RwLock};
-use kvm_bindings::{KVMIO, kvm_irq_level, kvm_interrupt};
+use kvm_bindings::{KVMIO, kvm_irq_level, kvm_interrupt, kvm_msi};
 use vmm_sys_util::{ioctl_ioc_nr, ioctl_iowr_nr, ioctl_iow_nr};
 use vmm_sys_util::ioctl::ioctl_with_ref;
 use dbs_utils::acpi::madt::IoapicRegisters;
@@ -370,7 +370,20 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
         let enabled = self.vm_fd.as_ref().unwrap().check_extension(kvm_ioctls::Cap::SignalMsi);
         println!("Signal msi enabled: {}", enabled);
         
-        
+        let redir_entry = self.ioapic_registers.as_ref().unwrap().read().unwrap().get_redir_entry(self.irq.unwrap() as usize);
+        let vector = redir_entry.get_vector();
+        let delivery_mode = redir_entry.get_delivery_mode();
+        let dest_mode = redir_entry.get_dest_mode();
+        let dest = redir_entry.get_apicid();
+
+        let kvm_msi = kvm_msi {
+            address_lo: 0xfee0_0000 | (dest << 12) | (dest_mode << 2),
+            data: vector | (delivery_mode << 8),
+            ..Default::default()
+        };
+
+        self.vm_fd.as_ref().unwrap().signal_msi(kvm_msi).unwrap();
+
         self.queue.notify().unwrap();
 
         Ok(())
