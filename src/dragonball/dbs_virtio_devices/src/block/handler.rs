@@ -360,12 +360,15 @@ impl<AS: DbsGuestAddressSpace, Q: QueueT> InnerBlockEpollHandler<AS, Q> {
             }
         }
 
-        let kvm_interrupt = kvm_interrupt {
-            irq: self.ioapic_registers.as_ref().unwrap().read().unwrap().redir_table_entries[self.irq.unwrap() as usize].get_vector() as u32,
-        };
-        let vcpu_fd = self.vcpu_fd.unwrap();
+        // let kvm_interrupt = kvm_interrupt {
+        //     irq: self.ioapic_registers.as_ref().unwrap().read().unwrap().redir_table_entries[self.irq.unwrap() as usize].get_vector() as u32,
+        // };
+        // let vcpu_fd = self.vcpu_fd.unwrap();
 
-        unsafe { ioctl_with_ref(&vcpu_fd, KVM_INTERRUPT(), &kvm_interrupt) };
+        // unsafe { ioctl_with_ref(&vcpu_fd, KVM_INTERRUPT(), &kvm_interrupt) };
+
+        let enabled = self.vm_fd.as_ref().unwrap().check_extension(kvm_ioctls::Cap::SignalMsi);
+        println!("Signal msi enabled: {}", enabled);
         
         
         self.queue.notify().unwrap();
