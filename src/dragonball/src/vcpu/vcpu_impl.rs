@@ -589,6 +589,7 @@ impl Vcpu {
                             let gpa = hc_exit.args[0];
                             let size = hc_exit.args[1] * dbs_boot::PAGE_SIZE as u64;
                             let attributes = hc_exit.args[2];
+                            println!("gpa: {:#18x}, size: {:#18x}, attributes: {}", gpa, size, attributes);
                             kvm_set_memory_attributes(
                                 &self.vm_fd.as_raw_fd(),
                                 gpa,
