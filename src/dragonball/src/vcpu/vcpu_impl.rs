@@ -594,7 +594,7 @@ impl Vcpu {
                                 &self.vm_fd.as_raw_fd(),
                                 gpa,
                                 size,
-                                attributes,
+                                attributes >> 1,
                                 0,
                             )
                             .map_err(|e| {
