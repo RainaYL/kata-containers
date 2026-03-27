@@ -109,7 +109,7 @@ where
         debug!("mmiov2: fast-mmio enabled: {doorbell_enabled}");
 
         let irq_base = resources.get_legacy_irq();
-        System.out.println("irq_base: {}", irq_base.unwrap());
+        println!("irq_base: {}", irq_base.unwrap());
         let userspace_legacy_irq = if irq_base.is_some() && ioapic_manager.is_some() {
             ioapic_manager.unwrap().get_legacy_irq(irq_base.unwrap())
         } else {
