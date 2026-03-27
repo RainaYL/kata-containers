@@ -10,7 +10,7 @@ use byteorder::{ByteOrder, LittleEndian};
 use dbs_address_space::AddressSpace;
 use dbs_device::resources::{DeviceResources, Resource};
 use dbs_device::{DeviceIo, IoAddress};
-use dbs_interrupt::{InterruptStatusRegister32, KvmIrqManager, IoapicManager, UserspaceLegacyIrq};
+use dbs_interrupt::{InterruptStatusRegister32, IoapicManager, KvmIrqManager, UserspaceLegacyIrq};
 use kvm_ioctls::VmFd;
 use log::{debug, info, warn};
 use virtio_queue::QueueT;
@@ -439,7 +439,14 @@ where
                 REG_MMIO_QUEUE_SEL => self.state().set_queue_select(v),
                 REG_MMIO_QUEUE_NUM => self.update_queue_field(|q| q.set_size(v as u16)),
                 REG_MMIO_QUEUE_READY => self.update_queue_field(|q| q.set_ready(v == 1)),
-                REG_MMIO_INTERRUPT_AC => self.interrupt_status.clear_bits(v),
+                REG_MMIO_INTERRUPT_AC => {
+                    self.interrupt_status.clear_bits(v);
+                    if let Some(userspace_legacy_irq) = self.state.lock().unwrap().userspace_legacy_irq() {
+                        if self.interrupt_status.read() == 0 {
+                            userspace_legacy_irq.set_level_high(false);
+                        }
+                    }
+                }
                 REG_MMIO_STATUS => self.update_driver_status(v),
                 REG_MMIO_QUEUE_DESC_LOW => {
                     self.update_queue_field(|q| q.set_desc_table_address(Some(v), None))

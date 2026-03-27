@@ -110,7 +110,7 @@ impl UserspaceLegacyIrq {
         *self.level_high.read().unwrap()
     }
 
-    fn set_level_high(&self, level_high: bool) {
+    pub fn set_level_high(&self, level_high: bool) {
         *self.level_high.write().unwrap() = level_high;
     }
 

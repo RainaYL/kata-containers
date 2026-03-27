@@ -578,6 +578,10 @@ where
             }
         }
     }
+
+    pub(crate) fn userspace_legacy_irq(&self) -> Option<Arc<UserspaceLegacyIrq>> {
+        self.userspace_legacy_irq.clone()
+    }
 }
 
 impl<AS, Q, R> Drop for MmioV2DeviceState<AS, Q, R>
