@@ -10,7 +10,7 @@ use byteorder::{ByteOrder, LittleEndian};
 use dbs_address_space::AddressSpace;
 use dbs_device::resources::{DeviceResources, Resource};
 use dbs_device::{DeviceIo, IoAddress};
-use dbs_interrupt::{InterruptStatusRegister32, KvmIrqManager};
+use dbs_interrupt::{InterruptStatusRegister32, KvmIrqManager, IoapicManager, UserspaceLegacyIrq};
 use kvm_ioctls::VmFd;
 use log::{debug, info, warn};
 use virtio_queue::QueueT;
@@ -66,7 +66,7 @@ where
         device: Box<dyn VirtioDevice<AS, Q, R>>,
         resources: DeviceResources,
         mut features: Option<u32>,
-        userspace_legacy_irq: Option<Arc<UserspaceLegacyIrq>>,
+        ioapic_manager: Option<Arc<IoapicManager>>,
     ) -> Result<Self> {
         let mut device_resources = DeviceResources::new();
         let mut mmio_cfg_resource = None;
@@ -107,6 +107,14 @@ where
         }
 
         debug!("mmiov2: fast-mmio enabled: {doorbell_enabled}");
+
+        let irq_base = resources.get_legacy_irq();
+        System.out.println("irq_base: {}", irq_base.unwrap());
+        let userspace_legacy_irq = if irq_base.is_some() && ioapic_manager.is_some() {
+            ioapic_manager.unwrap().get_legacy_irq(irq_base.unwrap())
+        } else {
+            None
+        };
 
         let state = MmioV2DeviceState::new(
             device,

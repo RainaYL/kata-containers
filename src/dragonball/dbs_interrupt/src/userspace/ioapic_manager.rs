@@ -145,6 +145,14 @@ impl IoapicManager {
         }
     }
 
+    pub fn get_legacy_irq(&self, base: InterruptIndex) -> Option<Arc<UserspaceLegacyIrq>> {
+        if base >= self.nr_redir_entries() {
+            return None;
+        }
+
+       Some(self.irqs[base as usize].clone())
+    }
+
     fn nr_redir_entries(&self) -> InterruptIndex {
         self.ioapicver.entries() as InterruptIndex + 1
     }
