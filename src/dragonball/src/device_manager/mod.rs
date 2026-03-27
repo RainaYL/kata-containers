@@ -19,7 +19,7 @@ use dbs_device::device_manager::{Error as IoManagerError, IoManager, IoManagerCo
 use dbs_device::resources::DeviceResources;
 use dbs_device::resources::Resource;
 use dbs_device::DeviceIo;
-use dbs_interrupt::KvmIrqManager;
+use dbs_interrupt::{KvmIrqManager, IoapicManager};
 use dbs_legacy_devices::ConsoleHandler;
 #[cfg(feature = "dbs-virtio-devices")]
 use dbs_pci::CAPABILITY_BAR_SIZE;
@@ -326,6 +326,8 @@ pub struct DeviceOpContext {
     pci_system_manager: Arc<Mutex<PciSystemManager>>,
     vm_config: Option<VmConfigInfo>,
     shared_info: Arc<RwLock<InstanceInfo>>,
+
+    ioapic_manager: Option<Arc<IoapicManager>>,
 }
 
 impl DeviceOpContext {
@@ -376,6 +378,7 @@ impl DeviceOpContext {
             vfio_manager: None,
             #[cfg(feature = "host-device")]
             pci_system_manager: device_mgr.pci_system_manager.clone(),
+            ioapic_manager: device_mgr.ioapic_manager.clone(),
         }
     }
 
@@ -670,6 +673,8 @@ pub struct DeviceManager {
     pub(crate) vfio_manager: Arc<Mutex<VfioDeviceMgr>>,
     #[cfg(feature = "host-device")]
     pub(crate) pci_system_manager: Arc<Mutex<PciSystemManager>>,
+
+    ioapic_manager: Option<Arc<IoapicManager>>,
 }
 
 impl DeviceManager {
@@ -738,6 +743,8 @@ impl DeviceManager {
             ))),
             #[cfg(feature = "host-device")]
             pci_system_manager,
+            // TODO: create ioapic manager on split irqchip
+            ioapic_manager: None,
         })
     }
 
@@ -1190,6 +1197,7 @@ impl DeviceManager {
             device,
             resources,
             features,
+            ctx.ioapic_manager.clone(),
         ) {
             Ok(d) => d,
             Err(e) => return Err(DeviceMgrError::Virtio(e)),
@@ -1662,6 +1670,7 @@ mod tests {
 
                 logger,
                 shared_info,
+                ioapic_manager: None,
             }
         }
     }

@@ -74,11 +74,11 @@ impl UserspaceLegacyIrq {
         self.redir_entry.read().unwrap().high().clone()
     }
 
-    pub(super) fn set_redir_entry_low(&mut self, entry: IoapicRedirEntryLow) {
+    pub(super) fn set_redir_entry_low(&self, entry: IoapicRedirEntryLow) {
         self.redir_entry.write().unwrap().set_low(entry);
     }
 
-    pub(super) fn set_redir_entry_high(&mut self, entry: IoapicRedirEntryHigh) {
+    pub(super) fn set_redir_entry_high(&self, entry: IoapicRedirEntryHigh) {
         self.redir_entry.write().unwrap().set_high(entry);
     }
 

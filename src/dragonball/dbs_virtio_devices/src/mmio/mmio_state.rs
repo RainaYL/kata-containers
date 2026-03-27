@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use dbs_address_space::AddressSpace;
 use dbs_device::resources::DeviceResources;
-use dbs_interrupt::{DeviceInterruptManager, DeviceInterruptMode, InterruptIndex, KvmIrqManager};
+use dbs_interrupt::{DeviceInterruptManager, DeviceInterruptMode, InterruptIndex, KvmIrqManager, UserspaceLegacyIrq};
 use kvm_bindings::kvm_userspace_memory_region;
 use kvm_ioctls::{IoEventAddress, NoDatamatch, VmFd};
 use log::{debug, error, info, warn};
@@ -46,6 +46,8 @@ pub struct MmioV2DeviceState<AS: GuestAddressSpace + Clone, Q: QueueT, R: GuestM
 
     shm_region_id: u32,
     shm_regions: Option<VirtioSharedMemoryList<R>>,
+
+    userspace_legacy_irq: Option<Arc<UserspaceLegacyIrq>>,
 }
 
 impl<AS, Q, R> MmioV2DeviceState<AS, Q, R>
@@ -74,6 +76,7 @@ where
         device_resources: DeviceResources,
         mmio_base: u64,
         doorbell_enabled: bool,
+        userspace_legacy_irq: Option<Arc<UserspaceLegacyIrq>>,
     ) -> Result<Self> {
         let intr_mgr =
             DeviceInterruptManager::new(irq_manager, &device_resources).map_err(Error::IOError)?;
@@ -118,6 +121,7 @@ where
             msi: None,
             shm_region_id: 0,
             shm_regions,
+            userspace_legacy_irq,
         })
     }
 
@@ -644,6 +648,7 @@ pub(crate) mod tests {
             device_resources,
             mmio_base,
             doorbell,
+            None,
         )
         .unwrap()
     }

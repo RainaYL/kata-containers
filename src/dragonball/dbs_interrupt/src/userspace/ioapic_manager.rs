@@ -18,7 +18,7 @@ pub struct IoapicManager {
     ioapicarb: IoapicArb,
     ioapic_boot_config: IoapicBootConfig,
     #[cfg(feature = "split-legacy-irq")]
-    irqs: Vec<UserspaceLegacyIrq>,
+    irqs: Vec<Arc<UserspaceLegacyIrq>>,
 }
 
 impl IoapicManager {
@@ -38,7 +38,7 @@ impl IoapicManager {
 
         let mut irqs = Vec::with_capacity(nr_redir_entries as usize);
         for i in 0..nr_redir_entries {
-            irqs.push(UserspaceLegacyIrq::new(i, 1, vmfd.clone())?);
+            irqs.push(Arc::new(UserspaceLegacyIrq::new(i, 1, vmfd.clone())?));
         }
 
         Ok(Self {

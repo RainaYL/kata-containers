@@ -66,6 +66,7 @@ where
         device: Box<dyn VirtioDevice<AS, Q, R>>,
         resources: DeviceResources,
         mut features: Option<u32>,
+        userspace_legacy_irq: Option<Arc<UserspaceLegacyIrq>>,
     ) -> Result<Self> {
         let mut device_resources = DeviceResources::new();
         let mut mmio_cfg_resource = None;
@@ -116,6 +117,7 @@ where
             device_resources,
             mmio_base,
             doorbell_enabled,
+            userspace_legacy_irq,
         )?;
 
         let mut device_vendor = MMIO_VENDOR_ID_DRAGONBALL | msi_feature;
@@ -698,6 +700,7 @@ pub(crate) mod tests {
             Box::new(device),
             resources,
             features,
+            None,
         )
         .unwrap()
     }
@@ -727,6 +730,7 @@ pub(crate) mod tests {
             irq_manager,
             Box::new(device),
             resources,
+            None,
             None,
         );
         assert!(matches!(ret, Err(Error::InvalidInput)));

@@ -73,6 +73,8 @@ pub use self::kvm::KvmIrqManager;
 
 #[cfg(feature = "split-irq")]
 pub mod userspace;
+#[cfg(feature = "split-legacy-irq")]
+pub use self::userspace::{ioapic::*, ioapic_manager::*, legacy_irq::*};
 
 /// Reuse std::io::Result to simplify interoperability among crates.
 pub type Result<T> = std::io::Result<T>;
