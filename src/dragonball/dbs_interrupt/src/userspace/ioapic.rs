@@ -42,7 +42,7 @@ pub const IOAPIC_DEFAULT_NR_REDIR_ENTRIES: InterruptIndex = IOAPIC_MAX_NR_REDIR_
 pub const IOAPIC_DEFAULT_VERSION: u8 = 0x20;
 
 /// MSI message base address
-pub const MSI_BASE_ADDR: u16 = 0xfee;
+pub const MSI_BASE_ADDR: u12 = u12::from_u16(0xfee);
 
 /// Bits for IOREGSEL register
 #[bitsize(32)]

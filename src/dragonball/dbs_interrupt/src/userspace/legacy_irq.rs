@@ -131,7 +131,7 @@ impl UserspaceLegacyIrq {
         address_lo.set_dest_mode_logical(self.redir_entry_low().dest_mode_logical());
         address_lo.set_virt_destid_8_14(self.redir_entry_high().virt_destid_8_14());
         address_lo.set_destid_0_7(self.redir_entry_high().destid_0_7());
-        address_lo.set_base_address(MSI_BASE_ADDR.into());
+        address_lo.set_base_address(MSI_BASE_ADDR);
 
         let mut data = MsiData::default();
         data.set_vector(self.redir_entry_low().vector());
