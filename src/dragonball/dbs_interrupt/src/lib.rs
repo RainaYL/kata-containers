@@ -71,6 +71,9 @@ pub mod kvm;
 #[cfg(feature = "kvm-irq")]
 pub use self::kvm::KvmIrqManager;
 
+#[cfg(feature = "split-irq")]
+pub mod userspace;
+
 /// Reuse std::io::Result to simplify interoperability among crates.
 pub type Result<T> = std::io::Result<T>;
 
