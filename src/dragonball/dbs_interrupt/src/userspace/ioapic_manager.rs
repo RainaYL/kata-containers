@@ -5,7 +5,7 @@
 
 use kvm_ioctls::VmFd;
 
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 #[cfg(feature = "split-legacy-irq")]
 use super::legacy_irq::*;
@@ -15,11 +15,11 @@ use super::{
 
 /// IOAPIC manager that manages userspace interrupt routing
 pub struct IoapicManager {
-    ioregsel: IoRegSel,
-    ioapicid: IoapicId,
-    ioapicver: IoapicVer,
-    ioapicarb: IoapicArb,
-    ioapic_boot_config: IoapicBootConfig,
+    ioregsel: RwLock<IoRegSel>,
+    ioapicid: RwLock<IoapicId>,
+    ioapicver: RwLock<IoapicVer>,
+    ioapicarb: RwLock<IoapicArb>,
+    ioapic_boot_config: RwLock<IoapicBootConfig>,
     #[cfg(feature = "split-legacy-irq")]
     irqs: Vec<Arc<UserspaceLegacyIrqObj>>,
 }
@@ -49,11 +49,11 @@ impl IoapicManager {
         };
 
         Ok(Self {
-            ioregsel: IoRegSel::default(),
-            ioapicid: IoapicId::default(),
-            ioapicver,
-            ioapicarb: IoapicArb::default(),
-            ioapic_boot_config: IoapicBootConfig::default(),
+            ioregsel: RwLock::new(IoRegSel::default()),
+            ioapicid: RwLock::new(IoapicId::default()),
+            ioapicver: RwLock::new(ioapicver),
+            ioapicarb: RwLock::new(IoapicArb::default()),
+            ioapic_boot_config: RwLock::new(IoapicBootConfig::default()),
             #[cfg(feature = "split-legacy-irq")]
             irqs,
         })
@@ -69,12 +69,12 @@ impl IoapicManager {
     }
 
     /// Get IOREGSEL register
-    pub fn ioregsel(&self) -> u32 {
-        self.ioregsel.clone().into()
+    fn ioregsel(&self) -> u32 {
+        self.ioregsel.read().unwrap().clone().into()
     }
 
     /// Update IOREGSEL register
-    pub fn set_ioregsel(&mut self, val: u32) -> Result<()> {
+    fn set_ioregsel(&self, val: u32) -> Result<()> {
         let val = IoRegSel::from(val);
         let select = val.register_index();
         if !(select == IOAPIC_IOAPICID_INDEX
@@ -87,18 +87,18 @@ impl IoapicManager {
             return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
         }
 
-        self.ioregsel = val;
+        *self.ioregsel.write().unwrap() = val;
 
         Ok(())
     }
 
     /// Get value from IOAPIC data registers
-    pub fn iowin(&self) -> u32 {
-        match self.ioregsel.register_index() {
-            IOAPIC_IOAPICID_INDEX => self.ioapicid.clone().into(),
-            IOAPIC_IOAPICVER_INDEX => self.ioapicver.clone().into(),
-            IOAPIC_IOAPICARB_INDEX => self.ioapicarb.clone().into(),
-            IOAPIC_BOOT_CONFIGURATION => self.ioapic_boot_config.clone().into(),
+    fn iowin(&self) -> u32 {
+        match self.ioregsel.read().unwrap().register_index() {
+            IOAPIC_IOAPICID_INDEX => self.ioapicid.read().unwrap().clone().into(),
+            IOAPIC_IOAPICVER_INDEX => self.ioapicver.read().unwrap().clone().into(),
+            IOAPIC_IOAPICARB_INDEX => self.ioapicarb.read().unwrap().clone().into(),
+            IOAPIC_BOOT_CONFIGURATION => self.ioapic_boot_config.read().unwrap().clone().into(),
             // We haved checked the validity of ioregsel while setting, therefore all values beyond the four
             // special IOAPIC registers above would become a valid redirection entry
             index => {
@@ -121,10 +121,10 @@ impl IoapicManager {
     }
 
     /// Update IOAPIC data registers
-    pub fn set_iowin(&mut self, val: u32) -> Result<()> {
-        match self.ioregsel.register_index() {
+    fn set_iowin(&self, val: u32) -> Result<()> {
+        match self.ioregsel.read().unwrap().register_index() {
             IOAPIC_IOAPICID_INDEX => {
-                self.ioapicid = IoapicId::from(val);
+                *self.ioapicid.write().unwrap() = IoapicId::from(val);
                 Ok(())
             }
             IOAPIC_IOAPICVER_INDEX => {
@@ -132,11 +132,11 @@ impl IoapicManager {
                 Err(std::io::Error::from_raw_os_error(libc::EINVAL))
             }
             IOAPIC_IOAPICARB_INDEX => {
-                self.ioapicarb = IoapicArb::from(val);
+                *self.ioapicarb.write().unwrap() = IoapicArb::from(val);
                 Ok(())
             }
             IOAPIC_BOOT_CONFIGURATION => {
-                self.ioapic_boot_config = IoapicBootConfig::from(val);
+                *self.ioapic_boot_config.write().unwrap() = IoapicBootConfig::from(val);
                 Ok(())
             }
             // We haved checked the validity of ioregsel while setting, therefore all values beyond the four
@@ -193,7 +193,37 @@ impl IoapicManager {
     }
 
     fn nr_redir_entries(&self) -> InterruptIndex {
-        self.ioapicver.entries() as InterruptIndex + 1
+        self.ioapicver.read().unwrap().entries() as InterruptIndex + 1
+    }
+
+    pub fn ioapic_mmio_read(&self, addr: u64, data: &mut [u8]) -> Result<()> {
+        let mut val = 0;
+
+        if addr == IOAPIC_IOREGSEL_BASE as u64 {
+            val = self.ioregsel();
+        } else if addr == IOAPIC_IOWIN_BASE as u64 {
+            val = self.iowin();
+        }
+
+        data.copy_from_slice(&val.to_le_bytes());
+
+        Ok(())
+    }
+
+    pub fn ioapic_mmio_write(&self, addr: u64, data: &[u8]) -> Result<()> {
+        if data.len() != 4 {
+            return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
+        }
+
+        let val = unsafe { *(data.as_ptr() as *const u32) };
+
+        if addr == IOAPIC_IOREGSEL_BASE as u64 {
+            self.set_ioregsel(val)?;
+        } else if addr == IOAPIC_IOWIN_BASE as u64 {
+            self.set_iowin(val)?;
+        }
+
+        Ok(())
     }
 }
 

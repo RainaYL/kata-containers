@@ -15,7 +15,7 @@ use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 use std::sync::{Arc, Barrier};
 use std::thread;
 
-use dbs_interrupt::IoapicManager;
+use dbs_interrupt::{IoapicManager, IOAPIC_BASE, IOAPIC_SIZE};
 use dbs_utils::metric::IncMetric;
 use dbs_utils::time::TimestampUs;
 use kvm_bindings::{KVM_SYSTEM_EVENT_RESET, KVM_SYSTEM_EVENT_SHUTDOWN};
@@ -466,12 +466,23 @@ impl Vcpu {
                         Ok(VcpuEmulation::Handled)
                     }
                     VcpuExit::MmioRead(addr, data) => {
-                        let _ = self.io_mgr.mmio_read(addr, data);
+                        if addr >= IOAPIC_BASE as u64 && addr < (IOAPIC_BASE + IOAPIC_SIZE) as u64 && self.ioapic_manager.is_some() {
+                            let ioapic_manager = self.ioapic_manager.as_ref().unwrap().clone();
+                            let _ = ioapic_manager.ioapic_mmio_read(addr, data);
+                        } else {
+                            let _ = self.io_mgr.mmio_read(addr, data);
+                        }
                         self.metrics.exit_mmio_read.inc();
                         Ok(VcpuEmulation::Handled)
                     }
                     VcpuExit::MmioWrite(addr, data) => {
-                        let _ = self.io_mgr.mmio_write(addr, data);
+                        if addr >= IOAPIC_BASE as u64 && addr < (IOAPIC_BASE + IOAPIC_SIZE) as u64 && self.ioapic_manager.is_some() {
+                            let ioapic_manager = self.ioapic_manager.as_ref().unwrap().clone();
+                            let _ = ioapic_manager.ioapic_mmio_write(addr, data);
+                        } else {
+                            let _ = self.io_mgr.mmio_write(addr, data);
+                        }
+                        
                         self.metrics.exit_mmio_write.inc();
                         Ok(VcpuEmulation::Handled)
                     }
