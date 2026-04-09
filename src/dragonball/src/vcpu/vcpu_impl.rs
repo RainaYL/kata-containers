@@ -15,6 +15,7 @@ use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 use std::sync::{Arc, Barrier};
 use std::thread;
 
+use dbs_interrupt::IoapicManager;
 use dbs_utils::metric::IncMetric;
 use dbs_utils::time::TimestampUs;
 use kvm_bindings::{KVM_SYSTEM_EVENT_RESET, KVM_SYSTEM_EVENT_SHUTDOWN};
@@ -314,6 +315,8 @@ pub struct Vcpu {
     /// Multiprocessor affinity register recorded for aarch64
     #[cfg(target_arch = "aarch64")]
     pub(crate) mpidr: u64,
+
+    ioapic_manager: Option<Arc<IoapicManager>>,
 }
 
 // Using this for easier explicit type-casting to help IDEs interpret the code.
@@ -861,6 +864,7 @@ pub mod tests {
             tx,
             time_stamp,
             false,
+            None,
         )
         .unwrap();
 

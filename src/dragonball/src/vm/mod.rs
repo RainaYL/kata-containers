@@ -144,6 +144,9 @@ pub struct VmConfigInfo {
 
     /// Enable PCI device hotplug or not
     pub pci_hotplug_enabled: bool,
+
+    /// Split irqchip enabled or not
+    pub split_irqchip: bool,
 }
 
 impl Default for VmConfigInfo {
@@ -164,6 +167,7 @@ impl Default for VmConfigInfo {
             mem_size_mib: 128,
             serial_path: None,
             pci_hotplug_enabled: false,
+            split_irqchip: false,
         }
     }
 }
@@ -965,6 +969,7 @@ pub mod tests {
             },
             vpmu_feature: 0,
             pci_hotplug_enabled: false,
+            split_irqchip: false,
         };
 
         let mut vm = create_vm_instance();
@@ -998,6 +1003,7 @@ pub mod tests {
             },
             vpmu_feature: 0,
             pci_hotplug_enabled: false,
+            split_irqchip: false,
         };
         vm.set_vm_config(vm_config);
         assert!(vm.init_guest_memory().is_ok());
@@ -1047,6 +1053,7 @@ pub mod tests {
             },
             vpmu_feature: 0,
             pci_hotplug_enabled: false,
+            split_irqchip: false,
         };
 
         vm.set_vm_config(vm_config);
@@ -1124,6 +1131,7 @@ pub mod tests {
             },
             vpmu_feature: 0,
             pci_hotplug_enabled: false,
+            split_irqchip: false,
         };
 
         vm.set_vm_config(vm_config);
