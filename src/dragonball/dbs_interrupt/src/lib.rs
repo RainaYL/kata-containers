@@ -132,6 +132,10 @@ pub struct MsiIrqSourceConfig {
 /// The InterruptManager implementations should protect itself from concurrent accesses internally,
 /// so it could be invoked from multi-threaded context.
 pub trait InterruptManager {
+    fn initialize(&self) -> Result<()> {
+        Ok(())
+    }
+
     /// Create an [InterruptSourceGroup](trait.InterruptSourceGroup.html) object to manage interrupt
     /// sources for a virtual device.
     ///
@@ -159,6 +163,10 @@ pub trait InterruptManager {
 }
 
 impl<T: InterruptManager> InterruptManager for Arc<T> {
+    fn initialize(&self) -> Result<()> {
+        self.deref().initialize()
+    }
+
     fn create_group(
         &self,
         type_: InterruptSourceType,

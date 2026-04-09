@@ -9,10 +9,11 @@ use std::sync::Arc;
 
 #[cfg(feature = "split-legacy-irq")]
 use super::legacy_irq::*;
-use super::{ioapic::*, InterruptIndex, Result};
+use super::{
+    ioapic::*, InterruptIndex, InterruptManager, InterruptSourceGroup, InterruptSourceType, Result,
+};
 
 /// IOAPIC manager that manages userspace interrupt routing
-#[derive(Debug)]
 pub struct IoapicManager {
     ioregsel: IoRegSel,
     ioapicid: IoapicId,
@@ -20,7 +21,7 @@ pub struct IoapicManager {
     ioapicarb: IoapicArb,
     ioapic_boot_config: IoapicBootConfig,
     #[cfg(feature = "split-legacy-irq")]
-    irqs: Vec<Arc<UserspaceLegacyIrq>>,
+    irqs: Vec<Arc<UserspaceLegacyIrqObj>>,
 }
 
 impl IoapicManager {
@@ -38,11 +39,14 @@ impl IoapicManager {
         ioapicver.set_version(version);
         ioapicver.set_entries(nr_redir_entries as u8 - 1);
 
-        let mut irqs = Vec::with_capacity(nr_redir_entries as usize);
         #[cfg(feature = "split-legacy-irq")]
-        for i in 0..nr_redir_entries {
-            irqs.push(Arc::new(UserspaceLegacyIrq::new(i, 1, vmfd.clone())?));
-        }
+        let irqs = {
+            let mut irqs = Vec::with_capacity(nr_redir_entries as usize);
+            for i in 0..nr_redir_entries {
+                irqs.push(Arc::new(UserspaceLegacyIrqObj::new(i, vmfd.clone())));
+            }
+            irqs
+        };
 
         Ok(Self {
             ioregsel: IoRegSel::default(),
@@ -163,7 +167,7 @@ impl IoapicManager {
             .get_legacy_irq(base)
             .ok_or(std::io::Error::from_raw_os_error(libc::EINVAL))?;
         if !irq.is_level() {
-            return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
+            return Ok(());
         }
         irq.set_level_high(false);
         Ok(())
@@ -180,7 +184,7 @@ impl IoapicManager {
 
     #[cfg(feature = "split-legacy-irq")]
     /// Get a legacy irq instance given irq base
-    pub fn get_legacy_irq(&self, base: InterruptIndex) -> Option<Arc<UserspaceLegacyIrq>> {
+    pub fn get_legacy_irq(&self, base: InterruptIndex) -> Option<Arc<UserspaceLegacyIrqObj>> {
         if base >= self.nr_redir_entries() {
             return None;
         }
@@ -190,5 +194,38 @@ impl IoapicManager {
 
     fn nr_redir_entries(&self) -> InterruptIndex {
         self.ioapicver.entries() as InterruptIndex + 1
+    }
+}
+
+impl InterruptManager for IoapicManager {
+    fn create_group(
+        &self,
+        ty: InterruptSourceType,
+        base: InterruptIndex,
+        count: u32,
+    ) -> Result<Arc<Box<dyn InterruptSourceGroup>>> {
+        let group = match ty {
+            #[cfg(feature = "split-legacy-irq")]
+            InterruptSourceType::LegacyIrq => {
+                if count != 1 {
+                    return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
+                }
+                let irq = self
+                    .get_legacy_irq(base)
+                    .ok_or(std::io::Error::from_raw_os_error(libc::EINVAL))?;
+                let group: Arc<Box<dyn InterruptSourceGroup>> =
+                    Arc::new(Box::new(UserspaceLegacyIrq::new(irq)));
+                group
+            }
+            _ => {
+                return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
+            }
+        };
+
+        Ok(group)
+    }
+
+    fn destroy_group(&self, _group: Arc<Box<dyn InterruptSourceGroup>>) -> Result<()> {
+        Ok(())
     }
 }

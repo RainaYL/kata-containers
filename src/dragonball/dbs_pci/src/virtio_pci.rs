@@ -1161,7 +1161,7 @@ pub(crate) mod tests {
     #[cfg(target_arch = "aarch64")]
     use dbs_arch::gic::create_gic;
     use dbs_device::resources::MsiIrqType;
-    use dbs_interrupt::kvm::KvmIrqManager;
+    use dbs_interrupt::{InterruptManager, KvmIrqManager};
     use dbs_utils::epoll_manager::EpollManager;
     use kvm_ioctls::Kvm;
     use test_utils::skip_if_kvm_unaccessable;

@@ -19,7 +19,7 @@ use dbs_device::device_manager::{Error as IoManagerError, IoManager, IoManagerCo
 use dbs_device::resources::DeviceResources;
 use dbs_device::resources::Resource;
 use dbs_device::DeviceIo;
-use dbs_interrupt::KvmIrqManager;
+use dbs_interrupt::{InterruptManager, KvmIrqManager};
 use dbs_legacy_devices::ConsoleHandler;
 #[cfg(feature = "dbs-virtio-devices")]
 use dbs_pci::CAPABILITY_BAR_SIZE;
@@ -223,7 +223,7 @@ pub type DbsVirtioDevice = Box<
 /// Type of the dragonball virtio mmio devices.
 #[cfg(feature = "dbs-virtio-devices")]
 pub type DbsMmioV2Device =
-    MmioV2Device<GuestAddressSpaceImpl, virtio_queue::QueueSync, vm_memory::GuestRegionMmap>;
+    MmioV2Device<GuestAddressSpaceImpl, virtio_queue::QueueSync, vm_memory::GuestRegionMmap, Arc<KvmIrqManager>>;
 
 /// Struct to support transactional operations for device management.
 pub struct DeviceManagerTx {

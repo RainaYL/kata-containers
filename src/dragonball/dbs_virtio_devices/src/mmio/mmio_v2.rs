@@ -10,7 +10,7 @@ use byteorder::{ByteOrder, LittleEndian};
 use dbs_address_space::AddressSpace;
 use dbs_device::resources::{DeviceResources, Resource};
 use dbs_device::{DeviceIo, IoAddress};
-use dbs_interrupt::{InterruptStatusRegister32, KvmIrqManager};
+use dbs_interrupt::{InterruptStatusRegister32, InterruptManager};
 use kvm_ioctls::VmFd;
 use log::{debug, info, warn};
 use virtio_queue::QueueT;
@@ -41,8 +41,8 @@ const DEVICE_STATUS_DRIVER_OK: u32 = DEVICE_STATUS_FEATURE_OK | DEVICE_DRIVER_OK
 ///
 /// Typically one page (4096 bytes) of MMIO address space is sufficient to handle this transport
 /// and inner virtio device.
-pub struct MmioV2Device<AS: GuestAddressSpace + Clone, Q: QueueT, R: GuestMemoryRegion> {
-    state: Mutex<MmioV2DeviceState<AS, Q, R>>,
+pub struct MmioV2Device<AS: GuestAddressSpace + Clone, Q: QueueT, R: GuestMemoryRegion, IM: InterruptManager + Clone> {
+    state: Mutex<MmioV2DeviceState<AS, Q, R, IM>>,
     assigned_resources: DeviceResources,
     mmio_cfg_res: Resource,
     device_vendor: u32,
@@ -51,18 +51,19 @@ pub struct MmioV2Device<AS: GuestAddressSpace + Clone, Q: QueueT, R: GuestMemory
     interrupt_status: Arc<InterruptStatusRegister32>,
 }
 
-impl<AS, Q, R> MmioV2Device<AS, Q, R>
+impl<AS, Q, R, IM> MmioV2Device<AS, Q, R, IM>
 where
     AS: GuestAddressSpace + Clone,
     Q: QueueT + Clone,
     R: GuestMemoryRegion,
+    IM: InterruptManager + Clone,
 {
     /// Constructs a new MMIO transport for the given virtio device.
     pub fn new(
         vm_fd: Arc<VmFd>,
         vm_as: AS,
         address_space: AddressSpace,
-        irq_manager: Arc<KvmIrqManager>,
+        irq_manager: IM,
         device: Box<dyn VirtioDevice<AS, Q, R>>,
         resources: DeviceResources,
         mut features: Option<u32>,
@@ -136,7 +137,7 @@ where
     }
 
     /// Acquires the state while holding the lock.
-    pub fn state(&self) -> MutexGuard<'_, MmioV2DeviceState<AS, Q, R>> {
+    pub fn state(&self) -> MutexGuard<'_, MmioV2DeviceState<AS, Q, R, IM>> {
         // Safe to unwrap() because we don't expect poisoned lock here.
         self.state.lock().unwrap()
     }
@@ -349,11 +350,12 @@ where
     }
 }
 
-impl<AS, Q, R> DeviceIo for MmioV2Device<AS, Q, R>
+impl<AS, Q, R, IM> DeviceIo for MmioV2Device<AS, Q, R, IM>
 where
     AS: 'static + GuestAddressSpace + Send + Sync + Clone,
     Q: 'static + QueueT + Send + Clone,
     R: 'static + GuestMemoryRegion + Send + Sync,
+    IM: 'static + InterruptManager + Send + Sync + Clone,
 {
     fn read(&self, _base: IoAddress, offset: IoAddress, data: &mut [u8]) {
         let offset = offset.raw_value();
@@ -499,6 +501,7 @@ pub(crate) mod tests {
     use byteorder::{ByteOrder, LittleEndian};
     use dbs_device::resources::{MsiIrqType, Resource, ResourceConstraint};
     use dbs_device::{DeviceIo, IoAddress};
+    use dbs_interrupt::KvmIrqManager;
     use dbs_utils::epoll_manager::EpollManager;
     use kvm_bindings::kvm_userspace_memory_region;
     use kvm_ioctls::Kvm;
@@ -636,7 +639,7 @@ pub(crate) mod tests {
     }
 
     pub fn set_driver_status(
-        d: &mut MmioV2Device<Arc<GuestMemoryMmap>, QueueSync, GuestRegionMmap>,
+        d: &mut MmioV2Device<Arc<GuestMemoryMmap>, QueueSync, GuestRegionMmap, Arc<KvmIrqManager>>,
         status: u32,
     ) {
         let mut buf = [0; 4];
@@ -673,7 +676,7 @@ pub(crate) mod tests {
         doorbell: bool,
         ctrl_queue_size: u16,
         resources: DeviceResources,
-    ) -> MmioV2Device<Arc<GuestMemoryMmap>, QueueSync, GuestRegionMmap> {
+    ) -> MmioV2Device<Arc<GuestMemoryMmap>, QueueSync, GuestRegionMmap, Arc<KvmIrqManager>> {
         let device = MmioDevice::new(ctrl_queue_size);
         let mem = Arc::new(GuestMemoryMmap::from_ranges(&[(GuestAddress(0), 0x1000)]).unwrap());
         let kvm = Kvm::new().unwrap();
@@ -702,7 +705,7 @@ pub(crate) mod tests {
         .unwrap()
     }
 
-    pub fn get_mmio_device() -> MmioV2Device<Arc<GuestMemoryMmap>, QueueSync, GuestRegionMmap> {
+    pub fn get_mmio_device() -> MmioV2Device<Arc<GuestMemoryMmap>, QueueSync, GuestRegionMmap, Arc<KvmIrqManager>> {
         let resources = get_device_resource(false, false);
         get_mmio_device_inner(false, 0, resources)
     }
@@ -1113,7 +1116,7 @@ pub(crate) mod tests {
         assert_eq!(LittleEndian::read_u32(&buf[..]), 1);
     }
 
-    fn activate_device(d: &mut MmioV2Device<Arc<GuestMemoryMmap>, QueueSync, GuestRegionMmap>) {
+    fn activate_device(d: &mut MmioV2Device<Arc<GuestMemoryMmap>, QueueSync, GuestRegionMmap, Arc<KvmIrqManager>>) {
         set_driver_status(d, DEVICE_ACKNOWLEDGE);
         set_driver_status(d, DEVICE_ACKNOWLEDGE | DEVICE_DRIVER);
         set_driver_status(d, DEVICE_ACKNOWLEDGE | DEVICE_DRIVER | DEVICE_FEATURES_OK);

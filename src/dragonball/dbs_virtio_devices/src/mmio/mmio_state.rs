@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use dbs_address_space::AddressSpace;
 use dbs_device::resources::DeviceResources;
-use dbs_interrupt::{DeviceInterruptManager, DeviceInterruptMode, InterruptIndex, KvmIrqManager};
+use dbs_interrupt::{DeviceInterruptManager, DeviceInterruptMode, InterruptIndex, InterruptManager};
 use kvm_bindings::kvm_userspace_memory_region;
 use kvm_ioctls::{IoEventAddress, NoDatamatch, VmFd};
 use log::{debug, error, info, warn};
@@ -23,12 +23,12 @@ use crate::{
 };
 
 /// The state of Virtio Mmio device.
-pub struct MmioV2DeviceState<AS: GuestAddressSpace + Clone, Q: QueueT, R: GuestMemoryRegion> {
+pub struct MmioV2DeviceState<AS: GuestAddressSpace + Clone, Q: QueueT, R: GuestMemoryRegion, IM: InterruptManager + Clone> {
     device: Box<dyn VirtioDevice<AS, Q, R>>,
     vm_fd: Arc<VmFd>,
     vm_as: AS,
     address_space: AddressSpace,
-    intr_mgr: DeviceInterruptManager<Arc<KvmIrqManager>>,
+    intr_mgr: DeviceInterruptManager<IM>,
     device_resources: DeviceResources,
     queues: Vec<VirtioQueueConfig<Q>>,
 
@@ -48,11 +48,12 @@ pub struct MmioV2DeviceState<AS: GuestAddressSpace + Clone, Q: QueueT, R: GuestM
     shm_regions: Option<VirtioSharedMemoryList<R>>,
 }
 
-impl<AS, Q, R> MmioV2DeviceState<AS, Q, R>
+impl<AS, Q, R, IM> MmioV2DeviceState<AS, Q, R, IM>
 where
     AS: GuestAddressSpace + Clone,
     Q: QueueT + Clone,
     R: GuestMemoryRegion,
+    IM: InterruptManager + Clone,
 {
     /// Returns a reference to the internal device object.
     pub fn get_inner_device(&self) -> &dyn VirtioDevice<AS, Q, R> {
@@ -70,7 +71,7 @@ where
         vm_fd: Arc<VmFd>,
         vm_as: AS,
         address_space: AddressSpace,
-        irq_manager: Arc<KvmIrqManager>,
+        irq_manager: IM,
         device_resources: DeviceResources,
         mmio_base: u64,
         doorbell_enabled: bool,
@@ -121,7 +122,7 @@ where
         })
     }
 
-    pub(crate) fn activate(&mut self, device: &MmioV2Device<AS, Q, R>) -> Result<()> {
+    pub(crate) fn activate(&mut self, device: &MmioV2Device<AS, Q, R, IM>) -> Result<()> {
         if self.device_activated {
             return Ok(());
         }
@@ -172,7 +173,7 @@ where
 
     fn create_queue_config(
         &mut self,
-        device: &MmioV2Device<AS, Q, R>,
+        device: &MmioV2Device<AS, Q, R, IM>,
     ) -> Result<Vec<VirtioQueueConfig<Q>>> {
         // Safe because we have just called self.intr_mgr.enable().
         let group = self.intr_mgr.get_group().unwrap();
@@ -196,7 +197,7 @@ where
 
     fn create_device_config(
         &mut self,
-        device: &MmioV2Device<AS, Q, R>,
+        device: &MmioV2Device<AS, Q, R, IM>,
     ) -> Result<VirtioDeviceConfig<AS, Q, R>> {
         let mut queues = self.create_queue_config(device)?;
         let ctrl_queue = if self.has_ctrl_queue {
@@ -460,7 +461,7 @@ where
         }
     }
 
-    pub(crate) fn update_msi_enable(&mut self, v: u16, device: &MmioV2Device<AS, Q, R>) {
+    pub(crate) fn update_msi_enable(&mut self, v: u16, device: &MmioV2Device<AS, Q, R, IM>) {
         // Can't switch interrupt mode once the device has been activated.
         if device.driver_status() & DEVICE_DRIVER_OK != 0 {
             if device.driver_status() & DEVICE_FAILED == 0 {
@@ -548,7 +549,7 @@ where
         Ok(())
     }
 
-    pub(crate) fn handle_msi_cmd(&mut self, v: u16, device: &MmioV2Device<AS, Q, R>) {
+    pub(crate) fn handle_msi_cmd(&mut self, v: u16, device: &MmioV2Device<AS, Q, R, IM>) {
         let arg = v & MMIO_MSI_CMD_ARG_MASK;
         match v & MMIO_MSI_CMD_CODE_MASK {
             MMIO_MSI_CMD_CODE_UPDATE => {
@@ -576,11 +577,12 @@ where
     }
 }
 
-impl<AS, Q, R> Drop for MmioV2DeviceState<AS, Q, R>
+impl<AS, Q, R, IM> Drop for MmioV2DeviceState<AS, Q, R, IM>
 where
     AS: GuestAddressSpace + Clone,
     Q: QueueT,
     R: GuestMemoryRegion,
+    IM: InterruptManager + Clone,
 {
     fn drop(&mut self) {
         if let Some(memlist) = &self.shm_regions {
@@ -609,6 +611,7 @@ pub(crate) mod tests {
     use test_utils::skip_if_kvm_unaccessable;
     use virtio_queue::QueueSync;
     use vm_memory::{GuestAddress, GuestMemoryMmap, GuestRegionMmap};
+    use dbs_interrupt::KvmIrqManager;
 
     use super::*;
     use crate::mmio::mmio_v2::tests::*;
@@ -618,7 +621,7 @@ pub(crate) mod tests {
         have_msi: bool,
         doorbell: bool,
         ctrl_queue_size: u16,
-    ) -> MmioV2DeviceState<Arc<GuestMemoryMmap>, QueueSync, GuestRegionMmap> {
+    ) -> MmioV2DeviceState<Arc<GuestMemoryMmap>, QueueSync, GuestRegionMmap, Arc<KvmIrqManager>> {
         let mem = Arc::new(GuestMemoryMmap::from_ranges(&[(GuestAddress(0), 0x1000)]).unwrap());
 
         let mmio_base = 0;

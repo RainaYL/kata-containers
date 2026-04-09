@@ -9,10 +9,18 @@ use vmm_sys_util::eventfd::EventFd;
 
 use std::sync::{Arc, RwLock};
 
-use super::{ioapic::*, InterruptIndex, InterruptSourceConfig, InterruptSourceGroup, InterruptSourceType, Result};
+use super::{
+    ioapic::*, InterruptIndex, InterruptSourceConfig, InterruptSourceGroup, InterruptSourceType,
+    Result,
+};
 
 #[derive(Debug)]
 pub struct UserspaceLegacyIrq {
+    irq: Arc<UserspaceLegacyIrqObj>,
+}
+
+#[derive(Debug)]
+pub struct UserspaceLegacyIrqObj {
     base: InterruptIndex,
     vmfd: Arc<VmFd>,
     enabled: RwLock<bool>,
@@ -22,13 +30,9 @@ pub struct UserspaceLegacyIrq {
     redir_entry: RwLock<IoapicRedirEntry>,
 }
 
-impl UserspaceLegacyIrq {
-    pub(super) fn new(base: u32, count: InterruptIndex, vmfd: Arc<VmFd>) -> Result<Self> {
-        if count != 1 {
-            return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
-        }
-
-        Ok(Self {
+impl UserspaceLegacyIrqObj {
+    pub(super) fn new(base: u32, vmfd: Arc<VmFd>) -> Self {
+        Self {
             base,
             vmfd,
             enabled: RwLock::new(false),
@@ -36,7 +40,7 @@ impl UserspaceLegacyIrq {
             servicing: RwLock::new(false),
             level_high: RwLock::new(false),
             redir_entry: RwLock::new(IoapicRedirEntry::default()),
-        })
+        }
     }
 
     pub(super) fn redir_entry_low(&self) -> IoapicRedirEntryLow {
@@ -154,6 +158,16 @@ impl UserspaceLegacyIrq {
 
         Ok(())
     }
+
+    fn base(&self) -> u32 {
+        self.base
+    }
+}
+
+impl UserspaceLegacyIrq {
+    pub fn new(irq: Arc<UserspaceLegacyIrqObj>) -> Self {
+        Self { irq }
+    }
 }
 
 impl InterruptSourceGroup for UserspaceLegacyIrq {
@@ -166,7 +180,7 @@ impl InterruptSourceGroup for UserspaceLegacyIrq {
     }
 
     fn base(&self) -> u32 {
-        self.base
+        self.irq.base()
     }
 
     fn enable(&self, configs: &[InterruptSourceConfig]) -> Result<()> {
@@ -174,13 +188,13 @@ impl InterruptSourceGroup for UserspaceLegacyIrq {
             return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
         }
 
-        self.set_enabled(true);
+        self.irq.set_enabled(true);
 
         Ok(())
     }
 
     fn disable(&self) -> Result<()> {
-        self.set_enabled(false);
+        self.irq.set_enabled(false);
 
         Ok(())
     }
@@ -206,7 +220,7 @@ impl InterruptSourceGroup for UserspaceLegacyIrq {
             return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
         }
 
-        if !self.enabled() {
+        if !self.irq.enabled() {
             return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
         }
 
@@ -215,7 +229,7 @@ impl InterruptSourceGroup for UserspaceLegacyIrq {
         //     self.set_pending(true);
         // }
 
-        self.try_deliver()
+        self.irq.try_deliver()
     }
 
     fn mask(&self, index: InterruptIndex) -> Result<()> {
@@ -223,7 +237,7 @@ impl InterruptSourceGroup for UserspaceLegacyIrq {
             return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
         }
 
-        self.set_masked(true);
+        self.irq.set_masked(true);
 
         Ok(())
     }
@@ -233,7 +247,7 @@ impl InterruptSourceGroup for UserspaceLegacyIrq {
             return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
         }
 
-        self.set_masked(false);
+        self.irq.set_masked(false);
 
         Ok(())
     }
@@ -243,6 +257,6 @@ impl InterruptSourceGroup for UserspaceLegacyIrq {
             return false;
         }
 
-        self.pending()
+        self.irq.pending()
     }
 }
