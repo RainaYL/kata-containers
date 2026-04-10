@@ -201,6 +201,7 @@ impl KvmIrqRouting {
         {
             let irq_routing_entries = irq_routing.as_mut_slice();
             for (idx, entry) in routes.values().enumerate() {
+                println!("gsi: {}, type: {}", entry.gsi, entry.type_);
                 irq_routing_entries[idx] = *entry;
             }
         }
@@ -219,7 +220,6 @@ impl KvmIrqRouting {
         // Safe to unwrap because there's no legal way to break the mutex.
         let mut routes = self.routes.lock().unwrap();
         for entry in entries {
-            println!("gsi: {}, type: {}", entry.gsi, entry.type_);
             if entry.gsi >= MAX_IRQS {
                 return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
             } else if routes.contains_key(&hash_key(entry)) {
