@@ -75,6 +75,7 @@ where
         mmio_base: u64,
         doorbell_enabled: bool,
     ) -> Result<Self> {
+        println!("MmioV2DeviceState::new");
         let intr_mgr =
             DeviceInterruptManager::new(irq_manager, &device_resources).map_err(Error::IOError)?;
 
