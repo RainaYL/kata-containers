@@ -105,6 +105,7 @@ impl<T: InterruptManager> DeviceInterruptManager<T> {
         #[cfg(feature = "msi-irq")]
         {
             if let Some(msi) = resources.get_generic_msi_irqs() {
+                println!("generic_msi_irq");
                 let group = mgr
                     .intr_mgr
                     .create_group(InterruptSourceType::MsiIrq, msi.0, msi.1)?;
@@ -114,6 +115,7 @@ impl<T: InterruptManager> DeviceInterruptManager<T> {
             }
 
             if let Some(msi) = resources.get_pci_msi_irqs() {
+                println!("pci_msi_irq");
                 let group = mgr
                     .intr_mgr
                     .create_group(InterruptSourceType::MsiIrq, msi.0, msi.1)?;
@@ -123,6 +125,7 @@ impl<T: InterruptManager> DeviceInterruptManager<T> {
             }
 
             if let Some(msi) = resources.get_pci_msix_irqs() {
+                println("pci_msix_irq");
                 let group = mgr
                     .intr_mgr
                     .create_group(InterruptSourceType::MsiIrq, msi.0, msi.1)?;
