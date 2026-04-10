@@ -99,7 +99,7 @@ impl UserspaceLegacyIrqObj {
         self.redir_entry.write().unwrap().low().set_masked(masked);
     }
 
-    pub(super) fn try_deliver(&self) -> Result<()> {
+    pub fn try_deliver(&self) -> Result<()> {
         // let is_level = self.is_level();
 
         if self.masked() {

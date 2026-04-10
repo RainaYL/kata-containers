@@ -457,6 +457,9 @@ impl Vcpu {
                             println!("ttyS0 in");
                         }
                         let _ = self.io_mgr.pio_read(addr, data);
+                        if addr == 0x3f8 {
+                            println!("read completed");
+                        }
                         self.metrics.exit_io_in.inc();
                         Ok(VcpuEmulation::Handled)
                     }
