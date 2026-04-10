@@ -118,6 +118,8 @@ where
             doorbell_enabled,
         )?;
 
+        println!("state created");
+
         let mut device_vendor = MMIO_VENDOR_ID_DRAGONBALL | msi_feature;
         if let Some(ft) = features {
             debug!("mmiov2: feature bit is 0x{ft:0X}");
