@@ -462,7 +462,9 @@ impl Vcpu {
                     }
                     #[cfg(target_arch = "x86_64")]
                     VcpuExit::IoOut(addr, data) => {
-                        println!("ttyS0 out");
+                        if addr == 0x3f8 {
+                            println!("ttyS0 out");
+                        }
                         let data = data.to_vec();
                         if !self.check_io_port_info(addr, &data)? {
                             let _ = self.io_mgr.pio_write(addr, &data);
