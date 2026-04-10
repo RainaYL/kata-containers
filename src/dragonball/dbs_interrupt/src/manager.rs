@@ -76,6 +76,7 @@ impl<T: InterruptManager> DeviceInterruptManager<T> {
     /// * `intr_mgr`: underline interrupt manager to allocate/free interrupt groups.
     /// * `resources`: resources assigned to the device, including assigned interrupt resources.
     pub fn new(intr_mgr: T, resources: &DeviceResources) -> Result<Self> {
+        println!("DeviceInterruptManager::new");
         let mut mgr = DeviceInterruptManager {
             mode: DeviceInterruptMode::Disabled,
             activated: false,
@@ -91,9 +92,11 @@ impl<T: InterruptManager> DeviceInterruptManager<T> {
         #[cfg(feature = "legacy-irq")]
         {
             if let Some(irq) = resources.get_legacy_irq() {
+                println!("Create legacy group");
                 let group = mgr
                     .intr_mgr
                     .create_group(InterruptSourceType::LegacyIrq, irq, 1)?;
+                println!("After create legacy group");
                 mgr.mode2idx[DeviceInterruptMode::LegacyIrq as usize] = mgr.intr_groups.len();
                 mgr.intr_groups.push(group);
             }
