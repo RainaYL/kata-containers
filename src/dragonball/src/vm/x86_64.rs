@@ -15,7 +15,10 @@ use dbs_boot::{add_e820_entry, bootparam, layout, mptable, BootParamsWrapper, In
 use dbs_interrupt::IOAPIC_MAX_NR_REDIR_ENTRIES;
 use dbs_utils::epoll_manager::EpollManager;
 use dbs_utils::time::TimestampUs;
-use kvm_bindings::{kvm_irqchip, kvm_pit_config, kvm_pit_state2, KVM_PIT_SPEAKER_DUMMY, kvm_enable_cap, KVM_CAP_SPLIT_IRQCHIP};
+use kvm_bindings::{
+    kvm_enable_cap, kvm_irqchip, kvm_pit_config, kvm_pit_state2, KVM_CAP_SPLIT_IRQCHIP,
+    KVM_PIT_SPEAKER_DUMMY,
+};
 use linux_loader::cmdline::Cmdline;
 use linux_loader::configurator::{linux::LinuxBootConfigurator, BootConfigurator, BootParams};
 use slog::info;
@@ -259,7 +262,10 @@ impl Vm {
     pub(crate) fn init_tss(&mut self) -> std::result::Result<(), StartMicroVmError> {
         self.vm_fd
             .set_tss_address(dbs_boot::layout::KVM_TSS_ADDRESS.try_into().unwrap())
-            .map_err(|e| StartMicroVmError::ConfigureVm(VmError::VmSetup(e)))
+            .map_err(|e| {
+                println!("init_tss error");
+                StartMicroVmError::ConfigureVm(VmError::VmSetup(e))
+            })
     }
 
     /// Creates the irq chip and an in-kernel device model for the PIT.
@@ -276,9 +282,10 @@ impl Vm {
                 .enable_cap(&enable_split_irqchip)
                 .map_err(StartMicroVmError::EnableSplitIrqchip)
         } else {
-            self.vm_fd
-                .create_irq_chip()
-                .map_err(|e| StartMicroVmError::ConfigureVm(VmError::VmSetup(e)))
+            self.vm_fd.create_irq_chip().map_err(|e| {
+                println!("create irq chip error");
+                StartMicroVmError::ConfigureVm(VmError::VmSetup(e))
+            })
         }
     }
 
@@ -296,7 +303,10 @@ impl Vm {
         // correct amount of memory from our pointer, and we verify the return result.
         self.vm_fd
             .create_pit2(pit_config)
-            .map_err(|e| StartMicroVmError::ConfigureVm(VmError::VmSetup(e)))
+            .map_err(|e| {
+                println!("create pit2 error");
+                StartMicroVmError::ConfigureVm(VmError::VmSetup(e))
+            })
     }
 
     pub(crate) fn register_events(
