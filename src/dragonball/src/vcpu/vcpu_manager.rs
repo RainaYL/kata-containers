@@ -16,7 +16,7 @@ use std::sync::{Arc, Barrier, Mutex, RwLock};
 use std::time::Duration;
 
 use dbs_arch::VpmuFeatureLevel;
-use dbs_interrupt::IoapicManager;
+use dbs_interrupt::InterruptManager;
 #[cfg(all(feature = "hotplug", feature = "dbs-upcall"))]
 use dbs_upcall::{DevMgrService, UpcallClient};
 use dbs_utils::epoll_manager::{EpollManager, EventOps, EventSet, Events, MutEventSubscriber};
@@ -119,10 +119,6 @@ pub enum VcpuManagerError {
     /// Kvm Ioctl Error
     #[error("failure in issuing KVM ioctl command: {0}")]
     Kvm(#[source] kvm_ioctls::Error),
-
-    /// Userspace IOAPIC Error
-    #[error("Failure in userspace IOAPIC: {0}")]
-    UserspaceIoapic(#[source] std::io::Error),
 }
 
 #[cfg(feature = "hotplug")]
@@ -241,7 +237,8 @@ pub struct VcpuManager {
     #[cfg(target_arch = "x86_64")]
     pub(crate) supported_cpuid: kvm_bindings::CpuId,
 
-    ioapic_manager: Option<Arc<IoapicManager>>,
+    #[cfg(target_arch = "x86_64")]
+    irq_manager: Arc<Box<dyn InterruptManager>>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -256,6 +253,7 @@ impl VcpuManager {
         shared_info: Arc<RwLock<InstanceInfo>>,
         io_manager: IoManagerCached,
         epoll_manager: EpollManager,
+        irq_manager: Arc<Box<dyn InterruptManager>>,
     ) -> Result<Arc<Mutex<Self>>> {
         let support_immediate_exit = kvm_context.kvm().check_extension(Cap::ImmediateExit);
         let max_vcpu_count = vm_config_info.max_vcpu_count;
@@ -305,12 +303,6 @@ impl VcpuManager {
             _ => VpmuFeatureLevel::Disabled,
         };
 
-        let ioapic_manager = if vm_config_info.split_irqchip {
-            Some(Arc::new(IoapicManager::create_default_ioapic_manager(vm_fd.clone()).map_err(VcpuManagerError::UserspaceIoapic)?))
-        } else {
-            None
-        };
-
         let vcpu_manager = Arc::new(Mutex::new(VcpuManager {
             vcpu_infos,
             vcpu_config: VcpuConfig {
@@ -337,7 +329,7 @@ impl VcpuManager {
             upcall_channel: None,
             #[cfg(target_arch = "x86_64")]
             supported_cpuid,
-            ioapic_manager,
+            irq_manager,
         }));
 
         let handler = Box::new(VcpuEpollHandler {
@@ -801,7 +793,7 @@ impl VcpuManager {
             self.vcpu_state_sender.clone(),
             request_ts,
             self.support_immediate_exit,
-            self.ioapic_manager.clone(),
+            self.irq_manager.clone(),
         )
         .map_err(VcpuManagerError::Vcpu)
     }

@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use dbs_arch::cpuid::{process_cpuid, VmSpec};
 use dbs_arch::gdt::gdt_entry;
-use dbs_interrupt::IoapicManager;
+use dbs_interrupt::InterruptManager;
 use dbs_utils::metric::IncMetric;
 use dbs_utils::time::TimestampUs;
 use kvm_bindings::CpuId;
@@ -54,7 +54,7 @@ impl Vcpu {
         vcpu_state_sender: Sender<VcpuStateEvent>,
         create_ts: TimestampUs,
         support_immediate_exit: bool,
-        ioapic_manager: Option<Arc<IoapicManager>>,
+        irq_manager: Arc<Box<dyn InterruptManager>>,
     ) -> Result<Self> {
         let (event_sender, event_receiver) = channel();
         let (response_sender, response_receiver) = channel();
@@ -74,7 +74,7 @@ impl Vcpu {
             support_immediate_exit,
             metrics: Arc::new(VcpuMetrics::default()),
             cpuid,
-            ioapic_manager,
+            irq_manager,
         })
     }
 

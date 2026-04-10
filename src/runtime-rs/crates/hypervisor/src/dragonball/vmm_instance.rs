@@ -17,7 +17,7 @@ use anyhow::{anyhow, Context, Result};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use dragonball::{
     api::v1::{
-        BlockDeviceConfigInfo, BootSourceConfig, FsDeviceConfigInfo, FsMountConfigInfo,
+        BlockDeviceConfigInfo, BootSourceConfig, ConfidentialVmType, FsDeviceConfigInfo, FsMountConfigInfo,
         InstanceInfo, InstanceState, NetworkInterfaceConfig, VcpuResizeInfo, VmmAction,
         VmmActionError, VmmData, VmmRequest, VmmResponse, VmmService, VsockDeviceConfigInfo,
     },
@@ -60,6 +60,7 @@ impl VmmInstance {
         let vmm_shared_info = Arc::new(RwLock::new(InstanceInfo::new(
             String::from(id),
             DRAGONBALL_VERSION.to_string(),
+            ConfidentialVmType::None,
         )));
 
         let to_vmm_fd = EventFd::new(libc::EFD_NONBLOCK)

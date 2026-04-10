@@ -13,18 +13,17 @@ use super::{
     ioapic::*, InterruptIndex, InterruptManager, InterruptSourceGroup, InterruptSourceType, Result,
 };
 
-/// IOAPIC manager that manages userspace interrupt routing
-pub struct IoapicManager {
+/// Userspace IOAPIC manager that manages userspace interrupt routing
+pub struct UserspaceIrqManager {
     ioregsel: RwLock<IoRegSel>,
     ioapicid: RwLock<IoapicId>,
-    ioapicver: RwLock<IoapicVer>,
+    ioapicver: IoapicVer,
     ioapicarb: RwLock<IoapicArb>,
-    ioapic_boot_config: RwLock<IoapicBootConfig>,
     #[cfg(feature = "split-legacy-irq")]
     irqs: Vec<Arc<UserspaceLegacyIrqObj>>,
 }
 
-impl IoapicManager {
+impl UserspaceIrqManager {
     /// Create a new IOAPIC manager instance
     pub fn create_ioapic_manager(
         vmfd: Arc<VmFd>,
@@ -51,9 +50,8 @@ impl IoapicManager {
         Ok(Self {
             ioregsel: RwLock::new(IoRegSel::default()),
             ioapicid: RwLock::new(IoapicId::default()),
-            ioapicver: RwLock::new(ioapicver),
+            ioapicver,
             ioapicarb: RwLock::new(IoapicArb::default()),
-            ioapic_boot_config: RwLock::new(IoapicBootConfig::default()),
             #[cfg(feature = "split-legacy-irq")]
             irqs,
         })
@@ -80,7 +78,6 @@ impl IoapicManager {
         if !(select == IOAPIC_IOAPICID_INDEX
             || select == IOAPIC_IOAPICVER_INDEX
             || select == IOAPIC_IOAPICARB_INDEX
-            || select == IOAPIC_BOOT_CONFIGURATION
             || (select >= IOAPIC_REDIR_TABLE_START_INDEX
                 && select < IOAPIC_REDIR_TABLE_START_INDEX + 2 * self.nr_redir_entries() as u8))
         {
@@ -96,9 +93,8 @@ impl IoapicManager {
     fn iowin(&self) -> u32 {
         match self.ioregsel.read().unwrap().register_index() {
             IOAPIC_IOAPICID_INDEX => self.ioapicid.read().unwrap().clone().into(),
-            IOAPIC_IOAPICVER_INDEX => self.ioapicver.read().unwrap().clone().into(),
+            IOAPIC_IOAPICVER_INDEX => self.ioapicver.clone().into(),
             IOAPIC_IOAPICARB_INDEX => self.ioapicarb.read().unwrap().clone().into(),
-            IOAPIC_BOOT_CONFIGURATION => self.ioapic_boot_config.read().unwrap().clone().into(),
             // We haved checked the validity of ioregsel while setting, therefore all values beyond the four
             // special IOAPIC registers above would become a valid redirection entry
             index => {
@@ -133,10 +129,6 @@ impl IoapicManager {
             }
             IOAPIC_IOAPICARB_INDEX => {
                 *self.ioapicarb.write().unwrap() = IoapicArb::from(val);
-                Ok(())
-            }
-            IOAPIC_BOOT_CONFIGURATION => {
-                *self.ioapic_boot_config.write().unwrap() = IoapicBootConfig::from(val);
                 Ok(())
             }
             // We haved checked the validity of ioregsel while setting, therefore all values beyond the four
@@ -193,41 +185,11 @@ impl IoapicManager {
     }
 
     fn nr_redir_entries(&self) -> InterruptIndex {
-        self.ioapicver.read().unwrap().entries() as InterruptIndex + 1
-    }
-
-    pub fn ioapic_mmio_read(&self, addr: u64, data: &mut [u8]) -> Result<()> {
-        let mut val = 0;
-
-        if addr == IOAPIC_IOREGSEL_BASE as u64 {
-            val = self.ioregsel();
-        } else if addr == IOAPIC_IOWIN_BASE as u64 {
-            val = self.iowin();
-        }
-
-        data.copy_from_slice(&val.to_le_bytes());
-
-        Ok(())
-    }
-
-    pub fn ioapic_mmio_write(&self, addr: u64, data: &[u8]) -> Result<()> {
-        if data.len() != 4 {
-            return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
-        }
-
-        let val = unsafe { *(data.as_ptr() as *const u32) };
-
-        if addr == IOAPIC_IOREGSEL_BASE as u64 {
-            self.set_ioregsel(val)?;
-        } else if addr == IOAPIC_IOWIN_BASE as u64 {
-            self.set_iowin(val)?;
-        }
-
-        Ok(())
+        self.ioapicver.entries() as InterruptIndex + 1
     }
 }
 
-impl InterruptManager for IoapicManager {
+impl InterruptManager for UserspaceIrqManager {
     fn create_group(
         &self,
         ty: InterruptSourceType,
@@ -256,6 +218,36 @@ impl InterruptManager for IoapicManager {
     }
 
     fn destroy_group(&self, _group: Arc<Box<dyn InterruptSourceGroup>>) -> Result<()> {
+        Ok(())
+    }
+
+    fn ioapic_read(&self, addr: u64, data: &mut [u8]) -> Result<()> {
+        let mut val = 0;
+
+        if addr == IOAPIC_IOREGSEL_BASE as u64 {
+            val = self.ioregsel();
+        } else if addr == IOAPIC_IOWIN_BASE as u64 {
+            val = self.iowin();
+        }
+
+        data.copy_from_slice(&val.to_le_bytes());
+
+        Ok(())
+    }
+
+    fn ioapic_write(&self, addr: u64, data: &[u8]) -> Result<()> {
+        if data.len() != 4 {
+            return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
+        }
+
+        let val = unsafe { *(data.as_ptr() as *const u32) };
+
+        if addr == IOAPIC_IOREGSEL_BASE as u64 {
+            self.set_ioregsel(val)?;
+        } else if addr == IOAPIC_IOWIN_BASE as u64 {
+            self.set_iowin(val)?;
+        }
+
         Ok(())
     }
 }

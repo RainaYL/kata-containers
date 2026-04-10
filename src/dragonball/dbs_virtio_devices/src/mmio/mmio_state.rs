@@ -23,12 +23,12 @@ use crate::{
 };
 
 /// The state of Virtio Mmio device.
-pub struct MmioV2DeviceState<AS: GuestAddressSpace + Clone, Q: QueueT, R: GuestMemoryRegion, IM: InterruptManager + Clone> {
+pub struct MmioV2DeviceState<AS: GuestAddressSpace + Clone, Q: QueueT, R: GuestMemoryRegion> {
     device: Box<dyn VirtioDevice<AS, Q, R>>,
     vm_fd: Arc<VmFd>,
     vm_as: AS,
     address_space: AddressSpace,
-    intr_mgr: DeviceInterruptManager<IM>,
+    intr_mgr: DeviceInterruptManager<Arc<Box<dyn InterruptManager>>>,
     device_resources: DeviceResources,
     queues: Vec<VirtioQueueConfig<Q>>,
 
@@ -48,12 +48,11 @@ pub struct MmioV2DeviceState<AS: GuestAddressSpace + Clone, Q: QueueT, R: GuestM
     shm_regions: Option<VirtioSharedMemoryList<R>>,
 }
 
-impl<AS, Q, R, IM> MmioV2DeviceState<AS, Q, R, IM>
+impl<AS, Q, R> MmioV2DeviceState<AS, Q, R>
 where
     AS: GuestAddressSpace + Clone,
     Q: QueueT + Clone,
     R: GuestMemoryRegion,
-    IM: InterruptManager + Clone,
 {
     /// Returns a reference to the internal device object.
     pub fn get_inner_device(&self) -> &dyn VirtioDevice<AS, Q, R> {
@@ -71,7 +70,7 @@ where
         vm_fd: Arc<VmFd>,
         vm_as: AS,
         address_space: AddressSpace,
-        irq_manager: IM,
+        irq_manager: Arc<Box<dyn InterruptManager>>,
         device_resources: DeviceResources,
         mmio_base: u64,
         doorbell_enabled: bool,
@@ -122,7 +121,7 @@ where
         })
     }
 
-    pub(crate) fn activate(&mut self, device: &MmioV2Device<AS, Q, R, IM>) -> Result<()> {
+    pub(crate) fn activate(&mut self, device: &MmioV2Device<AS, Q, R>) -> Result<()> {
         if self.device_activated {
             return Ok(());
         }
@@ -173,7 +172,7 @@ where
 
     fn create_queue_config(
         &mut self,
-        device: &MmioV2Device<AS, Q, R, IM>,
+        device: &MmioV2Device<AS, Q, R>,
     ) -> Result<Vec<VirtioQueueConfig<Q>>> {
         // Safe because we have just called self.intr_mgr.enable().
         let group = self.intr_mgr.get_group().unwrap();
@@ -197,7 +196,7 @@ where
 
     fn create_device_config(
         &mut self,
-        device: &MmioV2Device<AS, Q, R, IM>,
+        device: &MmioV2Device<AS, Q, R>,
     ) -> Result<VirtioDeviceConfig<AS, Q, R>> {
         let mut queues = self.create_queue_config(device)?;
         let ctrl_queue = if self.has_ctrl_queue {
@@ -461,7 +460,7 @@ where
         }
     }
 
-    pub(crate) fn update_msi_enable(&mut self, v: u16, device: &MmioV2Device<AS, Q, R, IM>) {
+    pub(crate) fn update_msi_enable(&mut self, v: u16, device: &MmioV2Device<AS, Q, R>) {
         // Can't switch interrupt mode once the device has been activated.
         if device.driver_status() & DEVICE_DRIVER_OK != 0 {
             if device.driver_status() & DEVICE_FAILED == 0 {
@@ -549,7 +548,7 @@ where
         Ok(())
     }
 
-    pub(crate) fn handle_msi_cmd(&mut self, v: u16, device: &MmioV2Device<AS, Q, R, IM>) {
+    pub(crate) fn handle_msi_cmd(&mut self, v: u16, device: &MmioV2Device<AS, Q, R>) {
         let arg = v & MMIO_MSI_CMD_ARG_MASK;
         match v & MMIO_MSI_CMD_CODE_MASK {
             MMIO_MSI_CMD_CODE_UPDATE => {
@@ -577,12 +576,11 @@ where
     }
 }
 
-impl<AS, Q, R, IM> Drop for MmioV2DeviceState<AS, Q, R, IM>
+impl<AS, Q, R> Drop for MmioV2DeviceState<AS, Q, R>
 where
     AS: GuestAddressSpace + Clone,
     Q: QueueT,
     R: GuestMemoryRegion,
-    IM: InterruptManager + Clone,
 {
     fn drop(&mut self) {
         if let Some(memlist) = &self.shm_regions {
@@ -621,7 +619,7 @@ pub(crate) mod tests {
         have_msi: bool,
         doorbell: bool,
         ctrl_queue_size: u16,
-    ) -> MmioV2DeviceState<Arc<GuestMemoryMmap>, QueueSync, GuestRegionMmap, Arc<KvmIrqManager>> {
+    ) -> MmioV2DeviceState<Arc<GuestMemoryMmap>, QueueSync, GuestRegionMmap> {
         let mem = Arc::new(GuestMemoryMmap::from_ranges(&[(GuestAddress(0), 0x1000)]).unwrap());
 
         let mmio_base = 0;
@@ -631,7 +629,7 @@ pub(crate) mod tests {
         let vm_fd = Arc::new(kvm.create_vm().unwrap());
         vm_fd.create_irq_chip().unwrap();
 
-        let irq_manager = Arc::new(KvmIrqManager::new(vm_fd.clone()));
+        let irq_manager: Arc<Box<dyn InterruptManager>> = Arc::new(Box::new(KvmIrqManager::new(vm_fd.clone())));
         irq_manager.initialize().unwrap();
 
         let device = MmioDevice::new(ctrl_queue_size);

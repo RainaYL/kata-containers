@@ -25,8 +25,6 @@ pub const IOAPIC_IOAPICID_INDEX: u8 = 0x00;
 pub const IOAPIC_IOAPICVER_INDEX: u8 = 0x01;
 /// Index for IOAPIC arbitration register (indirect)
 pub const IOAPIC_IOAPICARB_INDEX: u8 = 0x02;
-/// Index for IOAPIC boot configuration register (indirect)
-pub const IOAPIC_BOOT_CONFIGURATION: u8 = 0x03;
 /// Start index for IOAPIC redirection table (indirect)
 pub const IOAPIC_REDIR_TABLE_START_INDEX: u8 = 0x10;
 /// End index for IOAPIC redirection table (indirect)
@@ -96,16 +94,6 @@ pub(super) struct IoapicArb {
     pub(super) arbitration: u4,
     /// Bits 31:28. Reserved
     pub(super) reserved_1: u4,
-}
-
-/// Bits for IOAPIC boot configuration register
-#[bitsize(32)]
-#[derive(DebugBits, FromBits, Default, Clone)]
-pub(super) struct IoapicBootConfig {
-    /// Bit 0: Boot DT
-    pub(super) boot_dt: bool,
-    /// Bits 31:1. Reserved
-    pub(super) reserved: u31,
 }
 
 /// Bits for IOAPIC redirection entry

@@ -69,7 +69,6 @@ impl Vcpu {
             mpidr: 0,
             exit_evt,
             metrics: Arc::new(VcpuMetrics::default()),
-            ioapic_manager: None,
         })
     }
 

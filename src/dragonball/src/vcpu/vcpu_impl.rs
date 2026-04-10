@@ -15,7 +15,7 @@ use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 use std::sync::{Arc, Barrier};
 use std::thread;
 
-use dbs_interrupt::{IoapicManager, IOAPIC_BASE, IOAPIC_SIZE};
+use dbs_interrupt::{InterruptManager, IOAPIC_BASE, IOAPIC_SIZE};
 use dbs_utils::metric::IncMetric;
 use dbs_utils::time::TimestampUs;
 use kvm_bindings::{KVM_SYSTEM_EVENT_RESET, KVM_SYSTEM_EVENT_SHUTDOWN};
@@ -316,7 +316,8 @@ pub struct Vcpu {
     #[cfg(target_arch = "aarch64")]
     pub(crate) mpidr: u64,
 
-    ioapic_manager: Option<Arc<IoapicManager>>,
+    #[cfg(target_arch = "x86_64")]
+    irq_manager: Arc<Box<dyn InterruptManager>>,
 }
 
 // Using this for easier explicit type-casting to help IDEs interpret the code.
@@ -466,22 +467,28 @@ impl Vcpu {
                         Ok(VcpuEmulation::Handled)
                     }
                     VcpuExit::MmioRead(addr, data) => {
-                        if addr >= IOAPIC_BASE as u64 && addr < (IOAPIC_BASE + IOAPIC_SIZE) as u64 && self.ioapic_manager.is_some() {
-                            let ioapic_manager = self.ioapic_manager.as_ref().unwrap().clone();
-                            let _ = ioapic_manager.ioapic_mmio_read(addr, data);
-                        } else {
-                            let _ = self.io_mgr.mmio_read(addr, data);
+                        #[cfg(target_arch = "x86_64")]
+                        if addr >= IOAPIC_BASE as u64 && addr < (IOAPIC_BASE + IOAPIC_SIZE) as u64 {
+                            let irq_manager = self.irq_manager.clone();
+                            let _ = irq_manager.ioapic_read(addr, data);
+                            self.metrics.exit_mmio_read.inc();
+                            return Ok(VcpuEmulation::Handled);
                         }
+
+                        let _ = self.io_mgr.mmio_read(addr, data);
                         self.metrics.exit_mmio_read.inc();
                         Ok(VcpuEmulation::Handled)
                     }
                     VcpuExit::MmioWrite(addr, data) => {
-                        if addr >= IOAPIC_BASE as u64 && addr < (IOAPIC_BASE + IOAPIC_SIZE) as u64 && self.ioapic_manager.is_some() {
-                            let ioapic_manager = self.ioapic_manager.as_ref().unwrap().clone();
-                            let _ = ioapic_manager.ioapic_mmio_write(addr, data);
-                        } else {
-                            let _ = self.io_mgr.mmio_write(addr, data);
+                        #[cfg(target_arch = "x86_64")]
+                        if addr >= IOAPIC_BASE as u64 && addr < (IOAPIC_BASE + IOAPIC_SIZE) as u64 {
+                            let irq_manager = self.irq_manager.clone();
+                            let _ = irq_manager.ioapic_write(addr, data);
+                            self.metrics.exit_mmio_write.inc();
+                            return Ok(VcpuEmulation::Handled);
                         }
+
+                        let _ = self.io_mgr.mmio_write(addr, data);
                         
                         self.metrics.exit_mmio_write.inc();
                         Ok(VcpuEmulation::Handled)
@@ -803,6 +810,7 @@ pub mod tests {
 
     use arc_swap::ArcSwap;
     use dbs_device::device_manager::IoManager;
+    use dbs_interrupt::{InterruptManager, KvmIrqManager};
     use lazy_static::lazy_static;
     use test_utils::skip_if_kvm_unaccessable;
 
@@ -864,6 +872,7 @@ pub mod tests {
         let vcpu_state_event = EventFd::new(libc::EFD_NONBLOCK).unwrap();
         let (tx, rx) = channel();
         let time_stamp = TimestampUs::default();
+        let irq_manager: Arc<Box<dyn InterruptManager>> = Arc::new(Box::new(KvmIrqManager::new(Arc::new(vm))));
 
         let vcpu = Vcpu::new_x86_64(
             0,
@@ -875,7 +884,7 @@ pub mod tests {
             tx,
             time_stamp,
             false,
-            None,
+            irq_manager,
         )
         .unwrap();
 
