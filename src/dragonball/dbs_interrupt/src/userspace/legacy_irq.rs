@@ -44,10 +44,16 @@ impl UserspaceLegacyIrqObj {
     }
 
     pub(super) fn redir_entry_low(&self) -> IoapicRedirEntryLow {
+        if self.base == 4 {
+            println!("vector: {}", self.redir_entry.read().unwrap().low().vector());
+        }
         self.redir_entry.read().unwrap().low().clone()
     }
 
     pub(super) fn set_redir_entry_low(&self, entry: IoapicRedirEntryLow) {
+        if self.base == 4 {
+            println!("vector: {}", entry.vector());
+        }
         self.redir_entry.write().unwrap().set_low(entry);
     }
 
