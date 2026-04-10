@@ -262,17 +262,14 @@ impl Vm {
     pub(crate) fn init_tss(&mut self) -> std::result::Result<(), StartMicroVmError> {
         self.vm_fd
             .set_tss_address(dbs_boot::layout::KVM_TSS_ADDRESS.try_into().unwrap())
-            .map_err(|e| {
-                println!("init_tss error");
-                StartMicroVmError::ConfigureVm(VmError::VmSetup(e))
-            })
+            .map_err(|e| StartMicroVmError::ConfigureVm(VmError::VmSetup(e)))
     }
 
     /// Creates the irq chip and an in-kernel device model for the PIT.
     pub(crate) fn setup_interrupt_controller(
         &mut self,
     ) -> std::result::Result<(), StartMicroVmError> {
-        if self.shared_info.read().unwrap().confidential_vm_type == ConfidentialVmType::TDX {
+        if self.split_irqchip() {
             let mut enable_split_irqchip = kvm_enable_cap {
                 cap: KVM_CAP_SPLIT_IRQCHIP,
                 ..Default::default()
@@ -282,15 +279,18 @@ impl Vm {
                 .enable_cap(&enable_split_irqchip)
                 .map_err(StartMicroVmError::EnableSplitIrqchip)
         } else {
-            self.vm_fd.create_irq_chip().map_err(|e| {
-                println!("create irq chip error");
-                StartMicroVmError::ConfigureVm(VmError::VmSetup(e))
-            })
+            self.vm_fd
+                .create_irq_chip()
+                .map_err(|e| StartMicroVmError::ConfigureVm(VmError::VmSetup(e)))
         }
     }
 
     /// Creates an in-kernel device model for the PIT.
     pub(crate) fn create_pit(&self) -> std::result::Result<(), StartMicroVmError> {
+        if self.split_irqchip() {
+            return Ok(());
+        }
+
         info!(self.logger, "VM: create pit");
         // We need to enable the emulation of a dummy speaker port stub so that writing to port 0x61
         // (i.e. KVM_SPEAKER_BASE_ADDRESS) does not trigger an exit to user space.
@@ -303,10 +303,7 @@ impl Vm {
         // correct amount of memory from our pointer, and we verify the return result.
         self.vm_fd
             .create_pit2(pit_config)
-            .map_err(|e| {
-                println!("create pit2 error");
-                StartMicroVmError::ConfigureVm(VmError::VmSetup(e))
-            })
+            .map_err(|e| StartMicroVmError::ConfigureVm(VmError::VmSetup(e)))
     }
 
     pub(crate) fn register_events(
@@ -323,5 +320,9 @@ impl Vm {
         self.reset_eventfd = Some(reset_evt);
 
         Ok(())
+    }
+
+    fn split_irqchip(&self) -> bool {
+        self.shared_info.read().unwrap().confidential_vm_type == ConfidentialVmType::TDX
     }
 }
