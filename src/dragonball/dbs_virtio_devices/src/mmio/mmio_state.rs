@@ -78,9 +78,9 @@ where
         println!("MmioV2DeviceState::new");
         let intr_mgr =
             DeviceInterruptManager::new(irq_manager, &device_resources).map_err(Error::IOError)?;
-
+        println!("After DeviceInterruptManager::new");
         let (queues, has_ctrl_queue) = Self::create_queues(device.as_ref())?;
-
+        println!("After create_queues");
         // Assign requested device resources back to virtio device and let it do necessary setups,
         // as only virtio device knows how to use such resources. And if there's
         // VirtioSharedMemoryList returned, assigned it to MmioV2DeviceState
@@ -90,7 +90,7 @@ where
                 error!("Failed to assign device resource to virtio device: {e}");
                 e
             })?;
-
+        println!("After set_resource");
         let doorbell = if doorbell_enabled {
             Some(DoorBell::new(
                 DRAGONBALL_MMIO_DOORBELL_OFFSET as u32,
