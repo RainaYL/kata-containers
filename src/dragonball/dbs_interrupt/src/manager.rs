@@ -125,7 +125,7 @@ impl<T: InterruptManager> DeviceInterruptManager<T> {
             }
 
             if let Some(msi) = resources.get_pci_msix_irqs() {
-                println("pci_msix_irq");
+                println!("pci_msix_irq");
                 let group = mgr
                     .intr_mgr
                     .create_group(InterruptSourceType::MsiIrq, msi.0, msi.1)?;
