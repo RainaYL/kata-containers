@@ -91,7 +91,6 @@ impl UserspaceIrqManager {
 
     /// Get value from IOAPIC data registers
     fn iowin(&self) -> u32 {
-        println!("iowin read: {}", self.ioregsel.read().unwrap().register_index());
         match self.ioregsel.read().unwrap().register_index() {
             IOAPIC_IOAPICID_INDEX => self.ioapicid.read().unwrap().clone().into(),
             IOAPIC_IOAPICVER_INDEX => self.ioapicver.clone().into(),
@@ -119,7 +118,6 @@ impl UserspaceIrqManager {
 
     /// Update IOAPIC data registers
     fn set_iowin(&self, val: u32) -> Result<()> {
-        println!("iowin write: {}", self.ioregsel.read().unwrap().register_index());
         match self.ioregsel.read().unwrap().register_index() {
             IOAPIC_IOAPICID_INDEX => {
                 *self.ioapicid.write().unwrap() = IoapicId::from(val);
