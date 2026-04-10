@@ -118,11 +118,13 @@ impl ConsoleHandler for SerialWrapper<EventFdTrigger, SerialEventsWrapper> {
 
 impl DeviceIoMut for SerialWrapper<EventFdTrigger, SerialEventsWrapper> {
     fn pio_read(&mut self, _base: PioAddress, offset: PioAddress, data: &mut [u8]) {
+        println!("pio_read start");
         if data.len() != 1 {
             self.serial.events().metrics.missed_read_count.inc();
             return;
         }
         data[0] = self.serial.read(offset.raw_value() as u8);
+        println!("pio_read end");
     }
     fn pio_write(&mut self, _base: PioAddress, offset: PioAddress, data: &[u8]) {
         if data.len() != 1 {
