@@ -158,10 +158,6 @@ impl UserspaceLegacyIrqObj {
 
         Ok(())
     }
-
-    fn base(&self) -> u32 {
-        self.base
-    }
 }
 
 impl UserspaceLegacyIrq {
@@ -180,7 +176,7 @@ impl InterruptSourceGroup for UserspaceLegacyIrq {
     }
 
     fn base(&self) -> u32 {
-        self.irq.base()
+        self.irq.base
     }
 
     fn enable(&self, configs: &[InterruptSourceConfig]) -> Result<()> {
