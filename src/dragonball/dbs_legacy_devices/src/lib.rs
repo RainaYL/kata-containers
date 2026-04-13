@@ -35,7 +35,6 @@ impl Trigger for EventFdTrigger {
     type E = std::io::Error;
 
     fn trigger(&self) -> std::io::Result<()> {
-        println!("trigger");
         self.write(1)
     }
 }
