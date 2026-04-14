@@ -107,9 +107,9 @@ impl UserspaceIrqManager {
                     if is_low {
                         let entry = self.irqs[irq_base].redir_entry_low();
                         if entry.is_level() {
-                            println!("base: {} trigger: level", irq_base);
+                            println!("base: {} read trigger: level", irq_base);
                         } else {
-                            println!("base: {} trigger: edge", irq_base);
+                            println!("base: {} read trigger: edge", irq_base);
                         }
                         self.irqs[irq_base].redir_entry_low().into()
                     } else {
@@ -148,6 +148,12 @@ impl UserspaceIrqManager {
 
                     if is_low {
                         self.irqs[irq_base].set_redir_entry_low(IoapicRedirEntryLow::from(val));
+                        let entry = self.irqs[irq_base].redir_entry_low();
+                        if entry.is_level() {
+                            println!("base: {} write trigger: level", irq_base);
+                        } else {
+                            println!("base: {} write read trigger: edge", irq_base);
+                        }
                     } else {
                         self.irqs[irq_base].set_redir_entry_high(IoapicRedirEntryHigh::from(val));
                     }
