@@ -108,6 +108,8 @@ impl UserspaceIrqManager {
                         let entry = self.irqs[irq_base].redir_entry_low();
                         if entry.is_level() {
                             println!("base: {} trigger: level", irq_base);
+                        } else {
+                            println!("base: {} trigger: edge", irq_base);
                         }
                         self.irqs[irq_base].redir_entry_low().into()
                     } else {
