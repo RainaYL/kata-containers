@@ -105,6 +105,10 @@ impl UserspaceIrqManager {
                     let irq_base = offset >> 1;
 
                     if is_low {
+                        let entry = self.irqs[irq_base].redir_entry_low();
+                        if entry.is_level() {
+                            println!("base: {} trigger: level", irq_base);
+                        }
                         self.irqs[irq_base].redir_entry_low().into()
                     } else {
                         self.irqs[irq_base].redir_entry_high().into()

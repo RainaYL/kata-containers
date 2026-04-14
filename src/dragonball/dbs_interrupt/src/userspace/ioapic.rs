@@ -151,15 +151,15 @@ pub(super) struct MsiAddressLow {
     /// Bit 2. Destination mode, 0 = physical, 1 = logical
     pub(super) dest_mode_logical: bool,
     /// Bit 3. Redirection hint
-	pub(super) redirect_hint: bool,
+    pub(super) redirect_hint: bool,
     /// Bit 4. Reserved
-	pub(super) reserved_1: bool,
+    pub(super) reserved_1: bool,
     /// Bits 11:5. High bits (8-14) for virtual APIC ID
-	pub(super) virt_destid_8_14: u7,
+    pub(super) virt_destid_8_14: u7,
     /// Bits 19:12. Low bits (0-7) for APIC ID
-	pub(super) destid_0_7: u8,
+    pub(super) destid_0_7: u8,
     /// Bits 31:20 Base address. (Should be 0xfee)
-	pub(super) base_address: u12,
+    pub(super) base_address: u12,
 }
 
 /// High word of address field for MSI message
@@ -169,7 +169,7 @@ pub(super) struct MsiAddressHigh {
     /// Bits 7:0. Reserved
     pub(super) reserved: u8,
     /// Bits 31:8. High bits (8-31) for APIC ID
-	pub(super) destid_8_31: u24,
+    pub(super) destid_8_31: u24,
 }
 
 /// Data field for MSI message
@@ -179,15 +179,15 @@ pub(super) struct MsiData {
     /// Bits 7:0. Interrupt vector
     pub(super) vector: u8,
     /// Bits 10:8. Delivery mode
-	pub(super) delivery_mode: u3,
+    pub(super) delivery_mode: u3,
     /// Bit 11. Destination mode, 0 = physical, 1 = logical
-	pub(super) dest_mode_logical: bool,
+    pub(super) dest_mode_logical: bool,
     /// Bits 13:12. Reserved
-	pub(super) reserved_0: u2,
+    pub(super) reserved_0: u2,
     /// Bit 14. 0 = active high, 1 = active low
-	pub(super) active_low: bool,
+    pub(super) active_low: bool,
     /// Bit 15. Trigger mode. 0 = edge, 1 = level
-	pub(super) is_level: bool,
+    pub(super) is_level: bool,
     /// Bits 31:16. Reserved
     pub(super) reserved_1: u16,
 }

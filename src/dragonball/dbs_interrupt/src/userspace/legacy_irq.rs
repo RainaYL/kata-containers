@@ -32,6 +32,10 @@ pub struct UserspaceLegacyIrqObj {
 
 impl UserspaceLegacyIrqObj {
     pub(super) fn new(base: u32, vmfd: Arc<VmFd>) -> Self {
+        let mut redir_entry_low = IoapicRedirEntryLow::default();
+        redir_entry_low.set_masked(true);
+        redir_entry_low.set_is_level(true);
+        let redir_entry = IoapicRedirEntry::new(redir_entry_low, IoapicRedirEntryHigh::default());
         Self {
             base,
             vmfd,
@@ -39,7 +43,7 @@ impl UserspaceLegacyIrqObj {
             pending: RwLock::new(false),
             servicing: RwLock::new(false),
             level_high: RwLock::new(false),
-            redir_entry: RwLock::new(IoapicRedirEntry::default()),
+            redir_entry: RwLock::new(redir_entry),
         }
     }
 
