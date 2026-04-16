@@ -205,9 +205,9 @@ impl InterruptSourceGroup for UserspaceLegacyIrq {
 #[cfg(target_arch = "x86_64")]
 mod test {
     use super::*;
-    use crate::LegacyIrqSourceConfig;
     use crate::manager::tests::create_vm_fd;
     use crate::userspace::manager::test::enable_split_irqchip;
+    use crate::LegacyIrqSourceConfig;
     use test_utils::skip_if_kvm_unaccessable;
 
     #[test]
@@ -233,11 +233,21 @@ mod test {
         assert_eq!(irq.base(), base);
         assert!(irq.notifier(0).is_none());
 
-        assert!(irq.trigger(0).is_err());
+        assert_eq!(
+            irq.trigger(0).unwrap_err().raw_os_error(),
+            Some(libc::EINVAL)
+        );
 
         irq.enable(&configs).unwrap();
-        irq.trigger(0).unwrap();
-        assert!(irq.trigger(1).is_err());
+        // Since the interrupt vector is not officially registered in KVM, KVM_SIGNAL_MSI
+        // will report an error code anyway. But compared to other error codes (e.g., EINVAL),
+        // error code 1 means that all prechecks are passed, and the ioctl only fails because
+        // KVM is not able to find the proper APIC entry
+        assert_eq!(irq.trigger(0).unwrap_err().raw_os_error(), Some(1));
+        assert_eq!(
+            irq.trigger(1).unwrap_err().raw_os_error(),
+            Some(libc::EINVAL)
+        );
 
         irq.update(0, &configs[0]).unwrap();
 
