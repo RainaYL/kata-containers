@@ -279,7 +279,7 @@ pub(crate) mod test {
         skip_if_kvm_unaccessable!();
         let vmfd = Arc::new(create_vm_fd());
         let manager = UserspaceIoapicManager::create_default_ioapic_manager(vmfd.clone()).unwrap();
-        let ioapicver = (IOAPIC_MAX_NR_REDIR_ENTRIES - 1) << 16 + IOAPIC_DEFAULT_VERSION;
+        let ioapicver = ((IOAPIC_MAX_NR_REDIR_ENTRIES - 1) << 16) + IOAPIC_DEFAULT_VERSION as u32;
 
         assert_eq!(manager.ioregsel(), 0);
         assert_eq!(manager.iowin(), 0);
