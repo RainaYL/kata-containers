@@ -200,3 +200,52 @@ impl InterruptSourceGroup for UserspaceLegacyIrq {
         self.irq.delivery_status()
     }
 }
+
+#[cfg(test)]
+#[cfg(target_arch = "x86_64")]
+mod test {
+    use super::*;
+    use crate::LegacyIrqSourceConfig;
+    use crate::manager::tests::create_vm_fd;
+    use test_utils::skip_if_kvm_unaccessable;
+
+    #[test]
+    fn test_userspace_legacy_irq() {
+        skip_if_kvm_unaccessable!();
+        let vmfd = Arc::new(create_vm_fd());
+        let base = 0;
+        
+        let inner = Arc::new(UserspaceLegacyIrqObj::new(base, vmfd.clone()));
+        assert_eq!(u32::from(inner.redir_entry_low()), 0);
+        assert_eq!(u32::from(inner.redir_entry_high()), 0);
+
+        let mut low = IoapicRedirEntryLow::default();
+        low.set_vector(0x22);
+        inner.set_redir_entry_low(low);
+        assert_eq!(inner.redir_entry_low().vector(), 0x22);
+
+        let irq = UserspaceLegacyIrq::new(inner);
+        let configs = [InterruptSourceConfig::LegacyIrq(LegacyIrqSourceConfig {})];
+        assert_eq!(irq.interrupt_type(), InterruptSourceType::LegacyIrq);
+        assert_eq!(irq.len(), 1);
+        assert_eq!(irq.base(), base);
+        assert!(irq.notifier(0).is_none());
+
+        assert!(irq.trigger(0).is_err());
+
+        irq.enable(&configs).unwrap();
+        irq.trigger(0).unwrap();
+        assert!(irq.trigger(1).is_err());
+
+        irq.update(0, &configs[0]).unwrap();
+
+        assert!(!irq.irq.masked());
+        irq.mask(0).unwrap();
+        assert!(irq.irq.masked());
+        irq.trigger(0).unwrap();
+        irq.unmask(0).unwrap();
+        assert!(!irq.irq.masked());
+
+        assert!(!irq.get_pending_state(0));
+    }
+}
