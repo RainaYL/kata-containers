@@ -234,7 +234,10 @@ impl InterruptManager for UserspaceIoapicManager {
 #[cfg(target_arch = "x86_64")]
 pub(crate) mod test {
     use super::*;
+    use crate::manager::tests::create_vm_fd;
+    use bilge::prelude::*;
     use kvm_bindings::{kvm_enable_cap, KVM_CAP_SPLIT_IRQCHIP};
+    use test_utils::skip_if_kvm_unaccessable;
 
     pub(crate) fn enable_split_irqchip(vmfd: Arc<VmFd>) {
         let mut enable_split_irqchip = kvm_enable_cap {
@@ -243,5 +246,29 @@ pub(crate) mod test {
         };
         enable_split_irqchip.args[0] = IOAPIC_MAX_NR_REDIR_ENTRIES as u64;
         vmfd.enable_cap(&enable_split_irqchip).unwrap();
+    }
+
+    #[test]
+    fn test_create_userspace_ioapic_manager() {
+        skip_if_kvm_unaccessable!();
+        let vmfd = Arc::new(create_vm_fd());
+        enable_split_irqchip(vmfd.clone());
+
+        assert!(UserspaceIoapicManager::create_ioapic_manager(vmfd.clone(), 0, 0).is_err());
+        assert!(UserspaceIoapicManager::create_ioapic_manager(
+            vmfd.clone(),
+            0,
+            IOAPIC_MAX_NR_REDIR_ENTRIES + 1
+        )
+        .is_err());
+
+        let manager = UserspaceIoapicManager::create_ioapic_manager(vmfd.clone(), IOAPIC_DEFAULT_VERSION, 12).unwrap();
+        assert_eq!(manager.nr_redir_entries(), 12);
+        assert_eq!(manager.ioregsel.read().unwrap().register_index(), 0);
+        assert_eq!(manager.ioapicid.read().unwrap().id(), 0);
+        assert_eq!(manager.ioapicver.version(), IOAPIC_DEFAULT_VERSION);
+        assert_eq!(manager.ioapicver.entries(), 11);
+        assert_eq!(manager.ioapicarb.read().unwrap().arbitration(), u4::from_u8(0));
+        assert_eq!(manager.irqs.len(), 12);
     }
 }
