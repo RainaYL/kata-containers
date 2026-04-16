@@ -236,23 +236,12 @@ pub(crate) mod test {
     use super::*;
     use crate::manager::tests::create_vm_fd;
     use bilge::prelude::*;
-    use kvm_bindings::{kvm_enable_cap, KVM_CAP_SPLIT_IRQCHIP};
     use test_utils::skip_if_kvm_unaccessable;
-
-    pub(crate) fn enable_split_irqchip(vmfd: Arc<VmFd>) {
-        let mut enable_split_irqchip = kvm_enable_cap {
-            cap: KVM_CAP_SPLIT_IRQCHIP,
-            ..Default::default()
-        };
-        enable_split_irqchip.args[0] = IOAPIC_MAX_NR_REDIR_ENTRIES as u64;
-        vmfd.enable_cap(&enable_split_irqchip).unwrap();
-    }
 
     #[test]
     fn test_create_userspace_ioapic_manager() {
         skip_if_kvm_unaccessable!();
         let vmfd = Arc::new(create_vm_fd());
-        enable_split_irqchip(vmfd.clone());
 
         assert!(UserspaceIoapicManager::create_ioapic_manager(vmfd.clone(), 0, 0).is_err());
         assert!(UserspaceIoapicManager::create_ioapic_manager(
@@ -262,13 +251,75 @@ pub(crate) mod test {
         )
         .is_err());
 
-        let manager = UserspaceIoapicManager::create_ioapic_manager(vmfd.clone(), IOAPIC_DEFAULT_VERSION, 12).unwrap();
+        let manager =
+            UserspaceIoapicManager::create_ioapic_manager(vmfd.clone(), IOAPIC_DEFAULT_VERSION, 12)
+                .unwrap();
         assert_eq!(manager.nr_redir_entries(), 12);
         assert_eq!(manager.ioregsel.read().unwrap().register_index(), 0);
         assert_eq!(manager.ioapicid.read().unwrap().id(), 0);
         assert_eq!(manager.ioapicver.version(), IOAPIC_DEFAULT_VERSION);
         assert_eq!(manager.ioapicver.entries(), 11);
-        assert_eq!(manager.ioapicarb.read().unwrap().arbitration(), u4::from_u8(0));
-        assert_eq!(manager.irqs.len(), 12);
+        assert_eq!(
+            manager.ioapicarb.read().unwrap().arbitration(),
+            u4::from_u8(0)
+        );
+
+        #[cfg(feature = "split-legacy-irq")]
+        {
+            assert_eq!(manager.irqs.len(), 12);
+            for irq in manager.irqs.iter() {
+                assert_eq!(u32::from(irq.redir_entry_low()), 0);
+                assert_eq!(u32::from(irq.redir_entry_high()), 0);
+            }
+        }
+    }
+
+    #[test]
+    fn test_userspace_ioapic_rw() {
+        skip_if_kvm_unaccessable!();
+        let vmfd = Arc::new(create_vm_fd());
+        let manager = UserspaceIoapicManager::create_default_ioapic_manager(vmfd.clone()).unwrap();
+        let ioapicver = (IOAPIC_MAX_NR_REDIR_ENTRIES - 1) << 16 + IOAPIC_DEFAULT_VERSION;
+
+        assert_eq!(manager.ioregsel(), 0);
+        assert_eq!(manager.iowin(), 0);
+
+        manager.set_ioregsel(0x01).unwrap();
+        assert_eq!(manager.ioregsel(), 1);
+        assert_eq!(
+            manager.iowin(),
+            ioapicver,
+        );
+
+        manager.set_ioregsel(0x02).unwrap();
+        assert_eq!(manager.iowin(), 0);
+
+        assert!(manager.set_ioregsel(0x04).is_err());
+        assert!(manager.set_ioregsel(0x40).is_err());
+
+        manager.set_ioregsel(0x10).unwrap();
+        assert_eq!(manager.iowin(), 0);
+
+        manager.set_ioregsel(0x00).unwrap();
+        manager.set_iowin(0xffffffff).unwrap();
+        assert_eq!(manager.iowin(), 0xffffffff);
+
+        manager.set_ioregsel(0x01).unwrap();
+        assert!(manager.set_iowin(0xeeeeeeee).is_err());
+        assert_eq!(manager.iowin(), ioapicver);
+
+        manager.set_ioregsel(0x02).unwrap();
+        manager.set_iowin(0xdddddddd).unwrap();
+        assert_eq!(manager.iowin(), 0xdddddddd);
+
+        manager.set_ioregsel(0x12).unwrap();
+        manager.set_iowin(0xcccccccc).unwrap();
+        assert_eq!(manager.iowin(), 0xcccccccc);
+        assert_eq!(u32::from(manager.irqs[1].redir_entry_low()), 0xcccccccc);
+
+        manager.set_ioregsel(0x15).unwrap();
+        manager.set_iowin(0xbbbbbbbb).unwrap();
+        assert_eq!(manager.iowin(), 0xbbbbbbbb);
+        assert_eq!(u32::from(manager.irqs[2].redir_entry_high()), 0xbbbbbbbb);
     }
 }

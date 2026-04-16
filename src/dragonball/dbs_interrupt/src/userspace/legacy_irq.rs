@@ -206,9 +206,18 @@ impl InterruptSourceGroup for UserspaceLegacyIrq {
 mod test {
     use super::*;
     use crate::manager::tests::create_vm_fd;
-    use crate::userspace::manager::test::enable_split_irqchip;
     use crate::LegacyIrqSourceConfig;
+    use kvm_bindings::{kvm_enable_cap, KVM_CAP_SPLIT_IRQCHIP};
     use test_utils::skip_if_kvm_unaccessable;
+
+    fn enable_split_irqchip(vmfd: Arc<VmFd>) {
+        let mut enable_split_irqchip = kvm_enable_cap {
+            cap: KVM_CAP_SPLIT_IRQCHIP,
+            ..Default::default()
+        };
+        enable_split_irqchip.args[0] = IOAPIC_MAX_NR_REDIR_ENTRIES as u64;
+        vmfd.enable_cap(&enable_split_irqchip).unwrap();
+    }
 
     #[test]
     fn test_userspace_legacy_irq() {
