@@ -234,6 +234,7 @@ impl InterruptManager for UserspaceIoapicManager {
 #[cfg(target_arch = "x86_64")]
 pub(crate) mod test {
     use super::*;
+    use crate::{InterruptSourceConfig, LegacyIrqSourceConfig};
     use crate::manager::tests::create_vm_fd;
     use bilge::prelude::*;
     use test_utils::skip_if_kvm_unaccessable;
@@ -321,5 +322,40 @@ pub(crate) mod test {
         manager.set_iowin(0xbbbbbbbb).unwrap();
         assert_eq!(manager.iowin(), 0xbbbbbbbb);
         assert_eq!(u32::from(manager.irqs[2].redir_entry_high()), 0xbbbbbbbb);
+    }
+
+    #[test]
+    fn test_userspace_interrupt_manager() {
+        skip_if_kvm_unaccessable!();
+        let vmfd = Arc::new(create_vm_fd());
+        let manager = UserspaceIoapicManager::create_default_ioapic_manager(vmfd.clone()).unwrap();
+        manager.initialize().unwrap();
+
+        assert!(manager.create_group(InterruptSourceType::LegacyIrq, 0, 2).is_err());
+        assert!(manager.create_group(InterruptSourceType::LegacyIrq, 24, 1).is_err());
+
+        let group = manager.create_group(InterruptSourceType::LegacyIrq, 5, 1).unwrap();
+        let configs = [InterruptSourceConfig::LegacyIrq(LegacyIrqSourceConfig {})];
+        group.enable(&configs).unwrap();
+        group.mask(0).unwrap();
+        group.trigger(0).unwrap();
+
+        let mut data = [0u8; 3];
+        assert!(manager.ioapic_read(IOAPIC_IOREGSEL_BASE as u64, &mut data).is_err());
+        assert!(manager.ioapic_write(IOAPIC_IOREGSEL_BASE as u64, &data).is_err());
+
+        let mut data = 2u32.to_le_bytes();
+        manager.ioapic_write(IOAPIC_IOREGSEL_BASE as u64, &data).unwrap();
+        data.fill(0);
+        manager.ioapic_read(IOAPIC_IOREGSEL_BASE as u64, &mut data).unwrap();
+        assert_eq!(u32::from_le_bytes(data.try_into().unwrap()), 2);
+
+        data = 0xffffffffu32.to_le_bytes();
+        manager.ioapic_write(IOAPIC_IOWIN_BASE as u64, &data).unwrap();
+        data.fill(0);
+        manager.ioapic_read(IOAPIC_IOWIN_BASE as u64, &mut data).unwrap();
+        assert_eq!(u32::from_le_bytes(data.try_into().unwrap()), 0xffffffff);
+
+        manager.destroy_group(group).unwrap();
     }
 }
