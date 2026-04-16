@@ -229,3 +229,19 @@ impl InterruptManager for UserspaceIoapicManager {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[cfg(target_arch = "x86_64")]
+pub(crate) mod test {
+    use super::*;
+    use kvm_bindings::{kvm_enable_cap, KVM_CAP_SPLIT_IRQCHIP};
+
+    pub(crate) fn enable_split_irqchip(vmfd: Arc<VmFd>) {
+        let mut enable_split_irqchip = kvm_enable_cap {
+            cap: KVM_CAP_SPLIT_IRQCHIP,
+            ..Default::default()
+        };
+        enable_split_irqchip.args[0] = IOAPIC_MAX_NR_REDIR_ENTRIES as u64;
+        vmfd.enable_cap(&enable_split_irqchip).unwrap();
+    }
+}

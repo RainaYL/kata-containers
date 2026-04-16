@@ -207,14 +207,16 @@ mod test {
     use super::*;
     use crate::LegacyIrqSourceConfig;
     use crate::manager::tests::create_vm_fd;
+    use crate::userspace::manager::test::enable_split_irqchip;
     use test_utils::skip_if_kvm_unaccessable;
 
     #[test]
     fn test_userspace_legacy_irq() {
         skip_if_kvm_unaccessable!();
         let vmfd = Arc::new(create_vm_fd());
+        enable_split_irqchip(vmfd.clone());
         let base = 0;
-        
+
         let inner = Arc::new(UserspaceLegacyIrqObj::new(base, vmfd.clone()));
         assert_eq!(u32::from(inner.redir_entry_low()), 0);
         assert_eq!(u32::from(inner.redir_entry_high()), 0);
