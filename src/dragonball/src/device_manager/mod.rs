@@ -1598,6 +1598,7 @@ mod tests {
             let shared_info = Arc::new(RwLock::new(InstanceInfo::new(
                 String::from("dragonball"),
                 String::from("1"),
+                None,
             )));
 
             let irq_manager = Arc::new(KvmIrqManager::new(vm_fd.clone()));
@@ -1712,6 +1713,7 @@ mod tests {
             kernel_file,
             None,
             linux_loader::cmdline::Cmdline::new(0x1000).unwrap(),
+            None,
         );
 
         let address_space = vm.vm_address_space().cloned();

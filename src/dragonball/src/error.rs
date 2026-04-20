@@ -11,6 +11,8 @@
 
 #[cfg(target_arch = "aarch64")]
 use dbs_arch::pmu::PmuError;
+#[cfg(target_arch = "x86_64")]
+use dbs_boot::td_shim::TdvfError;
 #[cfg(feature = "dbs-virtio-devices")]
 use dbs_virtio_devices::Error as VirtioError;
 
@@ -223,6 +225,24 @@ pub enum StartMicroVmError {
     /// Cannot build seccomp filters.
     #[error("failure while configuring seccomp filters: {0}")]
     SeccompFilters(#[source] seccompiler::Error),
+
+    /// Missing firmware file
+    #[error("Cannot start microvm due to missing firmware file")]
+    MissingFirmwareFile,
+
+    #[cfg(target_arch = "x86_64")]
+    /// TDVF errors
+    #[error("TDVF error: {0}")]
+    TdvfError(#[source] TdvfError),
+
+    /// Kernel file is too large
+    #[error("Payload file is too large")]
+    PayloadTooLarge,
+
+    #[cfg(target_arch = "x86_64")]
+    /// Missing tdshim section
+    #[error("Missing tdshim section: {0}")]
+    MissingTdshimSection(&'static str),
 }
 
 /// Errors associated with starting the instance.

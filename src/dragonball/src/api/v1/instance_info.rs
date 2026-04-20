@@ -39,6 +39,25 @@ pub enum AsyncState {
     Failure,
 }
 
+/// Confidential VM type for microvm. Cannot be changed after VMM
+/// is initialized.
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub enum ConfidentialVmType {
+    #[cfg(target_arch = "x86_64")]
+    /// Intel TDX VM
+    TDX,
+}
+
+/// The firmware type that microvm uses
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub enum FirmwareType {
+    #[cfg(target_arch = "x86_64")]
+    /// td-shim
+    TdShim,
+}
+
 /// The strongly typed that contains general information about the microVM.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct InstanceInfo {
@@ -58,11 +77,17 @@ pub struct InstanceInfo {
     pub tids: Vec<(u8, u32)>,
     /// Last instance downtime
     pub last_instance_downtime: u64,
+    /// Confidential VM type
+    pub confidential_vm_type: Option<ConfidentialVmType>,
 }
 
 impl InstanceInfo {
     /// create instance info object with given id, version, and platform type
-    pub fn new(id: String, vmm_version: String) -> Self {
+    pub fn new(
+        id: String,
+        vmm_version: String,
+        confidential_vm_type: Option<ConfidentialVmType>,
+    ) -> Self {
         InstanceInfo {
             id,
             state: InstanceState::Uninitialized,
@@ -72,7 +97,24 @@ impl InstanceInfo {
             async_state: AsyncState::Uninitialized,
             tids: Vec::new(),
             last_instance_downtime: 0,
+            confidential_vm_type,
         }
+    }
+
+    /// Whether the microvm requires split irqchip
+    #[cfg(target_arch = "x86_64")]
+    pub fn split_irqchip(&self) -> bool {
+        self.confidential_vm_type == Some(ConfidentialVmType::TDX)
+    }
+
+    /// Get the firmware type that the instance should use, if any
+    pub fn firmware_type(&self) -> Option<FirmwareType> {
+        #[cfg(target_arch = "x86_64")]
+        if self.confidential_vm_type == Some(ConfidentialVmType::TDX) {
+            return Some(FirmwareType::TdShim);
+        }
+
+        None
     }
 }
 
@@ -87,6 +129,7 @@ impl Default for InstanceInfo {
             async_state: AsyncState::Uninitialized,
             tids: Vec::new(),
             last_instance_downtime: 0,
+            confidential_vm_type: None,
         }
     }
 }
