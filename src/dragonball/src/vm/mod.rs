@@ -236,11 +236,17 @@ impl Vm {
         )
         .map_err(Error::DeviceMgrError)?;
 
-        let mut firmware_type = None;
         #[cfg(target_arch = "x86_64")]
-        if api_shared_info.read().unwrap().confidential_vm_type == Some(ConfidentialVmType::TDX) {
-            firmware_type = Some(FirmwareType::Tdshim);
-        }
+        let firmware_type = if api_shared_info.read().unwrap().confidential_vm_type
+            == Some(ConfidentialVmType::TDX)
+        {
+            Some(FirmwareType::Tdshim)
+        } else {
+            None
+        };
+
+        #[cfg(not(target_arch = "x86_64"))]
+        let firmware_type = None;
 
         Ok(Vm {
             epoll_manager,

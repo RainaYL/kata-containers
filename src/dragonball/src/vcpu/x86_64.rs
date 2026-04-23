@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use dbs_arch::cpuid::{process_cpuid, VmSpec};
 use dbs_arch::gdt::gdt_entry;
+use dbs_boot::FirmwareType;
 use dbs_utils::metric::IncMetric;
 use dbs_utils::time::TimestampUs;
 use kvm_bindings::CpuId;
@@ -84,6 +85,7 @@ impl Vcpu {
     /// * `vm_memory` - The guest memory used by this microvm.
     /// * `kernel_start_addr` - Offset from `guest_mem` at which the kernel starts.
     /// * `pgtable_addr` - pgtable address for ap vcpu
+    /// * `firmware_type` - firmware type that the VM would use
     pub fn configure(
         &mut self,
         vcpu_config: &VcpuConfig,
@@ -91,8 +93,14 @@ impl Vcpu {
         vm_as: &GuestAddressSpaceImpl,
         kernel_start_addr: Option<GuestAddress>,
         _pgtable_addr: Option<GuestAddress>,
+        firmware_type: Option<FirmwareType>,
     ) -> Result<()> {
         self.set_cpuid(vcpu_config)?;
+
+        // tdshim will handle the initilization of MSR, regs and sregs
+        if firmware_type == Some(FirmwareType::Tdshim) {
+            return Ok(());
+        }
 
         dbs_arch::regs::setup_msrs(&self.fd).map_err(VcpuError::MSRSConfiguration)?;
         if let Some(start_addr) = kernel_start_addr {

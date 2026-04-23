@@ -13,7 +13,8 @@ use std::ops::Deref;
 use dbs_acpi::sdt::Sdt;
 use dbs_address_space::{AddressSpace, AddressSpaceRegionType};
 use dbs_boot::{
-    add_e820_entry, bootparam, layout, mptable, td_shim::*, BootParamsWrapper, InitrdConfig,
+    add_e820_entry, bootparam, layout, mptable, td_shim::*, BootParamsWrapper, FirmwareType,
+    InitrdConfig,
 };
 use dbs_utils::epoll_manager::EpollManager;
 use dbs_utils::time::TimestampUs;
@@ -195,6 +196,41 @@ impl Vm {
         }
 
         let vm_memory = vm_as.memory();
+
+        if self.firmware_type == Some(FirmwareType::Tdshim) {
+            let tdshim_file = self
+                .kernel_config
+                .as_mut()
+                .ok_or(StartMicroVmError::MissingKernelConfig)?
+                .firmware_file_mut()
+                .ok_or(StartMicroVmError::MissingFirmwareFile)?;
+            let sections =
+                parse_tdvf_sections(tdshim_file).map_err(StartMicroVmError::TdvfError)?;
+            let address_space = self
+                .vm_address_space()
+                .cloned()
+                .ok_or(StartMicroVmError::GuestMemoryNotInitialized)?;
+            let mut hob_address = 0;
+            // TODO: Fill the empty list with ACPI table content
+            let acpi_tables: Vec<Sdt> = Vec::new();
+
+            self.load_kernel_with_tdshim(
+                &sections,
+                vm_memory.deref(),
+                address_space,
+                &mut hob_address,
+                &acpi_tables,
+            )?;
+
+            let boot_vcpu_count = self.vm_config.vcpu_count;
+            self.vcpu_manager()
+                .map_err(StartMicroVmError::Vcpu)?
+                .create_vcpus(boot_vcpu_count, Some(request_ts), None, self.firmware_type)
+                .map_err(StartMicroVmError::Vcpu)?;
+
+            return Ok(());
+        }
+
         let kernel_loader_result = self.load_kernel(vm_memory.deref(), None)?;
         self.vcpu_manager()
             .map_err(StartMicroVmError::Vcpu)?
@@ -215,6 +251,12 @@ impl Vm {
         cmdline: &Cmdline,
         initrd: Option<InitrdConfig>,
     ) -> std::result::Result<(), StartMicroVmError> {
+        // tdshim uses ACPI instead of mptable, and kernel boot parameters
+        // (including e820) would be prepared by firmware
+        if self.firmware_type == Some(FirmwareType::Tdshim) {
+            return Ok(());
+        }
+
         let cmdline_addr = GuestAddress(dbs_boot::layout::CMDLINE_START);
         linux_loader::loader::load_cmdline(vm_memory, cmdline_addr, cmdline)
             .map_err(StartMicroVmError::LoadCommandline)?;

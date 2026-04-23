@@ -19,6 +19,7 @@ pub const EFI_RESOURCE_ATTRIBUTE_TESTED: u32 = 0x0000_0004;
 pub const EFI_RESOURCE_ATTRIBUTE_UNCACHEABLE: u32 = 0x0000_0400;
 
 /// Firmware types
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum FirmwareType {
     /// Tdshim
     #[cfg(target_arch = "x86_64")]

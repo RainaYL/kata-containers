@@ -243,6 +243,10 @@ pub enum StartMicroVmError {
     /// Missing tdshim section
     #[error("Missing tdshim section: {0}")]
     MissingTdshimSection(&'static str),
+
+    /// Guest address space not initialized
+    #[error("Guest address space not initialized")]
+    GuestMemoryNotInitialized,
 }
 
 /// Errors associated with starting the instance.

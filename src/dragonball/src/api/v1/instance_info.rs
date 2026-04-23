@@ -49,15 +49,6 @@ pub enum ConfidentialVmType {
     TDX,
 }
 
-/// The firmware type that microvm uses
-#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Eq, Serialize)]
-#[serde(deny_unknown_fields)]
-pub enum FirmwareType {
-    #[cfg(target_arch = "x86_64")]
-    /// td-shim
-    TdShim,
-}
-
 /// The strongly typed that contains general information about the microVM.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct InstanceInfo {
@@ -105,16 +96,6 @@ impl InstanceInfo {
     #[cfg(target_arch = "x86_64")]
     pub fn split_irqchip(&self) -> bool {
         self.confidential_vm_type == Some(ConfidentialVmType::TDX)
-    }
-
-    /// Get the firmware type that the instance should use, if any
-    pub fn firmware_type(&self) -> Option<FirmwareType> {
-        #[cfg(target_arch = "x86_64")]
-        if self.confidential_vm_type == Some(ConfidentialVmType::TDX) {
-            return Some(FirmwareType::TdShim);
-        }
-
-        None
     }
 }
 
