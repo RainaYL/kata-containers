@@ -393,7 +393,7 @@ impl VcpuManager {
 
     /// start the boot vcpus
     pub fn start_boot_vcpus(&mut self, vmm_seccomp_filter: BpfProgram) -> Result<()> {
-        info!("start boot vcpus");
+        println!("start boot vcpus");
         self.start_vcpus(self.vcpu_config.boot_vcpu_count, vmm_seccomp_filter, true)?;
 
         Ok(())
