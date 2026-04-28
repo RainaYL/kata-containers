@@ -2,7 +2,11 @@
 // Copyright (c) 2023 Alibaba Cloud
 //
 // SPDX-License-Identifier: Apache-2.0
-#[repr(Rust, packed)]
+
+use vm_memory::ByteValued;
+
+#[repr(C, packed)]
+#[derive(Copy, Clone, Default)]
 pub struct GenericAddress {
     pub address_space_id: u8,
     pub register_bit_width: u8,
@@ -32,6 +36,8 @@ impl GenericAddress {
         }
     }
 }
+
+unsafe impl ByteValued for GenericAddress {}
 
 pub struct Sdt {
     data: Vec<u8>,
@@ -134,4 +140,8 @@ mod tests {
             .fold(0u8, |acc, x| acc.wrapping_add(*x));
         assert_eq!(sum, 0);
     }
+}
+
+pub fn create_dsdt_table() -> Sdt {
+    Sdt::new(*b"DSDT", 36, 2)
 }

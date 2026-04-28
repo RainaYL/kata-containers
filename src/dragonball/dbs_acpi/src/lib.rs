@@ -2,8 +2,17 @@
 // Copyright (c) 2023 Alibaba Cloud
 //
 // SPDX-License-Identifier: Apache-2.0
+
+#![allow(missing_docs)]
+
+pub mod fadt;
+pub mod madt;
 pub mod rsdp;
 pub mod sdt;
+
+pub use fadt::create_fadt_table;
+pub use madt::create_madt_table;
+pub use sdt::create_dsdt_table;
 
 fn generate_checksum(data: &[u8]) -> u8 {
     (255 - data.iter().fold(0u8, |acc, x| acc.wrapping_add(*x))).wrapping_add(1)
