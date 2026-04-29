@@ -27,6 +27,7 @@ use dbs_address_space::{
     AddressSpaceRegionType, NumaNode, NumaNodeInfo, MPOL_MF_MOVE, MPOL_PREFERRED,
 };
 use dbs_allocator::Constraint;
+use dbs_utils::guest_memfd::*;
 use kvm_bindings::kvm_userspace_memory_region;
 use kvm_ioctls::VmFd;
 use log::{debug, error, info, warn};
@@ -151,6 +152,18 @@ pub enum AddressManagerError {
     /// Failed to create Address Space Region
     #[error("address manager failed to create Address Space Region {0}")]
     CreateAddressSpaceRegion(#[source] AddressSpaceError),
+
+    /// Failed to create VM-bound memfd
+    #[error("address manager failed to create VM-bound memfd: {0}")]
+    CreateVmboundMemfd(#[source] std::io::Error),
+
+    /// Failed to set KVM memory slot with VM-bound memfd
+    #[error("address manager failed to configure KVM memory slot with VM-bound memfd: {0}")]
+    KvmSetMemorySlotWithMemfd(#[source] std::io::Error),
+
+    /// Failed to configure KVM memory attributes
+    #[error("address manager failed to configure KVM memory attributes: {0}")]
+    KvmSetMemoryAttributes(#[source] std::io::Error),
 }
 
 type Result<T> = std::result::Result<T, AddressManagerError>;
@@ -164,6 +177,7 @@ pub struct AddressSpaceMgrBuilder<'a> {
     mem_prealloc: bool,
     dirty_page_logging: bool,
     vmfd: Option<Arc<VmFd>>,
+    kvm_mem_attr_private: bool,
 }
 
 impl<'a> AddressSpaceMgrBuilder<'a> {
@@ -180,6 +194,7 @@ impl<'a> AddressSpaceMgrBuilder<'a> {
             mem_prealloc: false,
             dirty_page_logging: false,
             vmfd: None,
+            kvm_mem_attr_private: false,
         })
     }
 
@@ -199,6 +214,11 @@ impl<'a> AddressSpaceMgrBuilder<'a> {
     /// Enable/disable KVM dirty page logging.
     pub fn toggle_dirty_page_logging(&mut self, logging: bool) {
         self.dirty_page_logging = logging;
+    }
+
+    /// Set KVM memory attribute to private/shared.
+    pub fn toggle_kvm_mem_attr_private(&mut self, private: bool) {
+        self.kvm_mem_attr_private = private;
     }
 
     /// Set KVM [`VmFd`] handle to configure memory slots.
@@ -407,24 +427,48 @@ impl AddressSpaceMgr {
             let host_addr = mmap_reg
                 .get_host_address(MemoryRegionAddress(0))
                 .map_err(|_e| AddressManagerError::InvalidOperation)?;
-            let flags = 0u32;
+            let mut flags = 0u32;
 
-            let mem_region = kvm_userspace_memory_region {
-                slot,
-                guest_phys_addr: reg.start_addr().raw_value(),
-                memory_size: reg.len(),
-                userspace_addr: host_addr as u64,
-                flags,
-            };
+            if !param.kvm_mem_attr_private {
+                let mem_region = kvm_userspace_memory_region {
+                    slot,
+                    guest_phys_addr: reg.start_addr().raw_value(),
+                    memory_size: reg.len(),
+                    userspace_addr: host_addr as u64,
+                    flags,
+                };
 
-            info!(
-                "VM: guest memory region {:x} starts at {:x?}",
-                reg.start_addr().raw_value(),
-                host_addr
-            );
-            // Safe because the guest regions are guaranteed not to overlap.
-            unsafe { vmfd.set_user_memory_region(mem_region) }
-                .map_err(AddressManagerError::KvmSetMemorySlot)?;
+                info!(
+                    "VM: guest memory region {:x} starts at {:x?}",
+                    reg.start_addr().raw_value(),
+                    host_addr
+                );
+                // Safe because the guest regions are guaranteed not to overlap.
+                unsafe { vmfd.set_user_memory_region(mem_region) }
+                    .map_err(AddressManagerError::KvmSetMemorySlot)?;
+            } else {
+                let vm_fd = vmfd.as_raw_fd();
+                let memfd = kvm_create_guest_memfd(&vm_fd, reg.len(), 0)
+                    .map_err(AddressManagerError::CreateVmboundMemfd)?;
+                flags |= KVM_MEM_GUEST_MEMFD;
+                let guest_address = reg.start_addr().raw_value();
+                let size = reg.len();
+                kvm_set_user_memory_region2(
+                    &vm_fd,
+                    slot,
+                    host_addr as u64,
+                    guest_address,
+                    size,
+                    memfd as u32,
+                    0,
+                    flags,
+                )
+                .map_err(AddressManagerError::KvmSetMemorySlotWithMemfd)?;
+
+                let attributes = KVM_MEMORY_ATTRIBUTE_PRIVATE;
+                kvm_set_memory_attributes(&vm_fd, guest_address, size, attributes, 0)
+                    .map_err(AddressManagerError::KvmSetMemoryAttributes)?;
+            }
         }
 
         self.base_to_slot
