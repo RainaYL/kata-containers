@@ -13,6 +13,7 @@ readme = "README.md"
 [dependencies]
 anyhow = "1.0"
 event-manager = { workspace = true, features = [ "remote_endpoint" ] }
+kvm-bindings = { workspace = true }
 libc = "0.2.39"
 log = "0.4.14"
 serde = { version = "1.0.27", features = ["derive", "rc"] }
