@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use std::ops::Deref;
 
-use dbs_acpi::sdt::Sdt;
+use dbs_acpi::{sdt::Sdt, *};
 use dbs_address_space::{AddressSpace, AddressSpaceRegionType};
 use dbs_boot::{
     add_e820_entry, bootparam, layout, mptable, tdshim::*, BootParamsWrapper, FirmwareType,
@@ -216,7 +216,13 @@ impl Vm {
                 .ok_or(StartMicroVmError::GuestMemoryNotInitialized)?;
             let mut hob_address = 0;
             // TODO: Fill the empty list with ACPI table content
-            let acpi_tables: Vec<Sdt> = Vec::new();
+            let mut acpi_tables: Vec<Sdt> = Vec::new();
+            acpi_tables.push(create_madt_table(
+                self.vm_config.max_vcpu_count,
+                self.vm_config.vcpu_count,
+            ));
+            acpi_tables.push(create_fadt_table());
+            acpi_tables.push(create_dsdt_table());
 
             self.load_kernel_with_tdshim(
                 &sections,
