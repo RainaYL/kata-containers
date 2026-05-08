@@ -8,7 +8,6 @@
 
 use std::collections::HashMap;
 use std::convert::TryInto;
-use std::io::{Read, Seek, SeekFrom};
 use std::ops::Deref;
 use std::os::fd::AsRawFd;
 
@@ -29,7 +28,7 @@ use linux_loader::cmdline::Cmdline;
 use linux_loader::configurator::{linux::LinuxBootConfigurator, BootConfigurator, BootParams};
 use slog::info;
 use tdx::launch::MemRegion;
-use vm_memory::{Address, Bytes, ByteValued, GuestAddress, GuestAddressSpace, GuestMemory};
+use vm_memory::{Address, GuestAddress, GuestAddressSpace, GuestMemory};
 
 use crate::address_space_manager::{GuestAddressSpaceImpl, GuestMemoryImpl};
 use crate::api::v1::ConfidentialVmType;
@@ -441,41 +440,12 @@ impl Vm {
                     required_sections.retain(|s| *s != "TdHob");
                 }
                 TdvfSectionType::Payload => {
-                    let payload_file = self
-                        .kernel_config
-                        .as_mut()
-                        .ok_or(StartMicroVmError::MissingKernelConfig)?
-                        .kernel_file_mut();
-
-                    let payload_size = payload_file.seek(SeekFrom::End(0)).unwrap();
-
-                    if payload_size > section.size {
-                        panic!("");
+                    let kernel_loader_result =
+                        self.load_kernel(vm_memory, None)?;
+                    if kernel_loader_result.kernel_end > section.address + section.size {
+                        return Err(StartMicroVmError::PayloadTooLarge);
                     }
-
-                    payload_file.seek(SeekFrom::Start(0x1f1)).unwrap();
-                    let mut payload_header = linux_loader::bootparam::setup_header::default();
-                    payload_file
-                        .read_exact(payload_header.as_mut_slice())
-                        .unwrap();
-                    if payload_header.header != 0x5372_6448 {
-                        panic!("");
-                    }
-                    if payload_header.version < 0x0200 || (payload_header.loadflags & 0x1) == 0x0 {
-                        panic!("");
-                    }
-
-                    payload_file.rewind().unwrap();
-                    vm_memory
-                        .read_exact_volatile_from(
-                            GuestAddress(section.address),
-                            payload_file,
-                            payload_size as usize,
-                        )
-                        .unwrap();
-
-                    payload_info.image_type = PayloadImageType::BzImage;
-                    payload_info.entry_point = section.address;
+                    payload_info.entry_point = kernel_loader_result.kernel_load.0;
                     required_sections.retain(|s| *s != "Payload");
                 }
                 TdvfSectionType::PayloadParam => {
