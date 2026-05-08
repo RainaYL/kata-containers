@@ -4,6 +4,7 @@
 use std::collections::HashMap;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::ops::Deref;
+use std::os::fd::AsRawFd;
 use std::os::unix::io::RawFd;
 
 use std::sync::{Arc, Mutex, RwLock};
@@ -22,6 +23,8 @@ use seccompiler::BpfProgram;
 use seccompiler::{apply_filter_all_threads, Error as SecError};
 use serde_derive::{Deserialize, Serialize};
 use slog::{error, info};
+#[cfg(target_arch = "x86_64")]
+use tdx::launch::*;
 use vm_memory::{Bytes, GuestAddress, GuestAddressSpace};
 use vmm_sys_util::eventfd::EventFd;
 
@@ -215,6 +218,11 @@ pub struct Vm {
     upcall_client: Option<Arc<UpcallClient<DevMgrService>>>,
 
     firmware_type: Option<FirmwareType>,
+
+    #[cfg(target_arch = "x86_64")]
+    tdx_launcher: Option<Launcher>,
+    #[cfg(target_arch = "x86_64")]
+    tdx_capabilities: Option<TdxCapabilities>,
 }
 
 impl Vm {
@@ -227,6 +235,16 @@ impl Vm {
         let id = api_shared_info.read().unwrap().id.clone();
         let logger = slog_scope::logger().new(slog::o!("id" => id));
         let kvm = KvmContext::new(kvm_fd)?;
+        #[cfg(target_arch = "x86_64")]
+        let vm_fd = if api_shared_info.read().unwrap().confidential_vm_type
+            == Some(ConfidentialVmType::TDX)
+        {
+            let vm_fd = Arc::new(kvm.create_vm_with_type(KVM_X86_TDX_VM)?);
+            vm_fd
+        } else {
+            Arc::new(kvm.create_vm()?)
+        };
+        #[cfg(not(target_arch = "x86_64"))]
         let vm_fd = Arc::new(kvm.create_vm()?);
         let resource_manager = Arc::new(ResourceManager::new(Some(kvm.max_memslots())));
         let device_manager = DeviceManager::new(
@@ -249,6 +267,22 @@ impl Vm {
 
         #[cfg(not(target_arch = "x86_64"))]
         let firmware_type = None;
+
+        #[cfg(target_arch = "x86_64")]
+        let (tdx_launcher, tdx_capabilities) = if api_shared_info
+            .read()
+            .unwrap()
+            .confidential_vm_type
+            == Some(ConfidentialVmType::TDX)
+        {
+            let mut launcher = Launcher::new(vm_fd.as_raw_fd());
+            let capabilities = launcher
+                .get_capabilities()
+                .map_err(|e| Error::TdxError(e))?;
+            (Some(launcher), Some(capabilities))
+        } else {
+            (None, None)
+        };
 
         Ok(Vm {
             epoll_manager,
@@ -276,6 +310,10 @@ impl Vm {
             upcall_client: None,
 
             firmware_type,
+            #[cfg(target_arch = "x86_64")]
+            tdx_launcher,
+            #[cfg(target_arch = "x86_64")]
+            tdx_capabilities,
         })
     }
 
@@ -429,7 +467,11 @@ impl Vm {
 
     /// Get confidential VM type for micro VM, if any
     pub fn confidential_vm_type(&self) -> Option<ConfidentialVmType> {
-        self.shared_info.read().unwrap().confidential_vm_type.clone()
+        self.shared_info
+            .read()
+            .unwrap()
+            .confidential_vm_type
+            .clone()
     }
 }
 

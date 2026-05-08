@@ -186,6 +186,7 @@ slog-stdlog = "4.0.0"
 slog-term = "2.9.0"
 strum = { version = "0.24.0", features = ["derive"] }
 strum_macros = "0.26.2"
+tdx = { git = "https://github.com/RainaYL/tdx" }
 tempfile = "3.19.1"
 thiserror = "1.0.26"
 tokio = "1.46.1"

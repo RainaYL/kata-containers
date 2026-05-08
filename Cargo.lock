@@ -1863,6 +1863,7 @@ dependencies = [
  "slog-async",
  "slog-scope",
  "slog-term",
+ "tdx",
  "test-utils",
  "thiserror 1.0.69",
  "tracing",
@@ -3233,6 +3234,12 @@ dependencies = [
  "bitflags 1.3.2",
  "libc",
 ]
+
+[[package]]
+name = "iocuddle"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8972d5be69940353d5347a1344cb375d9b457d6809b428b05bb1ca2fb9ce007"
 
 [[package]]
 name = "iovec"
@@ -7633,13 +7640,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "tdx"
+version = "0.1.0"
+source = "git+https://github.com/RainaYL/tdx#4ea0e3ce020d3fd91c0f02798d5cd87e7f3ef95f"
+dependencies = [
+ "bitflags 2.11.0",
+ "iocuddle",
+ "kvm-bindings",
+ "kvm-ioctls",
+ "libc",
+ "uuid 1.22.0",
+ "vmm-sys-util 0.15.0",
+]
+
+[[package]]
 name = "tempfile"
 version = "3.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand 2.3.0",
- "getrandom 0.4.2",
+ "getrandom 0.3.4",
  "once_cell",
  "rustix 1.1.4",
  "windows-sys 0.61.2",

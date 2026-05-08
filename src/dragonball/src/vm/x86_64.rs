@@ -9,6 +9,7 @@
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::ops::Deref;
+use std::os::fd::AsRawFd;
 
 use dbs_acpi::{sdt::Sdt, *};
 use dbs_address_space::{AddressSpace, AddressSpaceRegionType};
@@ -26,6 +27,7 @@ use kvm_bindings::{
 use linux_loader::cmdline::Cmdline;
 use linux_loader::configurator::{linux::LinuxBootConfigurator, BootConfigurator, BootParams};
 use slog::info;
+use tdx::launch::MemRegion;
 use vm_memory::{Address, GuestAddress, GuestAddressSpace, GuestMemory};
 
 use crate::address_space_manager::{GuestAddressSpaceImpl, GuestMemoryImpl};
@@ -203,6 +205,11 @@ impl Vm {
         let vm_memory = vm_as.memory();
 
         if self.firmware_type == Some(FirmwareType::Tdshim) {
+            let tdx_enabled = self.confidential_vm_type() == Some(ConfidentialVmType::TDX);
+            if tdx_enabled {
+                self.tdx_init_vm()?;
+            }
+
             let tdshim_file = self
                 .kernel_config
                 .as_mut()
@@ -238,6 +245,12 @@ impl Vm {
                 .map_err(StartMicroVmError::Vcpu)?
                 .create_vcpus(boot_vcpu_count, Some(request_ts), None, self.firmware_type)
                 .map_err(StartMicroVmError::Vcpu)?;
+
+            if tdx_enabled {
+                self.tdx_init_vcpus(hob_address)?;
+                self.tdx_init_mem_region(vm_memory.deref(), &sections)?;
+                self.tdx_finalize()?;
+            }
 
             return Ok(());
         }
@@ -519,6 +532,73 @@ impl Vm {
         hob.finish(vm_memory)
             .map_err(StartMicroVmError::TdvfError)?;
 
+        Ok(())
+    }
+
+    fn tdx_init_vm(&mut self) -> std::result::Result<(), StartMicroVmError> {
+        let supported_cpuid = self
+            .vcpu_manager()
+            .map_err(StartMicroVmError::Vcpu)?
+            .supported_cpuid
+            .clone();
+
+        self.tdx_launcher
+            .as_mut()
+            .unwrap()
+            .init_vm(self.tdx_capabilities.as_ref().unwrap(), supported_cpuid)
+            .map_err(|e| StartMicroVmError::TdxError(e))?;
+
+        Ok(())
+    }
+
+    fn tdx_init_vcpus(&mut self, hob_address: u64) -> std::result::Result<(), StartMicroVmError> {
+        let mut vcpu_fds = Vec::new();
+        self.vcpu_manager()
+            .map_err(StartMicroVmError::Vcpu)?
+            .vcpus()
+            .iter()
+            .for_each(|vcpu| {
+                vcpu_fds.push(vcpu.vcpu_fd().as_raw_fd());
+            });
+
+        let launcher = self.tdx_launcher.as_mut().unwrap();
+        vcpu_fds.iter().for_each(|fd| launcher.add_vcpu_fd(*fd));
+        launcher
+            .init_vcpus(hob_address)
+            .map_err(|e| StartMicroVmError::TdxError(e))?;
+
+        Ok(())
+    }
+
+    fn tdx_init_mem_region(
+        &mut self,
+        vm_memory: &GuestMemoryImpl,
+        sections: &Vec<TdvfSection>,
+    ) -> std::result::Result<(), StartMicroVmError> {
+        let launcher = self.tdx_launcher.as_mut().unwrap();
+        for section in sections {
+            let host_address = vm_memory
+                .get_host_address(GuestAddress(section.address))
+                .map_err(StartMicroVmError::GuestMemoryError)?;
+            let region = MemRegion::new(
+                section.address,
+                section.size / dbs_boot::PAGE_SIZE as u64,
+                section.attributes,
+                host_address as u64,
+            );
+            launcher
+                .init_mem_region(region)
+                .map_err(|e| StartMicroVmError::TdxError(e))?;
+        }
+        Ok(())
+    }
+
+    fn tdx_finalize(&mut self) -> std::result::Result<(), StartMicroVmError> {
+        self.tdx_launcher
+            .as_mut()
+            .unwrap()
+            .finalize()
+            .map_err(|e| StartMicroVmError::TdxError(e))?;
         Ok(())
     }
 }
