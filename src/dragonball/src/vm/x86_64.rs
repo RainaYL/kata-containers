@@ -240,6 +240,7 @@ impl Vm {
                 .map_err(StartMicroVmError::Vcpu)?;
 
             if self.confidential_vm_type() == Some(ConfidentialVmType::TDX) {
+                self.enable_hc_map_gpa_range()?;
                 self.tdx_init_vcpus(hob_address)?;
                 self.tdx_init_mem_region(vm_memory.deref(), &sections)?;
                 self.tdx_finalize()?;
