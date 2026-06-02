@@ -270,6 +270,7 @@ impl Vm {
         let (tdx_launcher, tdx_capabilities) = if tdx_enabled {
             let mut launcher = Launcher::new(vm_fd.as_raw_fd());
             let capabilities = launcher.get_capabilities().map_err(Error::TdxError)?;
+            println!("{} {} {} {}", capabilities.kernel_tdvmcallinfo_1_r11, capabilities.user_tdvmcallinfo_1_r11, capabilities.kernel_tdvmcallinfo_1_r12, capabilities.user_tdvmcallinfo_1_r12);
             (Some(launcher), Some(capabilities))
         } else {
             (None, None)
