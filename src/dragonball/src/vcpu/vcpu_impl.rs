@@ -545,6 +545,8 @@ impl Vcpu {
                     #[cfg(target_arch = "x86_64")]
                     VcpuExit::Hypercall(hc_exit) => {
                         println!("exit_reason: {}", kvm_run.exit_reason);
+                        let hypercall = unsafe { &kvm_run.__bindgen_anon_1.hypercall };
+                        println!("nr: {}", hypercall.nr);
                         if hc_exit.nr == KVM_HC_MAP_GPA_RANGE {
                             let gpa = hc_exit.args[0];
                             let size = hc_exit.args[1] * dbs_boot::PAGE_SIZE as u64;
