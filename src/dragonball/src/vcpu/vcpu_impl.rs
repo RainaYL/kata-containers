@@ -563,10 +563,12 @@ impl Vcpu {
                                 .map_err(VcpuError::SetMemoryAttributes)?;
                             Ok(VcpuEmulation::Handled)
                         } else {
+                            println!("Unhandled hypercall");
                             Err(VcpuError::VcpuUnhandledKvmExit)
                         }
                     }
                     r => {
+                        println!("Unhandled exit");
                         self.metrics.failures.inc();
                         // TODO: Are we sure we want to finish running a vcpu upon
                         // receiving a vm exit that is not necessarily an error?
