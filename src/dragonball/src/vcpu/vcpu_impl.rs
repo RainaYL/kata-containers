@@ -463,8 +463,7 @@ impl Vcpu {
     ///
     /// Returns error or enum specifying whether emulation was handled or interrupted.
     fn run_emulation(&mut self) -> Result<VcpuEmulation> {
-        let kvm_run = self.fd.get_kvm_run().clone();
-        match Vcpu::emulate(&mut self.fd) {
+        let res = match Vcpu::emulate(&mut self.fd) {
             Ok(run) => {
                 match run {
                     #[cfg(target_arch = "x86_64")]
@@ -544,10 +543,8 @@ impl Vcpu {
                     },
                     #[cfg(target_arch = "x86_64")]
                     VcpuExit::Hypercall(hc_exit) => {
-                        println!("exit_reason: {}", kvm_run.exit_reason);
-                        let hypercall = unsafe { &kvm_run.__bindgen_anon_1.hypercall };
-                        println!("nr: {}", hypercall.nr);
                         if hc_exit.nr == KVM_HC_MAP_GPA_RANGE {
+                            println!("hypercall map_gpa_range");
                             let gpa = hc_exit.args[0];
                             let size = hc_exit.args[1] * dbs_boot::PAGE_SIZE as u64;
                             let attributes = hc_exit.args[2];
@@ -603,7 +600,14 @@ impl Vcpu {
                     }
                 }
             }
+        };
+
+        let kvm_run = self.fd.get_kvm_run();
+        if kvm_run.exit_reason == 3 {
+            println!("exit_reason: hypercall");
         }
+
+        res
     }
 
     #[cfg(target_arch = "x86_64")]
