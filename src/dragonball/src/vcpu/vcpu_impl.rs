@@ -544,7 +544,6 @@ impl Vcpu {
                     #[cfg(target_arch = "x86_64")]
                     VcpuExit::Hypercall(hc_exit) => {
                         if hc_exit.nr == KVM_HC_MAP_GPA_RANGE {
-                            println!("VMM: hypercall");
                             let gpa = hc_exit.args[0];
                             let size = hc_exit.args[1] * dbs_boot::PAGE_SIZE as u64;
                             let attributes = hc_exit.args[2];
@@ -563,12 +562,10 @@ impl Vcpu {
                                 .map_err(VcpuError::SetMemoryAttributes)?;
                             Ok(VcpuEmulation::Handled)
                         } else {
-                            println!("Unhandled hypercall");
                             Err(VcpuError::VcpuUnhandledKvmExit)
                         }
                     }
                     r => {
-                        println!("Unhandled exit");
                         self.metrics.failures.inc();
                         // TODO: Are we sure we want to finish running a vcpu upon
                         // receiving a vm exit that is not necessarily an error?
