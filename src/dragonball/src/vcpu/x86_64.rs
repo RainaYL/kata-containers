@@ -27,6 +27,14 @@ use crate::vcpu::vcpu_impl::{Result, Vcpu, VcpuError, VcpuStateEvent};
 use crate::vcpu::VcpuConfig;
 use crate::IoManagerCached;
 
+/// Hypercall number for mapping gpa range
+pub const KVM_HC_MAP_GPA_RANGE: u64 = 12;
+
+/// Attribute mask for map_gpa_range hypercall.
+/// If set, the hypercall is going to set the range to private,
+/// otherwise shared.
+pub const KVM_MAP_GPA_RANGE_ENCRYPTED: u64 = 1 << 4;
+
 impl Vcpu {
     /// Constructs a new VCPU for `vm`.
     ///

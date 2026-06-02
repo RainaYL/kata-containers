@@ -38,6 +38,9 @@ use crate::IoManagerCached;
 #[path = "x86_64.rs"]
 mod x86_64;
 
+#[cfg(target_arch = "x86_64")]
+pub use x86_64::{KVM_HC_MAP_GPA_RANGE, KVM_MAP_GPA_RANGE_ENCRYPTED};
+
 #[cfg(target_arch = "aarch64")]
 #[path = "aarch64.rs"]
 mod aarch64;
@@ -46,11 +49,6 @@ mod aarch64;
 const MAGIC_IOPORT_BASE: u16 = 0xdbdb;
 #[cfg(target_arch = "x86_64")]
 const MAGIC_IOPORT_DEBUG_INFO: u16 = MAGIC_IOPORT_BASE;
-
-#[cfg(target_arch = "x86_64")]
-const KVM_HC_MAP_GPA_RANGE: u64 = 12;
-#[cfg(target_arch = "x86_64")]
-const KVM_MAP_GPA_RANGE_ENCRYPTED: u64 = 1 << 4;
 
 /// Signal number (SIGRTMIN) used to kick Vcpus.
 pub const VCPU_RTSIG_OFFSET: i32 = 0;
