@@ -30,6 +30,7 @@ pub const TDG_VP_VMCALL_INVALID_OPERAND: u64 = 0x8000000000000000;
 pub const TDG_VP_VMCALL_ALIGN_ERROR: u64 = 0x8000000000000002;
 
 pub const TDX_VP_GET_QUOTE_SUCCESS: u64 = 0;
+pub const TDX_VP_GET_QUOTE_IN_FLIGHT: u64 = u64::MAX;
 pub const TDX_VP_GET_QUOTE_ERROR: u64 = 0x8000000000000000;
 pub const TDX_VP_GET_QUOTE_QGS_UNAVAILABLE: u64 = 0x8000000000000001;
 
@@ -254,6 +255,13 @@ impl<'a> TdxExitHandler<'a> {
                 mem,
             )
         });
+
+        header.error_code = TDX_VP_GET_QUOTE_IN_FLIGHT;
+        if self.mem.write_obj(header, GuestAddress(buf_gpa)).is_err() {
+            return;
+        }
+
+        get_quote.ret = TDG_VP_VMCALL_SUCCESS;
     }
 
     fn async_get_quote(
