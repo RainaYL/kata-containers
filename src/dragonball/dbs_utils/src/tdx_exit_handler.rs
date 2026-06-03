@@ -5,6 +5,8 @@
 
 #![allow(missing_docs)]
 
+use kvm_bindings::kvm_msi;
+use kvm_ioctls::VmFd;
 use log::*;
 use tdx::launch::TdxCapabilities;
 use threadpool::ThreadPool;
@@ -43,6 +45,9 @@ pub const QGS_MSG_TYPE_GET_QUOTE_REQ: u32 = 0;
 pub const QGS_MSG_TYPE_GET_QUOTE_RESP: u32 = 1;
 
 const HEADER_SIZE: usize = 4;
+
+const MSI_ADDRESS_BASE: u32 = 0xFEE0_0000;
+const APIC_DM_FIXED: u32 = 0x000;
 
 #[repr(C)]
 #[derive(Default, Debug)]
@@ -113,6 +118,7 @@ unsafe impl ByteValued for QgsMessageGetQuoteResp {}
 
 /// Handler for VCPU exit type: KVM_EXIT_TDX
 pub struct TdxExitHandler<'a> {
+    vm_fd: Arc<VmFd>,
     quote_generation_socket: Option<String>,
     thread_pool: ThreadPool,
     event_notify_vector: Arc<RwLock<u8>>,
@@ -122,11 +128,13 @@ pub struct TdxExitHandler<'a> {
 
 impl<'a> TdxExitHandler<'a> {
     pub fn new(
+        vm_fd: Arc<VmFd>,
         quote_generation_socket: Option<String>,
         tdx_capabilities: Arc<TdxCapabilities>,
         mem: &'a GuestMemoryMmap,
     ) -> Self {
         Self {
+            vm_fd,
             quote_generation_socket,
             tdx_capabilities,
             mem,
@@ -228,12 +236,45 @@ impl<'a> TdxExitHandler<'a> {
             error!("TDX GetQuote: Failed to read report data");
             return;
         }
+
+        let vm_fd = self.vm_fd.clone();
+        let vector = *self.event_notify_vector.read().unwrap();
+        let quote_generation_socket = self.quote_generation_socket.clone().unwrap();
+        let mem = self.mem.clone();
+
+        self.thread_pool.execute(move || {
+            Self::async_get_quote(
+                header,
+                buf_gpa,
+                buf_len,
+                report_data,
+                vm_fd,
+                vector,
+                quote_generation_socket,
+                mem,
+            )
+        });
     }
 
-    fn async_get_quote(&self, header: &mut TdxGetQuoteHeader, buf_gpa: u64, buf_len: u64, report_data: Vec<u8>) {
-        match self.generate_quote(buf_len, report_data) {
+    fn async_get_quote(
+        mut header: TdxGetQuoteHeader,
+        buf_gpa: u64,
+        buf_len: u64,
+        report_data: Vec<u8>,
+        vm_fd: Arc<VmFd>,
+        vector: u8,
+        quote_generation_socket: String,
+        mem: GuestMemoryMmap,
+    ) {
+        match Self::generate_quote(buf_len, report_data, quote_generation_socket) {
             Ok(quote) => {
-                if self.mem.write_slice(quote.as_slice(), GuestAddress(buf_gpa + TDX_GET_QUOTE_HDR_SIZE)).is_err() {
+                if mem
+                    .write_slice(
+                        quote.as_slice(),
+                        GuestAddress(buf_gpa + TDX_GET_QUOTE_HDR_SIZE),
+                    )
+                    .is_err()
+                {
                     error!("TDX GetQuote: Failed to write quote data");
                     header.error_code = TDX_VP_GET_QUOTE_ERROR;
                 } else {
@@ -245,12 +286,16 @@ impl<'a> TdxExitHandler<'a> {
                 header.error_code = status_code;
             }
         }
+
+        let _ = mem.write_obj(header, GuestAddress(buf_gpa));
+
+        Self::inject_interrupt(vector, vm_fd);
     }
 
     fn generate_quote(
-        &self,
         buf_len: u64,
         report_data: Vec<u8>,
+        quote_generation_socket: String,
     ) -> Result<Vec<u8>, u64> {
         let req_size = (core::mem::size_of::<QgsMessageGetQuoteReq>() + report_data.len()) as u32;
         let req_message = QgsMessageGetQuoteReq {
@@ -268,7 +313,7 @@ impl<'a> TdxExitHandler<'a> {
         // Length prefix
         let req_header = encode_header(req_size);
 
-        let mut stream = UnixStream::connect(self.quote_generation_socket.as_ref().unwrap())
+        let mut stream = UnixStream::connect(quote_generation_socket)
             .map_err(|_| TDX_VP_GET_QUOTE_QGS_UNAVAILABLE)?;
 
         stream
@@ -341,8 +386,17 @@ impl<'a> TdxExitHandler<'a> {
         Ok(quote_buf)
     }
 
-    fn inject_interrupt(&self) {
-        
+    fn inject_interrupt(vector: u8, vm_fd: Arc<VmFd>) {
+        if vector < 32 {
+            return;
+        }
+
+        let msi_message = kvm_msi {
+            address_lo: MSI_ADDRESS_BASE,
+            data: vector as u32 | (APIC_DM_FIXED << 8),
+            ..Default::default()
+        };
+        let _ = vm_fd.signal_msi(msi_message);
     }
 }
 
