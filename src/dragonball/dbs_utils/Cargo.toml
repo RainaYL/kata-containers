@@ -16,10 +16,11 @@ event-manager = { workspace = true, features = [ "remote_endpoint" ] }
 libc = "0.2.39"
 log = "0.4.14"
 serde = { version = "1.0.27", features = ["derive", "rc"] }
-tdx_workload_attestation = { workspace = true }
+tdx = { workspace = true }
 thiserror = "1.0"
 threadpool = "1"
 timerfd = "1.0"
+vm-memory = { workspace = true }
 vmm-sys-util = {workspace = true}
 
 [dev-dependencies]
