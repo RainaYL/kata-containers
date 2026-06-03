@@ -27,6 +27,8 @@ pub const TDG_VP_VMCALL_RETRY: u64 = 1;
 pub const TDG_VP_VMCALL_INVALID_OPERAND: u64 = 0x8000000000000000;
 pub const TDG_VP_VMCALL_ALIGN_ERROR: u64 = 0x8000000000000002;
 
+pub const TDX_VP_GET_QUOTE_SUCCESS: u64 = 0;
+pub const TDX_VP_GET_QUOTE_ERROR: u64 = 0x8000000000000000;
 pub const TDX_VP_GET_QUOTE_QGS_UNAVAILABLE: u64 = 0x8000000000000001;
 
 pub const TDG_VP_VMCALL_SUBFUNC_SET_EVENT_NOTIFY_INTERRUPT: u64 = 1 << 1;
@@ -97,8 +99,17 @@ pub struct QgsMessageGetQuoteReq {
     pub id_list_size: u32,
 }
 
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone)]
+pub struct QgsMessageGetQuoteResp {
+    pub header: QgsMessageHeader,
+    pub selected_id_size: u32,
+    pub quote_size: u32,
+}
+
 unsafe impl ByteValued for QgsMessageHeader {}
 unsafe impl ByteValued for QgsMessageGetQuoteReq {}
+unsafe impl ByteValued for QgsMessageGetQuoteResp {}
 
 /// Handler for VCPU exit type: KVM_EXIT_TDX
 pub struct TdxExitHandler<'a> {
@@ -205,8 +216,7 @@ impl<'a> TdxExitHandler<'a> {
             return;
         }
 
-        let mut report_data = Vec::with_capacity(header.in_len as usize);
-        report_data.resize(header.in_len as usize, 0u8);
+        let mut report_data = vec![0u8; header.in_len as usize];
         if self
             .mem
             .read_slice(
@@ -220,15 +230,35 @@ impl<'a> TdxExitHandler<'a> {
         }
     }
 
-    fn generate_quote(&self, report_data: Vec<u8>) -> Result<Vec<u8>, std::io::Error> {
-        let message_size =
-            (core::mem::size_of::<QgsMessageGetQuoteReq>() + report_data.len()) as u32;
-        let message = QgsMessageGetQuoteReq {
+    fn async_get_quote(&self, header: &mut TdxGetQuoteHeader, buf_gpa: u64, buf_len: u64, report_data: Vec<u8>) {
+        match self.generate_quote(buf_len, report_data) {
+            Ok(quote) => {
+                if self.mem.write_slice(quote.as_slice(), GuestAddress(buf_gpa + TDX_GET_QUOTE_HDR_SIZE)).is_err() {
+                    error!("TDX GetQuote: Failed to write quote data");
+                    header.error_code = TDX_VP_GET_QUOTE_ERROR;
+                } else {
+                    header.out_len = quote.len() as u32;
+                    header.error_code = TDX_VP_GET_QUOTE_SUCCESS;
+                }
+            }
+            Err(status_code) => {
+                header.error_code = status_code;
+            }
+        }
+    }
+
+    fn generate_quote(
+        &self,
+        buf_len: u64,
+        report_data: Vec<u8>,
+    ) -> Result<Vec<u8>, u64> {
+        let req_size = (core::mem::size_of::<QgsMessageGetQuoteReq>() + report_data.len()) as u32;
+        let req_message = QgsMessageGetQuoteReq {
             header: QgsMessageHeader {
                 major_version: QGS_MSG_LIB_MAJOR_VER,
                 minor_version: QGS_MSG_LIB_MINOR_VER,
                 r#type: QGS_MSG_TYPE_GET_QUOTE_REQ,
-                size: message_size,
+                size: req_size,
                 error_code: 0,
             },
             report_size: report_data.len() as u32,
@@ -236,19 +266,90 @@ impl<'a> TdxExitHandler<'a> {
         };
 
         // Length prefix
-        let header = encode_header(message_size);
+        let req_header = encode_header(req_size);
 
-        let mut stream = UnixStream::connect(self.quote_generation_socket.as_ref().unwrap())?;
+        let mut stream = UnixStream::connect(self.quote_generation_socket.as_ref().unwrap())
+            .map_err(|_| TDX_VP_GET_QUOTE_QGS_UNAVAILABLE)?;
 
-        stream.write_all(&header)?;
-        stream.write_all(message.as_slice())?;
-        stream.write_all(report_data.as_slice())?;
-        stream.flush()?;
+        stream
+            .write_all(&req_header)
+            .map_err(|_| TDX_VP_GET_QUOTE_ERROR)?;
+        stream
+            .write_all(req_message.as_slice())
+            .map_err(|_| TDX_VP_GET_QUOTE_ERROR)?;
+        stream
+            .write_all(report_data.as_slice())
+            .map_err(|_| TDX_VP_GET_QUOTE_ERROR)?;
+        stream.flush().map_err(|_| TDX_VP_GET_QUOTE_ERROR)?;
 
-        Ok(Vec::new())
+        let resp_message_size = core::mem::size_of::<QgsMessageGetQuoteResp>();
+
+        let mut resp_header = [0u8; HEADER_SIZE];
+        stream
+            .read_exact(&mut resp_header)
+            .map_err(|_| TDX_VP_GET_QUOTE_ERROR)?;
+        let resp_size = decode_header(&resp_header);
+
+        if resp_size < resp_message_size as u32 {
+            error!("TDX GetQuote: Bad response message size");
+            return Err(TDX_VP_GET_QUOTE_ERROR);
+        }
+
+        let mut resp_message_buf = vec![0u8; resp_message_size];
+        stream
+            .read_exact(&mut resp_message_buf)
+            .map_err(|_| TDX_VP_GET_QUOTE_ERROR)?;
+        let resp_message = match QgsMessageGetQuoteResp::from_slice(resp_message_buf.as_slice()) {
+            Some(msg) => msg,
+            None => return Err(TDX_VP_GET_QUOTE_ERROR),
+        };
+
+        if resp_message.header.major_version != QGS_MSG_LIB_MAJOR_VER
+            || resp_message.header.minor_version != QGS_MSG_LIB_MINOR_VER
+        {
+            return Err(TDX_VP_GET_QUOTE_ERROR);
+        }
+
+        if resp_message.header.r#type != QGS_MSG_TYPE_GET_QUOTE_RESP {
+            return Err(TDX_VP_GET_QUOTE_ERROR);
+        }
+
+        if resp_message.header.size > resp_size {
+            return Err(TDX_VP_GET_QUOTE_ERROR);
+        }
+
+        if resp_message.header.error_code != 0 {
+            return Err(TDX_VP_GET_QUOTE_ERROR);
+        }
+
+        if resp_message.selected_id_size != 0 {
+            return Err(TDX_VP_GET_QUOTE_ERROR);
+        }
+
+        let quote_size = resp_message.quote_size;
+        if quote_size != resp_size - resp_message_size as u32
+            || quote_size > (buf_len - TDX_GET_QUOTE_HDR_SIZE) as u32
+        {
+            return Err(TDX_VP_GET_QUOTE_ERROR);
+        }
+
+        let mut quote_buf = vec![0u8; quote_size as usize];
+        stream
+            .read_exact(&mut quote_buf)
+            .map_err(|_| TDX_VP_GET_QUOTE_ERROR)?;
+
+        Ok(quote_buf)
+    }
+
+    fn inject_interrupt(&self) {
+        
     }
 }
 
 fn encode_header(size: u32) -> [u8; HEADER_SIZE] {
     size.to_be_bytes()
+}
+
+fn decode_header(buf: &[u8; 4]) -> u32 {
+    u32::from_be_bytes(*buf)
 }
