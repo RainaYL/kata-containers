@@ -1579,16 +1579,19 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "event-manager",
+ "kvm-bindings",
+ "kvm-ioctls",
  "libc",
  "log",
  "nix 0.26.4",
  "serde",
  "serde_json",
- "tdx_workload_attestation",
+ "tdx",
  "test-utils",
  "thiserror 1.0.69",
  "threadpool",
  "timerfd",
+ "vm-memory",
  "vmm-sys-util 0.15.0",
 ]
 
@@ -6827,15 +6830,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde-big-array"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11fc7cc2c76d73e0f27ee52abbd64eec84d46f370c88371120433196934e4b7f"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "serde-enum-str"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7579,22 +7573,6 @@ dependencies = [
  "libc",
  "uuid 1.23.1",
  "vmm-sys-util 0.15.0",
-]
-
-[[package]]
-name = "tdx_workload_attestation"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82c3a8b220abd63a54ebda5631fc8d37b5e5d5147b69e944f90f788e1b17d253"
-dependencies = [
- "clap",
- "hex",
- "protobuf-codegen",
- "serde",
- "serde-big-array",
- "serde_json",
- "thiserror 2.0.18",
- "vmm-sys-util 0.14.0",
 ]
 
 [[package]]
