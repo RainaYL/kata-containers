@@ -17,9 +17,10 @@ use anyhow::{anyhow, Context, Result};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use dragonball::{
     api::v1::{
-        BlockDeviceConfigInfo, BootSourceConfig, FsDeviceConfigInfo, FsMountConfigInfo,
-        InstanceInfo, InstanceState, NetworkInterfaceConfig, VcpuResizeInfo, VmmAction,
-        VmmActionError, VmmData, VmmRequest, VmmResponse, VmmService, VsockDeviceConfigInfo,
+        BlockDeviceConfigInfo, BootSourceConfig, ConfidentialVmType, FsDeviceConfigInfo,
+        FsMountConfigInfo, InstanceInfo, InstanceState, NetworkInterfaceConfig, VcpuResizeInfo,
+        VmmAction, VmmActionError, VmmData, VmmRequest, VmmResponse, VmmService,
+        VsockDeviceConfigInfo,
     },
     device_manager::{
         balloon_dev_mgr::BalloonDeviceConfigInfo, mem_dev_mgr::MemDeviceConfigInfo,
@@ -56,11 +57,15 @@ pub struct VmmInstance {
 }
 
 impl VmmInstance {
-    pub fn new(id: &str, exit_notify: mpsc::Sender<i32>) -> Self {
+    pub fn new(id: &str, exit_notify: mpsc::Sender<i32>, confidential_guest: bool) -> Self {
         let vmm_shared_info = Arc::new(RwLock::new(InstanceInfo::new(
             String::from(id),
             DRAGONBALL_VERSION.to_string(),
-            None,
+            if confidential_guest {
+                Some(ConfidentialVmType::TDX)
+            } else {
+                None
+            },
         )));
 
         let to_vmm_fd = EventFd::new(libc::EFD_NONBLOCK)
@@ -107,6 +112,16 @@ impl VmmInstance {
 
     pub fn set_seccomp(&mut self, seccomp: HashMap<String, BpfProgram>) {
         self.seccomps = seccomp;
+    }
+
+    pub fn set_confidential_guest(&self, confidential_guest: bool) {
+        let confidential_vm_type = if confidential_guest {
+            info!(sl!(), "set confidential guest");
+            Some(ConfidentialVmType::TDX)
+        } else {
+            None
+        };
+        self.vmm_shared_info.write().unwrap().confidential_vm_type = confidential_vm_type;
     }
 
     pub fn run_vmm_server(&mut self, id: &str, netns: Option<String>) -> Result<()> {
