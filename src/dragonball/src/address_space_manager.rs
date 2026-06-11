@@ -496,6 +496,7 @@ impl AddressSpaceMgr {
                 let memory_size = reg.len();
                 unsafe {
                     info!("slot: {}, flags: {}, guest_phys_addr: {:#x}, memory_size: {:#x}, userspace_addr: {:#x}, guest_memfd: {}", slot, flags, guest_phys_addr, memory_size, host_addr as u64, memfd);
+                    println!("slot: {}, flags: {}, guest_phys_addr: {:#x}, memory_size: {:#x}, userspace_addr: {:#x}, guest_memfd: {}", slot, flags, guest_phys_addr, memory_size, host_addr as u64, memfd);
                     vmfd.set_user_memory_region2(kvm_userspace_memory_region2 {
                         slot,
                         flags,
