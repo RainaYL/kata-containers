@@ -46,9 +46,6 @@ impl DragonballInner {
             self.vmm_instance.set_seccomp(seccomp);
         }
 
-        self.vmm_instance
-            .set_confidential_guest(self.config.security_info.confidential_guest);
-
         Ok(())
     }
 
