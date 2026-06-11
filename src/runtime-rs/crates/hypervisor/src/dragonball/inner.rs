@@ -10,6 +10,8 @@ use crate::{
     kernel_param::KernelParams, MemoryConfig, VmmState, DEV_HUGEPAGES, HUGETLBFS, HUGE_SHMEM,
     HYPERVISOR_DRAGONBALL, SHMEM,
 };
+#[cfg(target_arch = "x86_64")]
+use crate::ANON;
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use dragonball::{
@@ -228,6 +230,8 @@ impl DragonballInner {
                 HugePageType::THP => (String::from(HUGE_SHMEM), String::from("")),
                 HugePageType::Hugetlbfs => (String::from(HUGETLBFS), String::from(DEV_HUGEPAGES)),
             }
+        } else if self.config.security_info.confidential_guest {
+            (String::from(ANON), String::from(""))
         } else {
             (String::from(SHMEM), String::from(""))
         };
