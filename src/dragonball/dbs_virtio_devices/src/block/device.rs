@@ -349,6 +349,7 @@ where
     ) {
         requests.push(ResourceConstraint::LegacyIrq { irq: None });
         if use_generic_irq {
+            info!("Use generic irq!!");
             requests.push(ResourceConstraint::GenericIrq {
                 size: (self.queue_sizes.len() + 1) as u32,
             });
