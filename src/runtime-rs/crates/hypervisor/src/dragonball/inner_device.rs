@@ -114,11 +114,7 @@ impl DragonballInner {
                     .context("add vhost-user-net device")?;
                 Ok(DeviceType::VhostUserNetwork(dev))
             }
-            DeviceType::Protection(dev) => {
-                self.vmm_instance
-                    .set_confidential_guest(self.config.security_info.confidential_guest);
-                Ok(DeviceType::Protection(dev))
-            }
+            DeviceType::Protection(dev) => Ok(DeviceType::Protection(dev)),
             _ => Err(anyhow!("unsupported device {:?}", device)),
         }
     }

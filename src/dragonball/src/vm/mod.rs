@@ -242,9 +242,7 @@ impl Vm {
         let vm_fd = if tdx_enabled {
             Arc::new(kvm.create_vm_with_type(KVM_X86_TDX_VM)?)
         } else {
-
-            panic!("Create normal vm");
-            //Arc::new(kvm.create_vm()?)
+            Arc::new(kvm.create_vm()?)
         };
         #[cfg(not(target_arch = "x86_64"))]
         let vm_fd = Arc::new(kvm.create_vm()?);

@@ -5,23 +5,25 @@
 //
 
 use super::vmm_instance::VmmInstance;
+#[cfg(target_arch = "x86_64")]
+use crate::ANON;
 use crate::{
     device::DeviceType, firecracker::sl, hypervisor_persist::HypervisorState,
     kernel_param::KernelParams, MemoryConfig, VmmState, DEV_HUGEPAGES, HUGETLBFS, HUGE_SHMEM,
     HYPERVISOR_DRAGONBALL, SHMEM,
 };
-#[cfg(target_arch = "x86_64")]
-use crate::ANON;
 use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use dragonball::{
-    api::v1::{BootSourceConfig, VcpuResizeInfo},
+    api::v1::{BootSourceConfig, ConfidentialVmType, VcpuResizeInfo},
     device_manager::{balloon_dev_mgr::BalloonDeviceConfigInfo, mem_dev_mgr::MemDeviceConfigInfo},
     vm::VmConfigInfo,
 };
 
 use crate::DEFAULT_HOTPLUG_TIMEOUT;
 use kata_sys_util::mount;
+#[cfg(target_arch = "x86_64")]
+use kata_sys_util::protection::{available_guest_protection, GuestProtection};
 use kata_types::{
     capabilities::{Capabilities, CapabilityBits},
     config::{
@@ -112,7 +114,7 @@ impl DragonballInner {
             pending_devices: vec![],
             state: VmmState::NotReady,
             jailed: false,
-            vmm_instance: VmmInstance::new("", exit_notify, false),
+            vmm_instance: VmmInstance::new("", exit_notify, Self::get_confidential_vm_type()),
             run_dir: "".to_string(),
             cached_block_devices: Default::default(),
             capabilities,
@@ -515,6 +517,18 @@ impl DragonballInner {
     pub fn set_passfd_listener_port(&mut self, port: u32) {
         self.passfd_listener_port = Some(port);
     }
+
+    fn get_confidential_vm_type() -> Option<ConfidentialVmType> {
+        #[cfg(not(target_arch = "x86_64"))]
+        return None;
+
+        #[cfg(target_arch = "x86_64")]
+        if let Ok(GuestProtection::Tdx) = available_guest_protection() {
+            Some(ConfidentialVmType::TDX)
+        } else {
+            None
+        }
+    }
 }
 
 #[async_trait]
@@ -550,12 +564,12 @@ impl Persist for DragonballInner {
             jailed: hypervisor_state.jailed,
             jailer_root: hypervisor_state.jailer_root,
             netns: hypervisor_state.netns,
-            config: hypervisor_state.config.clone(),
+            config: hypervisor_state.config,
             state: VmmState::NotReady,
             vmm_instance: VmmInstance::new(
                 "",
                 hypervisor_args,
-                hypervisor_state.config.security_info.confidential_guest,
+                Self::get_confidential_vm_type(),
             ),
             run_dir: hypervisor_state.run_dir,
             pending_devices: vec![],
