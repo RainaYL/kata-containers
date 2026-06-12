@@ -312,10 +312,16 @@ impl DragonballInner {
     }
 
     fn add_hvsock(&mut self, config: &HybridVsockConfig) -> Result<()> {
+        let use_generic_irq = if self.config.security_info.confidential_guest {
+            Some(false)
+        } else {
+            None
+        };
         let vsock_cfg = VsockDeviceConfigInfo {
             id: String::from(JAILER_ROOT),
             guest_cid: config.guest_cid,
             uds_path: Some(config.uds_path.clone()),
+            use_generic_irq,
             ..Default::default()
         };
         debug!(sl!(), "HybridVsock configure: {:?}", &vsock_cfg);
