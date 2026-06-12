@@ -249,6 +249,12 @@ impl DragonballInner {
         };
         let block_rate_limit = RateLimiterConfigInfo { bandwidth, ops };
 
+        let use_generic_irq = if self.config.security_info.confidential_guest {
+            Some(false)
+        } else {
+            None
+        };
+
         let blk_cfg = BlockDeviceConfigInfo {
             drive_id: id.to_string(),
             device_type: BlockDeviceType::get_type(path),
@@ -258,6 +264,7 @@ impl DragonballInner {
             is_read_only: read_only,
             use_pci_bus,
             rate_limiter: Some(block_rate_limit),
+            use_generic_irq,
             ..Default::default()
         };
         self.vmm_instance
