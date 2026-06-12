@@ -392,6 +392,11 @@ impl DragonballInner {
     }
 
     fn add_share_fs_device(&self, config: &ShareFsConfig) -> Result<()> {
+        let use_generic_irq = if self.config.security_info.confidential_guest {
+            Some(false)
+        } else {
+            None
+        };
         let mut fs_cfg = FsDeviceConfigInfo {
             sock_path: config.sock_path.clone(),
             tag: config.mount_tag.clone(),
@@ -408,6 +413,7 @@ impl DragonballInner {
             cache_size: (self.config.shared_fs.virtio_fs_cache_size as u64)
                 .saturating_mul(MB_TO_B as u64),
             xattr: true,
+            use_generic_irq,
             ..Default::default()
         };
 
