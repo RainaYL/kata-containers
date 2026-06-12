@@ -86,7 +86,10 @@ where
         }
         let mmio_cfg_res = match mmio_cfg_resource {
             Some(v) => v,
-            None => return Err(Error::InvalidInput),
+            None => {
+                info!("Missing mmio_cfg_res");
+                return Err(Error::InvalidInput);
+            }
         };
 
         let msi_feature = if resources.get_generic_msi_irqs().is_some() {
