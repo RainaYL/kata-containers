@@ -18,6 +18,7 @@ kvm-bindings = { workspace = true, optional = true }
 kvm-ioctls = { workspace = true, optional = true }
 libc = "0.2"
 vmm-sys-util = {workspace = true}
+log = "0.4.14"
 
 [dev-dependencies]
 test-utils = { workspace = true }

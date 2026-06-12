@@ -14,6 +14,8 @@ use super::{
     ioapic::*, InterruptIndex, InterruptManager, InterruptSourceGroup, InterruptSourceType, Result,
 };
 
+use log::*;
+
 /// Structure to manage interrupt sources for a virtual machine in userspace based on IOAPIC
 /// protocol.
 ///
@@ -170,9 +172,11 @@ impl InterruptManager for UserspaceIoapicManager {
             #[cfg(feature = "split-legacy-irq")]
             InterruptSourceType::LegacyIrq => {
                 if count != 1 {
+                    info!("Bad count");
                     return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
                 }
                 if base >= self.nr_redir_entries() {
+                    info!("Bad base");
                     return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
                 }
                 // Irq has already been created while initializing the manager, so we
@@ -183,6 +187,7 @@ impl InterruptManager for UserspaceIoapicManager {
                 group
             }
             _ => {
+                info!("Unsupported source type");
                 return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
             }
         };
