@@ -294,11 +294,6 @@ impl DragonballInner {
 
     /// Add vhost-user-net device to Dragonball
     fn add_vhost_user_net_device(&mut self, config: &VhostUserConfig) -> Result<()> {
-        let use_generic_irq = if self.config.security_info.confidential_guest {
-            Some(false)
-        } else {
-            None
-        };
         let guest_mac = MacAddr::parse_str(&config.mac_address).ok();
         let net_cfg = NetworkInterfaceConfig {
             num_queues: Some(config.num_queues),
@@ -308,7 +303,7 @@ impl DragonballInner {
             }),
             guest_mac,
             use_shared_irq: None,
-            use_generic_irq,
+            use_generic_irq: None,
         };
 
         self.vmm_instance

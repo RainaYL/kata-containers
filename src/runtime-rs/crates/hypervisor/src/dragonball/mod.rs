@@ -295,6 +295,12 @@ pub(crate) fn build_dragonball_network_config(
         DragonballBackend::Vhost(virtio_config)
     };
 
+    let use_generic_irq = if hconfig.security_info.confidential_guest {
+        Some(false)
+    } else {
+        None
+    };
+
     DragonballNetworkConfig {
         num_queues: Some(nconfig.queue_num),
         queue_size: Some(nconfig.queue_size as u16),
@@ -304,6 +310,6 @@ pub(crate) fn build_dragonball_network_config(
             DragonballMacAddr::from_bytes(&mac.0).unwrap()
         }),
         use_shared_irq: nconfig.use_shared_irq,
-        use_generic_irq: nconfig.use_generic_irq,
+        use_generic_irq,
     }
 }
