@@ -287,12 +287,14 @@ impl DragonballInner {
         // set boot source
         let kernel_path = self.config.boot_info.kernel.as_str();
         let initrd_path = self.config.boot_info.initrd.as_str();
+        let firmware_path = self.config.boot_info.firmware.as_str();
 
         info!(
             sl!(),
-            "kernel path {}, initrd path {}, kernel params {}",
+            "kernel path {}, initrd path {}, firmware path {}, kernel params {}",
             kernel_path,
             initrd_path,
+            firmware_path,
             kernel_params
         );
 
@@ -305,11 +307,17 @@ impl DragonballInner {
             );
         }
 
+        let mut firmware = None;
+        if !firmware_path.is_empty() {
+            firmware = Some(firmware_path.to_string());
+        }
+
         let mut boot_cfg = BootSourceConfig {
             kernel_path: self
                 .get_resource(kernel_path, DRAGONBALL_KERNEL)
                 .context("get kernel resource")?,
             initrd_path: initrd,
+            firmware_path: firmware,
             ..Default::default()
         };
 
