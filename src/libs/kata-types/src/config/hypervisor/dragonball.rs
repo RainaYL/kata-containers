@@ -136,11 +136,11 @@ impl ConfigPlugin for DragonballConfig {
                 ));
             }
 
-            if !db.boot_info.firmware.is_empty() {
-                return Err(std::io::Error::other(
-                    "Firmware for dragonball hypervisor should be empty",
-                ));
-            }
+            // if !db.boot_info.firmware.is_empty() {
+            //     return Err(std::io::Error::other(
+            //         "Firmware for dragonball hypervisor should be empty",
+            //     ));
+            // }
 
             if (db.cpu_info.default_vcpus > 0.0
                 && db.cpu_info.default_vcpus as u32 > default::MAX_DRAGONBALL_VCPUS)

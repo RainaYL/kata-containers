@@ -1226,7 +1226,7 @@ impl DeviceManager {
         ctx: &mut DeviceOpContext,
     ) -> std::result::Result<(), DeviceMgrError> {
         // unregister IoManager
-        Self::deregister_virtio_device(&device, ctx)?;
+        Self::deregister_mmio_virtio_device(&device, ctx)?;
 
         // unregister Resource manager
         let resources = device.get_assigned_resources();
