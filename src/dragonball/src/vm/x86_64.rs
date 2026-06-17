@@ -238,6 +238,10 @@ impl Vm {
                 &acpi_tables,
             )?;
 
+            if self.confidential_vm_type() == Some(ConfidentialVmType::TDX) {
+                self.tdx_prepare_tsc()?;
+            }            
+
             let boot_vcpu_count = self.vm_config.vcpu_count;
             self.vcpu_manager()
                 .map_err(StartMicroVmError::Vcpu)?
