@@ -274,6 +274,12 @@ pub enum StartMicroVmError {
     /// Cannot enable hypercall map gpa range
     #[error("Failed to enable hypercall map gpa range: {0}")]
     EnableHcMapGpaRange(#[source] vmm_sys_util::errno::Error),
+
+    #[error("Failed to set X86 APIC bus cycles: {0}")]
+    SetX86ApicBusCycles(#[source] vmm_sys_util::errno::Error),
+
+    #[error("Failed to set TSC frequency: {0}")]
+    SetTscFreq(#[source] vmm_sys_util::errno::Error),
 }
 
 /// Errors associated with starting the instance.

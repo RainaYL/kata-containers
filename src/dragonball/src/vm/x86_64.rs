@@ -21,14 +21,15 @@ use dbs_interrupt::IOAPIC_MAX_NR_REDIR_ENTRIES;
 use dbs_utils::epoll_manager::EpollManager;
 use dbs_utils::time::TimestampUs;
 use kvm_bindings::{
-    kvm_enable_cap, kvm_irqchip, kvm_pit_config, kvm_pit_state2, KVM_CAP_EXIT_HYPERCALL,
-    KVM_CAP_SPLIT_IRQCHIP, KVM_PIT_SPEAKER_DUMMY,
+    kvm_enable_cap, kvm_irqchip, kvm_pit_config, kvm_pit_state2, KVMIO, KVM_CAP_EXIT_HYPERCALL,
+    KVM_CAP_SPLIT_IRQCHIP, KVM_CAP_X86_APIC_BUS_CYCLES_NS, KVM_PIT_SPEAKER_DUMMY,
 };
 use linux_loader::cmdline::Cmdline;
 use linux_loader::configurator::{linux::LinuxBootConfigurator, BootConfigurator, BootParams};
 use slog::info;
 use tdx::launch::MemRegion;
 use vm_memory::{Address, GuestAddress, GuestAddressSpace, GuestMemory};
+use vmm_sys_util::{ioctl::ioctl_with_val, ioctl_io_nr};
 
 use crate::address_space_manager::{GuestAddressSpaceImpl, GuestMemoryImpl};
 use crate::api::v1::ConfidentialVmType;
@@ -36,6 +37,10 @@ use crate::error::{Error, Result, StartMicroVmError};
 use crate::event_manager::EventManager;
 use crate::vcpu::KVM_HC_MAP_GPA_RANGE;
 use crate::vm::{VcpuManagerError, Vm, VmError};
+
+const TDX_APIC_BUS_CYCLES_NS: u64 = 40;
+
+ioctl_io_nr!(KVM_SET_TSC_KHZ, KVMIO, 0xa2);
 
 /// Configures the system and should be called once per vm before starting vcpu
 /// threads.
@@ -534,6 +539,24 @@ impl Vm {
         self.vm_fd()
             .enable_cap(&enable_hc_map_gpa_range)
             .map_err(StartMicroVmError::EnableHcMapGpaRange)
+    }
+
+    pub(super) fn tdx_prepare_tsc(&mut self) -> std::result::Result<(), StartMicroVmError> {
+        let mut set_x86_apic_bus_cycles = kvm_enable_cap {
+            cap: KVM_CAP_X86_APIC_BUS_CYCLES_NS,
+            ..Default::default()
+        };
+        set_x86_apic_bus_cycles.args[0] = TDX_APIC_BUS_CYCLES_NS;
+        self.vm_fd()
+            .enable_cap(&set_x86_apic_bus_cycles)
+            .map_err(StartMicroVmError::SetX86ApicBusCycles)?;
+
+        let ret = unsafe { ioctl_with_val(&self.vm_fd().as_raw_fd(), KVM_SET_TSC_KHZ(), 0) };
+        if ret < 0 {
+            Err(vmm_sys_util::errno::Error::last()).map_err(StartMicroVmError::SetTscFreq)
+        } else {
+            Ok(())
+        }
     }
 
     pub(super) fn tdx_init_vm(&mut self) -> std::result::Result<(), StartMicroVmError> {
