@@ -794,6 +794,7 @@ impl DeviceManager {
     pub fn create_legacy_devices(
         &mut self,
         ctx: &mut DeviceOpContext,
+        mem_size: Option<u64>,
     ) -> std::result::Result<(), StartMicroVmError> {
         #[cfg(any(
             target_arch = "x86_64",
@@ -808,6 +809,7 @@ impl DeviceManager {
                 legacy_manager = LegacyDeviceManager::create_manager(
                     &mut tx.io_manager,
                     Some(self.vm_fd.clone()),
+                    mem_size,
                 );
             }
 
@@ -910,7 +912,7 @@ impl DeviceManager {
 
         let com1_sock_path = vm_config.serial_path.clone();
 
-        self.create_legacy_devices(&mut ctx)?;
+        self.create_legacy_devices(&mut ctx, Some((vm_config.mem_size_mib as u64) << 20))?;
         self.init_legacy_devices(dmesg_fifo, com1_sock_path, &mut ctx)?;
 
         #[cfg(any(feature = "virtio-blk", feature = "vhost-user-blk"))]

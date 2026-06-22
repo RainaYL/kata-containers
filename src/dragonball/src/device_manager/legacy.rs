@@ -9,9 +9,12 @@
 //! Device Manager for Legacy Devices.
 
 use std::io;
+use std::os::fd::{AsRawFd, FromRawFd};
 use std::sync::{Arc, Mutex};
 
 use dbs_device::device_manager::Error as IoManagerError;
+use dbs_boot::layout::{GUEST_MEM_START, MMIO_LOW_START};
+use dbs_legacy_devices::CmosDevice;
 #[cfg(target_arch = "aarch64")]
 use dbs_legacy_devices::RTCDevice;
 use dbs_legacy_devices::SerialDevice;
@@ -54,6 +57,8 @@ pub struct LegacyDeviceManager {
     _com1_eventfd: EventFd,
     pub(crate) com2_device: Arc<Mutex<SerialDevice>>,
     _com2_eventfd: EventFd,
+    pub(crate) cmos_device: Option<Arc<Mutex<CmosDevice>>>,
+    _cmos_eventfd: Option<EventFd>,
 }
 
 impl LegacyDeviceManager {
@@ -82,12 +87,13 @@ pub(crate) mod x86_64 {
     pub(crate) const COM2_NAME: &str = "com2";
     pub(crate) const COM2_IRQ: u32 = 3;
     pub(crate) const COM2_PORT1: u16 = 0x2f8;
+    pub(crate) const CMOS_PORT: u16 = 0x70;
 
     type Result<T> = ::std::result::Result<T, Error>;
 
     impl LegacyDeviceManager {
         /// Create a LegacyDeviceManager instance handling legacy devices (uart, i8042).
-        pub fn create_manager(bus: &mut IoManager, vm_fd: Option<Arc<VmFd>>) -> Result<Self> {
+        pub fn create_manager(bus: &mut IoManager, vm_fd: Option<Arc<VmFd>>, mem_size: Option<u64>) -> Result<Self> {
             let (com1_device, com1_eventfd) =
                 Self::create_com_device(bus, vm_fd.as_ref(), COM1_IRQ, COM1_PORT1)?;
             METRICS.write().unwrap().serial.insert(
@@ -115,12 +121,21 @@ pub(crate) mod x86_64 {
             bus.register_device_io(i8042_device, &resources)
                 .map_err(Error::BusError)?;
 
+            let (cmos_device, cmos_eventfd) = if mem_size.is_some() {
+                let (device, eventfd) = Self::create_cmos_device(bus, CMOS_PORT, mem_size.unwrap())?;
+                (Some(device), Some(eventfd))
+            } else {
+                (None, None)
+            };
+
             Ok(LegacyDeviceManager {
                 i8042_reset_eventfd: exit_evt,
                 com1_device,
                 _com1_eventfd: com1_eventfd,
                 com2_device,
                 _com2_eventfd: com2_eventfd,
+                cmos_device,
+                _cmos_eventfd: cmos_eventfd,
             })
         }
 
@@ -152,6 +167,30 @@ pub(crate) mod x86_64 {
                 fd.register_irqfd(&eventfd, irq)
                     .map_err(Error::IrqManager)?;
             }
+
+            Ok((device, eventfd))
+        }
+
+        fn create_cmos_device(
+            bus: &mut IoManager,
+            port_base: u16,
+            mem_size: u64,
+        ) -> Result<(Arc<Mutex<CmosDevice>>, EventFd)> {
+            let size_4g = 4u64 << 30;
+
+            let eventfd = EventFd::new(libc::EFD_NONBLOCK).map_err(Error::EventFd)?;
+            let device = Arc::new(Mutex::new(CmosDevice::new(
+                MMIO_LOW_START.min(GUEST_MEM_START + mem_size).min(size_4g),
+                0u64.max(GUEST_MEM_START + mem_size - size_4g),
+                unsafe { EventFd::from_raw_fd(eventfd.as_raw_fd()) },
+            )));
+
+            let resources = [Resource::PioAddressRange {
+                base: port_base,
+                size: 0x2,
+            }];
+            bus.register_device_io(device.clone(), &resources)
+                .map_err(Error::BusError)?;
 
             Ok((device, eventfd))
         }
@@ -261,7 +300,7 @@ mod tests {
     #[cfg(target_arch = "x86_64")]
     fn test_create_legacy_device_manager() {
         let mut bus = dbs_device::device_manager::IoManager::new();
-        let mgr = LegacyDeviceManager::create_manager(&mut bus, None).unwrap();
+        let mgr = LegacyDeviceManager::create_manager(&mut bus, None, None).unwrap();
         let _exit_fd = mgr.get_reset_eventfd().unwrap();
     }
 }
