@@ -12,8 +12,8 @@ use std::io;
 use std::os::fd::{AsRawFd, FromRawFd};
 use std::sync::{Arc, Mutex};
 
-use dbs_device::device_manager::Error as IoManagerError;
 use dbs_boot::layout::{GUEST_MEM_START, MMIO_LOW_START};
+use dbs_device::device_manager::Error as IoManagerError;
 use dbs_legacy_devices::CmosDevice;
 #[cfg(target_arch = "aarch64")]
 use dbs_legacy_devices::RTCDevice;
@@ -93,7 +93,11 @@ pub(crate) mod x86_64 {
 
     impl LegacyDeviceManager {
         /// Create a LegacyDeviceManager instance handling legacy devices (uart, i8042).
-        pub fn create_manager(bus: &mut IoManager, vm_fd: Option<Arc<VmFd>>, mem_size: Option<u64>) -> Result<Self> {
+        pub fn create_manager(
+            bus: &mut IoManager,
+            vm_fd: Option<Arc<VmFd>>,
+            mem_size: Option<u64>,
+        ) -> Result<Self> {
             let (com1_device, com1_eventfd) =
                 Self::create_com_device(bus, vm_fd.as_ref(), COM1_IRQ, COM1_PORT1)?;
             METRICS.write().unwrap().serial.insert(
@@ -122,7 +126,8 @@ pub(crate) mod x86_64 {
                 .map_err(Error::BusError)?;
 
             let (cmos_device, cmos_eventfd) = if mem_size.is_some() {
-                let (device, eventfd) = Self::create_cmos_device(bus, CMOS_PORT, mem_size.unwrap())?;
+                let (device, eventfd) =
+                    Self::create_cmos_device(bus, CMOS_PORT, mem_size.unwrap())?;
                 (Some(device), Some(eventfd))
             } else {
                 (None, None)
@@ -181,7 +186,11 @@ pub(crate) mod x86_64 {
             let eventfd = EventFd::new(libc::EFD_NONBLOCK).map_err(Error::EventFd)?;
             let device = Arc::new(Mutex::new(CmosDevice::new(
                 MMIO_LOW_START.min(GUEST_MEM_START + mem_size).min(size_4g),
-                0u64.max(GUEST_MEM_START + mem_size - size_4g),
+                if GUEST_MEM_START + mem_size > size_4g {
+                    GUEST_MEM_START + mem_size - size_4g
+                } else {
+                    0
+                },
                 unsafe { EventFd::from_raw_fd(eventfd.as_raw_fd()) },
             )));
 
