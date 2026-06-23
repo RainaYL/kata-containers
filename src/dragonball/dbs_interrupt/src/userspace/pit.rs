@@ -124,6 +124,7 @@ impl DeviceIoMut for PitDevice {
             return;
         }
         let val = data[0];
+        println!("PIT port offset: {}", offset.raw_value());
         match offset.raw_value() {
             0 => self.channel_write(0, val),
             1 => self.channel_write(1, val),
