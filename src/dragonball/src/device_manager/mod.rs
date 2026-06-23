@@ -948,6 +948,8 @@ impl DeviceManager {
         self.create_legacy_devices(&mut ctx, Some((vm_config.mem_size_mib as u64) << 20))?;
         self.init_legacy_devices(dmesg_fifo, com1_sock_path, &mut ctx)?;
 
+        self.create_pit_device(&mut ctx)?;
+
         #[cfg(any(feature = "virtio-blk", feature = "vhost-user-blk"))]
         self.block_manager
             .attach_devices(&mut ctx)
