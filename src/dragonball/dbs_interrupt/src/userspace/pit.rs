@@ -120,11 +120,11 @@ impl PitDevice {
 
 impl DeviceIoMut for PitDevice {
     fn pio_write(&mut self, _base: PioAddress, offset: PioAddress, data: &[u8]) {
+        println!("PIT port offset: {}", offset.raw_value());
         if data.len() != 1 {
             return;
         }
         let val = data[0];
-        println!("PIT port offset: {}", offset.raw_value());
         match offset.raw_value() {
             0 => self.channel_write(0, val),
             1 => self.channel_write(1, val),
