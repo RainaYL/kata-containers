@@ -918,6 +918,7 @@ impl DeviceManager {
             .register_device_io(pit_device.clone(), &resources)
             .map_err(DeviceMgrError::IoManager)
             .map_err(StartMicroVmError::DeviceManager)?;
+        ctx.io_context.commit_tx(tx);
 
         self.pit_timer = Some(pit_device);
         Ok(())
