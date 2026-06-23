@@ -74,7 +74,7 @@ pub use self::kvm::KvmIrqManager;
 #[cfg(all(target_arch = "x86_64", feature = "split-irq"))]
 pub mod userspace;
 #[cfg(all(target_arch = "x86_64", feature = "split-irq"))]
-pub use self::userspace::{ioapic::*, manager::UserspaceIoapicManager};
+pub use self::userspace::{ioapic::*, manager::UserspaceIoapicManager, pit::*};
 
 /// Reuse std::io::Result to simplify interoperability among crates.
 pub type Result<T> = std::io::Result<T>;

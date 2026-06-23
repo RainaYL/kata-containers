@@ -7,5 +7,6 @@ pub mod ioapic;
 #[cfg(feature = "split-legacy-irq")]
 pub mod legacy_irq;
 pub mod manager;
+pub mod pit;
 
 use super::*;

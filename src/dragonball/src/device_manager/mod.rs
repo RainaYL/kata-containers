@@ -20,7 +20,9 @@ use dbs_device::resources::DeviceResources;
 use dbs_device::resources::Resource;
 use dbs_device::DeviceIo;
 #[cfg(target_arch = "x86_64")]
-use dbs_interrupt::UserspaceIoapicManager;
+use dbs_interrupt::{
+    start_pit_timer, PitDevice, UserspaceIoapicManager, PIT_BASE_PORT, PIT_PORT_SIZE,
+};
 use dbs_interrupt::{InterruptManager, KvmIrqManager};
 use dbs_legacy_devices::ConsoleHandler;
 #[cfg(feature = "dbs-virtio-devices")]
@@ -215,6 +217,9 @@ pub enum DeviceMgrError {
     /// Error from Userspace IOAPIC
     #[error("Userspace IOAPIC error: {0}")]
     UserspaceIoapicError(#[source] std::io::Error),
+    /// Error from PIT timer
+    #[error("PIT Timer error: {0}")]
+    PitTimer(#[source] std::io::Error),
 }
 
 /// Specialized version of `std::result::Result` for device manager operations.
@@ -684,6 +689,8 @@ pub struct DeviceManager {
     pub(crate) vfio_manager: Arc<Mutex<VfioDeviceMgr>>,
     #[cfg(feature = "host-device")]
     pub(crate) pci_system_manager: Arc<Mutex<PciSystemManager>>,
+
+    pub(crate) pit_timer: Option<Arc<Mutex<PitDevice>>>,
 }
 
 impl DeviceManager {
@@ -764,6 +771,7 @@ impl DeviceManager {
             ))),
             #[cfg(feature = "host-device")]
             pci_system_manager,
+            pit_timer: None,
         })
     }
 
@@ -890,6 +898,31 @@ impl DeviceManager {
         self.con_manager.reset_console()
     }
 
+    /// Create PIT timer device
+    pub fn create_pit_device(
+        &mut self,
+        ctx: &mut DeviceOpContext,
+    ) -> std::result::Result<(), StartMicroVmError> {
+        let pit_device = Arc::new(Mutex::new(
+            PitDevice::new(self.irq_manager.clone())
+                .map_err(DeviceMgrError::PitTimer)
+                .map_err(StartMicroVmError::DeviceManager)?,
+        ));
+
+        let mut tx = ctx.io_context.begin_tx();
+        let resources = [Resource::PioAddressRange {
+            base: PIT_BASE_PORT,
+            size: PIT_PORT_SIZE,
+        }];
+        tx.io_manager
+            .register_device_io(pit_device.clone(), &resources)
+            .map_err(DeviceMgrError::IoManager)
+            .map_err(StartMicroVmError::DeviceManager)?;
+
+        self.pit_timer = Some(pit_device);
+        Ok(())
+    }
+
     /// Create all registered devices when booting the associated virtual machine.
     pub fn create_devices(
         &mut self,
@@ -987,6 +1020,10 @@ impl DeviceManager {
             .unwrap()
             .start_devices(vm_as)
             .map_err(StartMicroVmError::RegisterDMAAddress)?;
+
+        if self.pit_timer.is_some() {
+            start_pit_timer(self.pit_timer.as_ref().unwrap().clone());
+        }
         Ok(())
     }
 
@@ -1697,6 +1734,8 @@ mod tests {
 
                 logger,
                 shared_info,
+
+                pit_timer: None,
             }
         }
     }
