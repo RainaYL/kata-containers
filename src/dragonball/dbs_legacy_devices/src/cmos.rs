@@ -56,7 +56,6 @@ impl CmosDevice {
 }
 impl DeviceIoMut for CmosDevice {
     fn pio_write(&mut self, _base: PioAddress, offset: PioAddress, data: &[u8]) {
-        println!("Cmos write");
         if data.len() != 1 {
             return;
         }

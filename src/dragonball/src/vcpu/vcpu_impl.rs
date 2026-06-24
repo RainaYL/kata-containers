@@ -468,9 +468,6 @@ impl Vcpu {
                 match run {
                     #[cfg(target_arch = "x86_64")]
                     VcpuExit::IoIn(addr, data) => {
-                        if addr >= 0x40 && addr < 0x44 {
-                            println!("PIT IN");
-                        }
                         let _ = self.io_mgr.pio_read(addr, data);
                         self.metrics.exit_io_in.inc();
                         Ok(VcpuEmulation::Handled)
@@ -479,9 +476,6 @@ impl Vcpu {
                     VcpuExit::IoOut(addr, data) => {
                         if addr >= 0x40 && addr < 0x44 {
                             println!("PIT OUT");
-                        }
-                        if addr == 0x70 || addr == 0x71 {
-                            println!("CMOS OUT");
                         }
                         let data = data.to_vec();
                         if !self.check_io_port_info(addr, &data)? {

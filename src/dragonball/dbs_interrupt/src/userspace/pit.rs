@@ -73,6 +73,7 @@ impl PitDevice {
     }
 
     fn control_write(&mut self, val: u8) {
+        println!("control write val: {}", val);
         let ch_idx = ((val >> 6) & 0x03) as usize;
         if ch_idx == 3 {
             return;
@@ -87,6 +88,7 @@ impl PitDevice {
         ch.start_time = None;
     }
     fn channel_write(&mut self, ch_idx: usize, val: u8) {
+        println!("channel write channel index: {}, val: {}", ch_idx, val);
         let ch = &mut self.channels[ch_idx];
         match ch.rw_mode {
             1 => {
@@ -137,6 +139,7 @@ impl DeviceIoMut for PitDevice {
         if data.len() != 1 {
             return;
         }
+        println!("PIT read offset: {}", offset.raw_value());
         data[0] = match offset.raw_value() {
             0..=2 => self.channels[offset.raw_value() as usize].initial_count as u8,
             _ => 0,
