@@ -77,7 +77,7 @@ impl UserspaceLegacyIrqObj {
     }
 
     fn signal_msi(&self) -> Result<()> {
-        if base == 2 {
+        if self.base == 2 {
             println!("timer interrupt");
         }
         let mut address_lo = MsiAddressLow::default();
