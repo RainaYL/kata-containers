@@ -208,7 +208,7 @@ impl DeviceIoMut for PitDevice {
 }
 
 pub fn start_pit_timer(pit_device: Arc<Mutex<PitDevice>>) -> Result<()> {
-    let configs = [];
+    let configs = [InterruptSourceConfig::LegacyIrq(LegacyIrqSourceConfig {})];
     pit_device.lock().unwrap().intr_group.enable(&configs)?;
     thread::Builder::new()
         .name("pit-timer".to_string())
