@@ -139,7 +139,6 @@ impl DeviceIoMut for PitDevice {
         if data.len() != 1 {
             return;
         }
-        println!("PIT read offset: {}", offset.raw_value());
         data[0] = match offset.raw_value() {
             0..=2 => self.channels[offset.raw_value() as usize].initial_count as u8,
             _ => 0,
