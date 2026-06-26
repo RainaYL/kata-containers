@@ -172,6 +172,7 @@ impl InterruptSourceGroup for UserspaceLegacyIrq {
             return Ok(());
         }
 
+        println!("base: {}", self.base());
         self.irq.signal_msi()
     }
 
