@@ -207,7 +207,9 @@ impl DeviceIoMut for PitDevice {
     }
 }
 
-pub fn start_pit_timer(pit_device: Arc<Mutex<PitDevice>>) {
+pub fn start_pit_timer(pit_device: Arc<Mutex<PitDevice>>) -> Result<()> {
+    let configs = [];
+    pit_device.lock().unwrap().intr_group.enable(&configs)?;
     thread::Builder::new()
         .name("pit-timer".to_string())
         .spawn(move || loop {
@@ -227,4 +229,5 @@ pub fn start_pit_timer(pit_device: Arc<Mutex<PitDevice>>) {
             }
         })
         .expect("failed to spawn pit-timer thread");
+    Ok(())
 }

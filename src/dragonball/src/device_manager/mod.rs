@@ -1025,7 +1025,9 @@ impl DeviceManager {
             .map_err(StartMicroVmError::RegisterDMAAddress)?;
 
         if self.pit_timer.is_some() {
-            start_pit_timer(self.pit_timer.as_ref().unwrap().clone());
+            start_pit_timer(self.pit_timer.as_ref().unwrap().clone())
+                .map_err(DeviceMgrError::PitTimer)
+                .map_err(StartMicroVmError::DeviceManager)?;
         }
         Ok(())
     }
