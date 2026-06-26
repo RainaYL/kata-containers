@@ -119,6 +119,7 @@ impl PitDevice {
     }
 
     pub fn inject_interrupt(&self) -> Result<()> {
+        println!("inject interrupt");
         self.intr_group.trigger(0)
     }
 
@@ -217,7 +218,6 @@ pub fn start_pit_timer(pit_device: Arc<Mutex<PitDevice>>) {
             };
             match next {
                 Some(duration) => {
-                    println!("inject interrupt after sleep");
                     thread::sleep(duration);
                     let pit = pit_device.lock().unwrap();
                     let _ = pit.inject_interrupt();
