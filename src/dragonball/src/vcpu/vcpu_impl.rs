@@ -474,9 +474,6 @@ impl Vcpu {
                     }
                     #[cfg(target_arch = "x86_64")]
                     VcpuExit::IoOut(addr, data) => {
-                        if addr >= 0x40 && addr < 0x44 {
-                            println!("PIT OUT");
-                        }
                         let data = data.to_vec();
                         if !self.check_io_port_info(addr, &data)? {
                             let _ = self.io_mgr.pio_write(addr, &data);
