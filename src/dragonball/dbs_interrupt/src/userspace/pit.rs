@@ -119,7 +119,6 @@ impl PitDevice {
     }
 
     pub fn inject_interrupt(&self) -> Result<()> {
-        println!("inject interrupt");
         self.intr_group.trigger(0)
     }
 

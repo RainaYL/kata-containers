@@ -165,14 +165,14 @@ impl InterruptSourceGroup for UserspaceLegacyIrq {
         }
 
         if !self.irq.enabled() {
+            println!("not enabled");
             return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
         }
 
         if self.irq.masked() {
+            println!("masked");
             return Ok(());
         }
-
-        println!("base: {}", self.base());
         self.irq.signal_msi()
     }
 
