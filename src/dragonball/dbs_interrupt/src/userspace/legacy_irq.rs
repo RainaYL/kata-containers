@@ -169,7 +169,6 @@ impl InterruptSourceGroup for UserspaceLegacyIrq {
         }
 
         if self.irq.masked() {
-            println!("masked");
             return Ok(());
         }
         self.irq.signal_msi()
