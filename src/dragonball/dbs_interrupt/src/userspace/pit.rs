@@ -1,8 +1,8 @@
+use crate::*;
+use dbs_device::{DeviceIoMut, PioAddress};
 use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
-use crate::*;
-use dbs_device::{DeviceIoMut, PioAddress};
 pub const PIT_BASE_PORT: u16 = 0x40;
 pub const PIT_PORT_SIZE: u16 = 0x04;
 pub const PIT_FREQ_HZ: u64 = 1_193_182;
@@ -44,7 +44,7 @@ impl PitChannel {
     fn period_ns(&self) -> u64 {
         self.effective_count() * 1_000_000_000 / PIT_FREQ_HZ
     }
-    
+
     fn current_count(&self) -> u16 {
         let count = self.effective_count();
         if let Some(start) = self.start_time {
@@ -57,7 +57,7 @@ impl PitChannel {
             self.initial_count
         }
     }
-    
+
     fn read_count(&mut self) -> u8 {
         let count = if self.latched {
             self.latch_value
@@ -110,17 +110,10 @@ pub struct PitDevice {
 
 impl PitDevice {
     pub fn new(irq_manager: Arc<Box<dyn InterruptManager>>) -> Result<Self> {
-        let intr_group = irq_manager.create_group(
-            InterruptSourceType::LegacyIrq,
-            PIT_GSI as u32,
-            1,
-        )?;
+        let intr_group =
+            irq_manager.create_group(InterruptSourceType::LegacyIrq, PIT_GSI as u32, 1)?;
         Ok(PitDevice {
-            channels: [
-                PitChannel::new(),
-                PitChannel::new(),
-                PitChannel::new(),
-            ],
+            channels: [PitChannel::new(), PitChannel::new(), PitChannel::new()],
             intr_group,
         })
     }
@@ -133,11 +126,11 @@ impl PitDevice {
         let ch_idx = ((val >> 6) & 0x03) as usize;
         let rw_bits = (val >> 4) & 0x03;
         let mode_bits = (val >> 1) & 0x07;
-        
         if ch_idx == 3 {
-            return;
+            return; // read-back
         }
-        // Counter Latch Command：rw_bits == 0
+
+        // Counter Latch Command
         if rw_bits == 0 {
             let ch = &mut self.channels[ch_idx];
             ch.latch_value = ch.current_count();
@@ -151,35 +144,29 @@ impl PitDevice {
         ch.write_lsb = true;
         ch.read_lsb = true;
         ch.latched = false;
-        ch.enabled = false;
-        ch.start_time = None;
     }
 
     fn channel_write(&mut self, ch_idx: usize, val: u8) {
         let ch = &mut self.channels[ch_idx];
         match ch.rw_mode {
             1 => {
-                // LSB only：写完立即启动
                 ch.initial_count = (ch.initial_count & 0xFF00) | val as u16;
                 ch.enabled = true;
                 ch.start_time = Some(Instant::now());
                 ch.read_lsb = true;
             }
             2 => {
-                ch.initial_count =
-                    (ch.initial_count & 0x00FF) | ((val as u16) << 8);
+                ch.initial_count = (ch.initial_count & 0x00FF) | ((val as u16) << 8);
                 ch.enabled = true;
                 ch.start_time = Some(Instant::now());
                 ch.read_lsb = true;
             }
             3 => {
                 if ch.write_lsb {
-                    ch.initial_count =
-                        (ch.initial_count & 0xFF00) | val as u16;
+                    ch.initial_count = (ch.initial_count & 0xFF00) | val as u16;
                     ch.write_lsb = false;
                 } else {
-                    ch.initial_count =
-                        (ch.initial_count & 0x00FF) | ((val as u16) << 8);
+                    ch.initial_count = (ch.initial_count & 0x00FF) | ((val as u16) << 8);
                     ch.write_lsb = true;
                     ch.enabled = true;
                     ch.start_time = Some(Instant::now());
@@ -192,12 +179,7 @@ impl PitDevice {
 }
 
 impl DeviceIoMut for PitDevice {
-    fn pio_write(
-        &mut self,
-        _base: PioAddress,
-        offset: PioAddress,
-        data: &[u8],
-    ) {
+    fn pio_write(&mut self, _base: PioAddress, offset: PioAddress, data: &[u8]) {
         if data.len() != 1 {
             return;
         }
@@ -211,12 +193,7 @@ impl DeviceIoMut for PitDevice {
             _ => {}
         }
     }
-    fn pio_read(
-        &mut self,
-        _base: PioAddress,
-        offset: PioAddress,
-        data: &mut [u8],
-    ) {
+    fn pio_read(&mut self, _base: PioAddress, offset: PioAddress, data: &mut [u8]) {
         if data.len() != 1 {
             return;
         }
