@@ -240,7 +240,6 @@ impl Vm {
 
             if self.confidential_vm_type() == Some(ConfidentialVmType::TDX) {
                 self.tdx_prepare_tsc()?;
-                println!("Finished preparing TSC");
             }            
 
             let boot_vcpu_count = self.vm_config.vcpu_count;
