@@ -96,7 +96,7 @@ pub(crate) mod x86_64 {
         pub fn create_manager(
             bus: &mut IoManager,
             vm_fd: Option<Arc<VmFd>>,
-            mem_size: Option<u64>,
+            _mem_size: Option<u64>,
         ) -> Result<Self> {
             let (com1_device, com1_eventfd) =
                 Self::create_com_device(bus, vm_fd.as_ref(), COM1_IRQ, COM1_PORT1)?;
