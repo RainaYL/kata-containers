@@ -125,13 +125,14 @@ pub(crate) mod x86_64 {
             bus.register_device_io(i8042_device, &resources)
                 .map_err(Error::BusError)?;
 
-            let (cmos_device, cmos_eventfd) = if mem_size.is_some() {
-                let (device, eventfd) =
-                    Self::create_cmos_device(bus, CMOS_PORT, mem_size.unwrap())?;
-                (Some(device), Some(eventfd))
-            } else {
-                (None, None)
-            };
+            // let (cmos_device, cmos_eventfd) = if mem_size.is_some() {
+            //     let (device, eventfd) =
+            //         Self::create_cmos_device(bus, CMOS_PORT, mem_size.unwrap())?;
+            //     (Some(device), Some(eventfd))
+            // } else {
+            //     (None, None)
+            // };
+            let (cmos_device, cmos_eventfd) = (None, None);
 
             Ok(LegacyDeviceManager {
                 i8042_reset_eventfd: exit_evt,
