@@ -114,6 +114,8 @@ impl DragonballInner {
                     .context("add vhost-user-net device")?;
                 Ok(DeviceType::VhostUserNetwork(dev))
             }
+            #[cfg(target_arch = "x86_64")]
+            DeviceType::Protection(dev) => Ok(DeviceType::Protection(dev)),
             _ => Err(anyhow!("unsupported device {:?}", device)),
         }
     }
@@ -248,6 +250,13 @@ impl DragonballInner {
         };
         let block_rate_limit = RateLimiterConfigInfo { bandwidth, ops };
 
+        #[cfg(target_arch = "x86_64")]
+        let use_generic_irq = if self.config.security_info.confidential_guest {
+            Some(false)
+        } else {
+            None
+        };
+
         let blk_cfg = BlockDeviceConfigInfo {
             drive_id: id.to_string(),
             device_type: BlockDeviceType::get_type(path),
@@ -257,6 +266,8 @@ impl DragonballInner {
             is_read_only: read_only,
             use_pci_bus,
             rate_limiter: Some(block_rate_limit),
+            #[cfg(target_arch = "x86_64")]
+            use_generic_irq,
             ..Default::default()
         };
         self.vmm_instance
@@ -304,10 +315,19 @@ impl DragonballInner {
     }
 
     fn add_hvsock(&mut self, config: &HybridVsockConfig) -> Result<()> {
+        #[cfg(target_arch = "x86_64")]
+        let use_generic_irq = if self.config.security_info.confidential_guest {
+            Some(false)
+        } else {
+            None
+        };
+
         let vsock_cfg = VsockDeviceConfigInfo {
             id: String::from(JAILER_ROOT),
             guest_cid: config.guest_cid,
             uds_path: Some(config.uds_path.clone()),
+            #[cfg(target_arch = "x86_64")]
+            use_generic_irq,
             ..Default::default()
         };
         debug!(sl!(), "HybridVsock configure: {:?}", &vsock_cfg);
@@ -384,6 +404,13 @@ impl DragonballInner {
     }
 
     fn add_share_fs_device(&self, config: &ShareFsConfig) -> Result<()> {
+        #[cfg(target_arch = "x86_64")]
+        let use_generic_irq = if self.config.security_info.confidential_guest {
+            Some(false)
+        } else {
+            None
+        };
+
         let mut fs_cfg = FsDeviceConfigInfo {
             sock_path: config.sock_path.clone(),
             tag: config.mount_tag.clone(),
@@ -400,6 +427,8 @@ impl DragonballInner {
             cache_size: (self.config.shared_fs.virtio_fs_cache_size as u64)
                 .saturating_mul(MB_TO_B as u64),
             xattr: true,
+            #[cfg(target_arch = "x86_64")]
+            use_generic_irq,
             ..Default::default()
         };
 

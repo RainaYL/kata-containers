@@ -269,6 +269,16 @@ pub enum StartMicroVmError {
     /// Guest memory error
     #[error("Guest memory error: {0}")]
     GuestMemoryError(#[source] vm_memory::guest_memory::Error),
+
+    #[cfg(target_arch = "x86_64")]
+    /// Failed to set X86 APIC bus cycles
+    #[error("Failed to set X86 APIC bus cycles: {0}")]
+    SetX86ApicBusCycles(#[source] vmm_sys_util::errno::Error),
+
+    #[cfg(target_arch = "x86_64")]
+    /// Failed to set TSC frequency
+    #[error("Failed to set TSC frequency: {0}")]
+    SetTscFreq(#[source] vmm_sys_util::errno::Error),
 }
 
 /// Errors associated with starting the instance.

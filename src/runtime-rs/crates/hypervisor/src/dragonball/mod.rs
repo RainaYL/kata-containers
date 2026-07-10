@@ -57,6 +57,18 @@ impl Dragonball {
         }
     }
 
+    pub fn new_with_hypervisor_config(config: HypervisorConfig) -> Self {
+        let (exit_notify, exit_waiter) = mpsc::channel(1);
+
+        Self {
+            inner: Arc::new(RwLock::new(DragonballInner::new_with_hypervisor_config(
+                exit_notify,
+                config,
+            ))),
+            exit_waiter: Mutex::new((exit_waiter, 0)),
+        }
+    }
+
     pub async fn set_hypervisor_config(&self, config: HypervisorConfig) {
         let mut inner = self.inner.write().await;
         inner.set_hypervisor_config(config)
@@ -277,6 +289,13 @@ pub(crate) fn build_dragonball_network_config(
     hconfig: &HypervisorConfig,
     nconfig: &NetworkConfig,
 ) -> DragonballNetworkConfig {
+    #[cfg(target_arch = "x86_64")]
+    let use_generic_irq = if hconfig.security_info.confidential_guest {
+        Some(false)
+    } else {
+        None
+    };
+
     let virtio_config = DragonballVirtioConfig {
         iface_id: nconfig.virt_iface_name.clone(),
         host_dev_name: nconfig.host_dev_name.clone(),
@@ -304,6 +323,8 @@ pub(crate) fn build_dragonball_network_config(
             DragonballMacAddr::from_bytes(&mac.0).unwrap()
         }),
         use_shared_irq: nconfig.use_shared_irq,
-        use_generic_irq: nconfig.use_generic_irq,
+        #[cfg(target_arch = "x86_64")]
+        use_generic_irq,
+        ..Default::default()
     }
 }
