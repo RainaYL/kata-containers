@@ -162,7 +162,6 @@ impl InterruptSourceGroup for UserspaceLegacyIrq {
         }
 
         if !self.irq.enabled() {
-            println!("not enabled");
             return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
         }
 

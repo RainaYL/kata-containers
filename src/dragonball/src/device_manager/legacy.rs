@@ -14,7 +14,10 @@ use std::sync::{Arc, Mutex};
 
 use dbs_boot::layout::{GUEST_MEM_START, MMIO_LOW_START};
 use dbs_device::device_manager::Error as IoManagerError;
-use dbs_interrupt::{InterruptManager, InterruptSourceType};
+use dbs_interrupt::{
+    InterruptManager, InterruptSourceConfig, InterruptSourceType,
+    LegacyIrqSourceConfig,
+};
 use dbs_legacy_devices::CmosDevice;
 #[cfg(target_arch = "aarch64")]
 use dbs_legacy_devices::RTCDevice;
@@ -96,12 +99,14 @@ pub(crate) mod x86_64 {
             _mem_size: Option<u64>,
             irq_manager: Arc<Box<dyn InterruptManager>>,
         ) -> Result<Self> {
-            let com1_device = Self::create_com_device(bus, COM1_IRQ, COM1_PORT1, irq_manager.clone())?;
+            let com1_device =
+                Self::create_com_device(bus, COM1_IRQ, COM1_PORT1, irq_manager.clone())?;
             METRICS.write().unwrap().serial.insert(
                 String::from(COM1_NAME),
                 com1_device.lock().unwrap().metrics(),
             );
-            let com2_device = Self::create_com_device(bus, COM2_IRQ, COM2_PORT1, irq_manager.clone())?;
+            let com2_device =
+                Self::create_com_device(bus, COM2_IRQ, COM2_PORT1, irq_manager.clone())?;
             METRICS.write().unwrap().serial.insert(
                 String::from(COM2_NAME),
                 com2_device.lock().unwrap().metrics(),
@@ -146,15 +151,16 @@ pub(crate) mod x86_64 {
 
         fn create_com_device(
             bus: &mut IoManager,
-            irq: u32,
+            irq_base: u32,
             port_base: u16,
             irq_manager: Arc<Box<dyn InterruptManager>>,
         ) -> Result<Arc<Mutex<SerialDevice>>> {
-            let device = Arc::new(Mutex::new(SerialDevice::new(
-                irq_manager
-                    .create_group(InterruptSourceType::LegacyIrq, irq, 1)
-                    .map_err(Error::IrqManager)?,
-            )));
+            let irq = irq_manager
+                .create_group(InterruptSourceType::LegacyIrq, irq_base, 1)
+                .map_err(Error::IrqManager)?;
+            let irq_config = [InterruptSourceConfig::LegacyIrq(LegacyIrqSourceConfig {})];
+            irq.enable(&irq_config).map_err(Error::IrqManager)?;
+            let device = Arc::new(Mutex::new(SerialDevice::new(irq)));
             // port_base defines the base port address for the COM devices.
             // Since every COM device has 8 data registers so we register the pio address range as size 0x8.
             let resources = [Resource::PioAddressRange {
@@ -295,8 +301,8 @@ pub(crate) mod aarch64 {
 mod tests {
     #[cfg(target_arch = "x86_64")]
     use super::*;
-    use kvm_ioctls::Kvm;
     use dbs_interrupt::KvmIrqManager;
+    use kvm_ioctls::Kvm;
 
     #[test]
     #[cfg(target_arch = "x86_64")]
@@ -306,7 +312,9 @@ mod tests {
         let irq_manager = KvmIrqManager::new(Arc::new(vmfd));
 
         let mut bus = dbs_device::device_manager::IoManager::new();
-        let mgr = LegacyDeviceManager::create_manager(&mut bus, None, Arc::new(Box::new(irq_manager))).unwrap();
+        let mgr =
+            LegacyDeviceManager::create_manager(&mut bus, None, Arc::new(Box::new(irq_manager)))
+                .unwrap();
         let _exit_fd = mgr.get_reset_eventfd().unwrap();
     }
 }
