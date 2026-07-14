@@ -811,8 +811,8 @@ impl DeviceManager {
             {
                 legacy_manager = LegacyDeviceManager::create_manager(
                     &mut tx.io_manager,
-                    Some(self.vm_fd.clone()),
                     mem_size,
+                    self.irq_manager.clone(),
                 );
             }
 

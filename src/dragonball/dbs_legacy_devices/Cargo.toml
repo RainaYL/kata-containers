@@ -12,12 +12,14 @@ readme = "README.md"
 
 [dependencies]
 dbs-device = { workspace = true }
+dbs-interrupt = { workspace = true, features = ["kvm-legacy-irq", "kvm-msi-irq", "split-legacy-irq"] }
 dbs-utils = { workspace = true }
 libc = "0.2.39"
 log = "0.4.14"
 serde = { version = "1.0.27", features = ["derive", "rc"] }
 vm-superio = {workspace = true}
 vmm-sys-util = {workspace = true}
+kvm-ioctls = { workspace = true }
 
 [dev-dependencies]
 libc = "0.2.39"

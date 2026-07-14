@@ -24,6 +24,10 @@ mod rtc_pl031;
 #[cfg(target_arch = "aarch64")]
 pub use self::rtc_pl031::*;
 
+use std::sync::Arc;
+
+use dbs_interrupt::{InterruptSourceGroup, InterruptSourceType};
+
 use vm_superio::Trigger;
 use vmm_sys_util::eventfd::EventFd;
 /// Newtype for implementing the trigger functionality for `EventFd`.
@@ -54,6 +58,25 @@ impl EventFdTrigger {
 
     pub fn get_event(&self) -> EventFd {
         self.0.try_clone().unwrap()
+    }
+}
+
+pub struct IrqTrigger(Arc<Box<dyn InterruptSourceGroup>>);
+
+impl Trigger for IrqTrigger {
+    type E = std::io::Error;
+
+    fn trigger(&self) -> std::io::Result<()> {
+        match self.0.interrupt_type() {
+            InterruptSourceType::LegacyIrq => self.0.trigger(0),
+            _ => Err(std::io::Error::from_raw_os_error(libc::EINVAL)),
+        }
+    }
+}
+
+impl IrqTrigger {
+    pub fn new(irq: Arc<Box<dyn InterruptSourceGroup>>) -> Self {
+        Self(irq)
     }
 }
 

@@ -14,6 +14,7 @@ use std::sync::{Arc, Mutex};
 
 use dbs_boot::layout::{GUEST_MEM_START, MMIO_LOW_START};
 use dbs_device::device_manager::Error as IoManagerError;
+use dbs_interrupt::{InterruptManager, InterruptSourceType};
 use dbs_legacy_devices::CmosDevice;
 #[cfg(target_arch = "aarch64")]
 use dbs_legacy_devices::RTCDevice;
@@ -38,7 +39,7 @@ pub enum Error {
 
     /// Failed to register/deregister interrupt.
     #[error("failure while managing interrupt for legacy device")]
-    IrqManager(#[source] vmm_sys_util::errno::Error),
+    IrqManager(#[source] std::io::Error),
 }
 
 /// The `LegacyDeviceManager` is a wrapper that is used for registering legacy devices
@@ -54,9 +55,7 @@ pub struct LegacyDeviceManager {
     #[cfg(target_arch = "aarch64")]
     _rtc_eventfd: EventFd,
     pub(crate) com1_device: Arc<Mutex<SerialDevice>>,
-    _com1_eventfd: EventFd,
     pub(crate) com2_device: Arc<Mutex<SerialDevice>>,
-    _com2_eventfd: EventFd,
     pub(crate) cmos_device: Option<Arc<Mutex<CmosDevice>>>,
     _cmos_eventfd: Option<EventFd>,
 }
@@ -79,7 +78,6 @@ pub(crate) mod x86_64 {
     use dbs_device::device_manager::IoManager;
     use dbs_device::resources::Resource;
     use dbs_legacy_devices::{EventFdTrigger, I8042Device};
-    use kvm_ioctls::VmFd;
 
     pub(crate) const COM1_NAME: &str = "com1";
     pub(crate) const COM1_IRQ: u32 = 4;
@@ -95,17 +93,15 @@ pub(crate) mod x86_64 {
         /// Create a LegacyDeviceManager instance handling legacy devices (uart, i8042).
         pub fn create_manager(
             bus: &mut IoManager,
-            vm_fd: Option<Arc<VmFd>>,
             _mem_size: Option<u64>,
+            irq_manager: Arc<Box<dyn InterruptManager>>,
         ) -> Result<Self> {
-            let (com1_device, com1_eventfd) =
-                Self::create_com_device(bus, vm_fd.as_ref(), COM1_IRQ, COM1_PORT1)?;
+            let com1_device = Self::create_com_device(bus, COM1_IRQ, COM1_PORT1, irq_manager.clone())?;
             METRICS.write().unwrap().serial.insert(
                 String::from(COM1_NAME),
                 com1_device.lock().unwrap().metrics(),
             );
-            let (com2_device, com2_eventfd) =
-                Self::create_com_device(bus, vm_fd.as_ref(), COM2_IRQ, COM2_PORT1)?;
+            let com2_device = Self::create_com_device(bus, COM2_IRQ, COM2_PORT1, irq_manager.clone())?;
             METRICS.write().unwrap().serial.insert(
                 String::from(COM2_NAME),
                 com2_device.lock().unwrap().metrics(),
@@ -137,9 +133,7 @@ pub(crate) mod x86_64 {
             Ok(LegacyDeviceManager {
                 i8042_reset_eventfd: exit_evt,
                 com1_device,
-                _com1_eventfd: com1_eventfd,
                 com2_device,
-                _com2_eventfd: com2_eventfd,
                 cmos_device,
                 _cmos_eventfd: cmos_eventfd,
             })
@@ -152,13 +146,14 @@ pub(crate) mod x86_64 {
 
         fn create_com_device(
             bus: &mut IoManager,
-            vm_fd: Option<&Arc<VmFd>>,
             irq: u32,
             port_base: u16,
-        ) -> Result<(Arc<Mutex<SerialDevice>>, EventFd)> {
-            let eventfd = EventFd::new(libc::EFD_NONBLOCK).map_err(Error::EventFd)?;
+            irq_manager: Arc<Box<dyn InterruptManager>>,
+        ) -> Result<Arc<Mutex<SerialDevice>>> {
             let device = Arc::new(Mutex::new(SerialDevice::new(
-                eventfd.try_clone().map_err(Error::EventFd)?,
+                irq_manager
+                    .create_group(InterruptSourceType::LegacyIrq, irq, 1)
+                    .map_err(Error::IrqManager)?,
             )));
             // port_base defines the base port address for the COM devices.
             // Since every COM device has 8 data registers so we register the pio address range as size 0x8.
@@ -169,12 +164,7 @@ pub(crate) mod x86_64 {
             bus.register_device_io(device.clone(), &resources)
                 .map_err(Error::BusError)?;
 
-            if let Some(fd) = vm_fd {
-                fd.register_irqfd(&eventfd, irq)
-                    .map_err(Error::IrqManager)?;
-            }
-
-            Ok((device, eventfd))
+            Ok(device)
         }
 
         fn create_cmos_device(
@@ -305,12 +295,18 @@ pub(crate) mod aarch64 {
 mod tests {
     #[cfg(target_arch = "x86_64")]
     use super::*;
+    use kvm_ioctls::Kvm;
+    use dbs_interrupt::KvmIrqManager;
 
     #[test]
     #[cfg(target_arch = "x86_64")]
     fn test_create_legacy_device_manager() {
+        let kvm = Kvm::new().unwrap();
+        let vmfd = kvm.create_vm().unwrap();
+        let irq_manager = KvmIrqManager::new(Arc::new(vmfd));
+
         let mut bus = dbs_device::device_manager::IoManager::new();
-        let mgr = LegacyDeviceManager::create_manager(&mut bus, None, None).unwrap();
+        let mgr = LegacyDeviceManager::create_manager(&mut bus, None, Arc::new(Box::new(irq_manager))).unwrap();
         let _exit_fd = mgr.get_reset_eventfd().unwrap();
     }
 }
