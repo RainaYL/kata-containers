@@ -397,6 +397,7 @@ where
         } else if data.len() == 2 {
             let v = match offset {
                 REG_MMIO_MSI_CSR => {
+                    println!("read REG_MMIO_MSI_CSR");
                     if (self.device_vendor & DRAGONBALL_FEATURE_MSI_INTR) != 0 {
                         MMIO_MSI_CSR_SUPPORTED
                     } else {
@@ -461,7 +462,10 @@ where
         } else if data.len() == 2 {
             let v = LittleEndian::read_u16(data);
             match offset {
-                REG_MMIO_MSI_CSR => self.state().update_msi_enable(v, self),
+                REG_MMIO_MSI_CSR => {
+                    println!("write REG_MMIO_MSI_CSR");
+                    self.state().update_msi_enable(v, self)
+                },
                 REG_MMIO_MSI_COMMAND => self.state().handle_msi_cmd(v, self),
                 _ => {
                     info!("unknown virtio mmio writew to 0x{offset:x}");
