@@ -195,6 +195,7 @@ impl KvmIrqRouting {
     }
 
     fn set_routing(&self, routes: &HashMap<u64, kvm_irq_routing_entry>) -> Result<()> {
+        println!("set routing");
         let mut irq_routing = KvmIrqRoutingWrapper::new(routes.len())
             .map_err(|_| Error::other("Failed to create KvmIrqRouting"))?;
 
