@@ -201,6 +201,7 @@ impl KvmIrqRouting {
         {
             let irq_routing_entries = irq_routing.as_mut_slice();
             for (idx, entry) in routes.values().enumerate() {
+                println!("routing: {}", idx);
                 irq_routing_entries[idx] = *entry;
             }
         }
