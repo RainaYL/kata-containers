@@ -8,6 +8,9 @@ use kvm_ioctls::VmFd;
 use std::convert::TryInto;
 use std::sync::{Arc, RwLock};
 
+#[cfg(feature = "split-msi-irq")]
+use crate::kvm::KvmIrqManager;
+
 #[cfg(feature = "split-legacy-irq")]
 use super::legacy_irq::*;
 use super::{
@@ -28,7 +31,9 @@ pub struct UserspaceIoapicManager {
     ioapicver: IoapicVer,
     ioapicarb: RwLock<IoapicArb>,
     #[cfg(feature = "split-legacy-irq")]
-    irqs: Vec<Arc<UserspaceLegacyIrqObj>>,
+    userspace_irqs: Vec<Arc<UserspaceLegacyIrqObj>>,
+    #[cfg(feature = "split-msi-irq")]
+    kvm_irq_mgr: KvmIrqManager,
 }
 
 impl UserspaceIoapicManager {
@@ -47,12 +52,12 @@ impl UserspaceIoapicManager {
         ioapicver.set_entries(nr_redir_entries as u8 - 1);
 
         #[cfg(feature = "split-legacy-irq")]
-        let irqs = {
-            let mut irqs = Vec::with_capacity(nr_redir_entries as usize);
+        let userspace_irqs = {
+            let mut userspace_irqs = Vec::with_capacity(nr_redir_entries as usize);
             for i in 0..nr_redir_entries {
-                irqs.push(Arc::new(UserspaceLegacyIrqObj::new(i, vmfd.clone())));
+                userspace_irqs.push(Arc::new(UserspaceLegacyIrqObj::new(i, vmfd.clone())));
             }
-            irqs
+            userspace_irqs
         };
 
         Ok(Self {
@@ -61,7 +66,9 @@ impl UserspaceIoapicManager {
             ioapicver,
             ioapicarb: RwLock::new(IoapicArb::default()),
             #[cfg(feature = "split-legacy-irq")]
-            irqs,
+            userspace_irqs,
+            #[cfg(feature = "split-msi-irq")]
+            kvm_irq_mgr: KvmIrqManager::new(vmfd),
         })
     }
 
@@ -110,9 +117,9 @@ impl UserspaceIoapicManager {
                     let irq_base = offset >> 1;
 
                     if is_low {
-                        self.irqs[irq_base].redir_entry_low().into()
+                        self.userspace_irqs[irq_base].redir_entry_low().into()
                     } else {
-                        self.irqs[irq_base].redir_entry_high().into()
+                        self.userspace_irqs[irq_base].redir_entry_high().into()
                     }
                 }
                 #[cfg(not(feature = "split-legacy-irq"))]
@@ -145,9 +152,11 @@ impl UserspaceIoapicManager {
                     let irq_base = offset >> 1;
 
                     if is_low {
-                        self.irqs[irq_base].set_redir_entry_low(IoapicRedirEntryLow::from(val));
+                        self.userspace_irqs[irq_base]
+                            .set_redir_entry_low(IoapicRedirEntryLow::from(val));
                     } else {
-                        self.irqs[irq_base].set_redir_entry_high(IoapicRedirEntryHigh::from(val));
+                        self.userspace_irqs[irq_base]
+                            .set_redir_entry_high(IoapicRedirEntryHigh::from(val));
                     }
                 }
 
@@ -162,12 +171,19 @@ impl UserspaceIoapicManager {
 }
 
 impl InterruptManager for UserspaceIoapicManager {
+    fn initialize(&self) -> Result<()> {
+        #[cfg(feature = "split-msi-irq")]
+        self.kvm_irq_mgr.initialize()?;
+        Ok(())
+    }
+
     fn create_group(
         &self,
         ty: InterruptSourceType,
         base: InterruptIndex,
         count: u32,
     ) -> Result<Arc<Box<dyn InterruptSourceGroup>>> {
+        #[allow(unreachable_patterns)]
         let group = match ty {
             #[cfg(feature = "split-legacy-irq")]
             InterruptSourceType::LegacyIrq => {
@@ -181,11 +197,13 @@ impl InterruptManager for UserspaceIoapicManager {
                 }
                 // Irq has already been created while initializing the manager, so we
                 // only return the corresponding entry here.
-                let irq = self.irqs[base as usize].clone();
+                let irq = self.userspace_irqs[base as usize].clone();
                 let group: Arc<Box<dyn InterruptSourceGroup>> =
                     Arc::new(Box::new(UserspaceLegacyIrq::new(irq)));
                 group
             }
+            #[cfg(feature = "split-msi-irq")]
+            InterruptSourceType::MsiIrq => self.kvm_irq_mgr.create_group(ty, base, count)?,
             _ => {
                 info!("Unsupported source type");
                 return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
@@ -195,7 +213,9 @@ impl InterruptManager for UserspaceIoapicManager {
         Ok(group)
     }
 
-    fn destroy_group(&self, _group: Arc<Box<dyn InterruptSourceGroup>>) -> Result<()> {
+    fn destroy_group(&self, group: Arc<Box<dyn InterruptSourceGroup>>) -> Result<()> {
+        #[cfg(feature = "split-msi-irq")]
+        self.kvm_irq_mgr.destroy_group(group)?;
         Ok(())
     }
 
@@ -272,8 +292,8 @@ pub(crate) mod test {
 
         #[cfg(feature = "split-legacy-irq")]
         {
-            assert_eq!(manager.irqs.len(), 12);
-            for irq in manager.irqs.iter() {
+            assert_eq!(manager.userspace_irqs.len(), 12);
+            for irq in manager.userspace_irqs.iter() {
                 assert_eq!(u32::from(irq.redir_entry_low()), 0);
                 assert_eq!(u32::from(irq.redir_entry_high()), 0);
             }
@@ -320,7 +340,10 @@ pub(crate) mod test {
         assert_eq!(manager.iowin(), 0xcccccccc);
         #[cfg(feature = "split-legacy-irq")]
         {
-            assert_eq!(u32::from(manager.irqs[1].redir_entry_low()), 0xcccccccc);
+            assert_eq!(
+                u32::from(manager.userspace_irqs[1].redir_entry_low()),
+                0xcccccccc
+            );
         }
 
         manager.set_ioregsel(0x15).unwrap();
@@ -328,7 +351,10 @@ pub(crate) mod test {
         assert_eq!(manager.iowin(), 0xbbbbbbbb);
         #[cfg(feature = "split-legacy-irq")]
         {
-            assert_eq!(u32::from(manager.irqs[2].redir_entry_high()), 0xbbbbbbbb);
+            assert_eq!(
+                u32::from(manager.userspace_irqs[2].redir_entry_high()),
+                0xbbbbbbbb
+            );
         }
     }
 

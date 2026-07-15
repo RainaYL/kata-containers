@@ -37,3 +37,4 @@ kvm-msi-irq = ["kvm-msi-generic"]
 
 split-irq = ["kvm-ioctls", "kvm-bindings"]
 split-legacy-irq = ["legacy-irq", "split-irq"]
+split-msi-irq = ["kvm-msi-irq", "split-irq"]
