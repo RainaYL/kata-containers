@@ -157,9 +157,9 @@ impl<T: InterruptManager> DeviceInterruptManager<T> {
 
         // Enter Legacy mode by default if Legacy mode is supported.
         if self.mode == DeviceInterruptMode::Disabled
-            && self.mode2idx[DeviceInterruptMode::LegacyIrq as usize] != usize::MAX
+            && self.mode2idx[DeviceInterruptMode::GenericMsiIrq as usize] != usize::MAX
         {
-            self.set_working_mode(DeviceInterruptMode::LegacyIrq)?;
+            self.set_working_mode(DeviceInterruptMode::GenericMsiIrq)?;
         }
         if self.mode == DeviceInterruptMode::Disabled {
             return Err(Error::from_raw_os_error(libc::EINVAL));
