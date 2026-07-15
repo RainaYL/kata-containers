@@ -186,7 +186,7 @@ impl KvmIrqRouting {
         #[allow(unused_mut)]
         let mut routes = self.routes.lock().unwrap();
 
-        #[cfg(feature = "kvm-legacy-irq")]
+        #[cfg(all(feature = "kvm-legacy-irq", not(feature = "split-legacy-irq")))]
         LegacyIrq::initialize_legacy(&mut routes)?;
 
         self.set_routing(&routes)?;
