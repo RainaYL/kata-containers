@@ -1228,7 +1228,10 @@ impl DeviceManager {
             features,
         ) {
             Ok(d) => d,
-            Err(e) => return Err(DeviceMgrError::Virtio(e)),
+            Err(e) => {
+                println!("mmiov2device::new");
+                return Err(DeviceMgrError::Virtio(e))
+            },
         };
 
         Self::register_mmio_virtio_device(Arc::new(virtio_dev), ctx)
