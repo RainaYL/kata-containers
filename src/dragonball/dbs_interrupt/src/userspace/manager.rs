@@ -108,10 +108,6 @@ impl UserspaceIoapicManager {
                     let offset = (index - IOAPIC_REDIR_TABLE_START_INDEX) as usize;
                     let is_low = (offset & 0x1) == 0;
                     let irq_base = offset >> 1;
-                    
-                    if irq_base == 3 || irq_base == 4 {
-                        println!("read ioapic: {}", irq_base);
-                    }
 
                     if is_low {
                         self.irqs[irq_base].redir_entry_low().into()
@@ -147,10 +143,6 @@ impl UserspaceIoapicManager {
                     let offset = (index - IOAPIC_REDIR_TABLE_START_INDEX) as usize;
                     let is_low = (offset & 0x1) == 0;
                     let irq_base = offset >> 1;
-
-                    if irq_base == 3 || irq_base == 4 {
-                        println!("write ioapic: {}", irq_base);
-                    }
 
                     if is_low {
                         self.irqs[irq_base].set_redir_entry_low(IoapicRedirEntryLow::from(val));
