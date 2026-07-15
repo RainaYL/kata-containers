@@ -142,6 +142,8 @@ where
 
         self.intr_mgr.enable()?;
 
+        println!("after intr_mgr enable");
+
         let config = self.create_device_config(device)?;
 
         self.device
