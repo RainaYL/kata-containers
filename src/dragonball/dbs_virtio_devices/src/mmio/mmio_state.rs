@@ -79,8 +79,10 @@ where
     ) -> Result<Self> {
         let intr_mgr =
             DeviceInterruptManager::new(irq_manager, &device_resources).map_err(Error::IOError)?;
+        println!("after deviceinterruptmanager::new");
 
         let (queues, has_ctrl_queue) = Self::create_queues(device.as_ref())?;
+        println!("afrer create_queues");
 
         // Assign requested device resources back to virtio device and let it do necessary setups,
         // as only virtio device knows how to use such resources. And if there's
