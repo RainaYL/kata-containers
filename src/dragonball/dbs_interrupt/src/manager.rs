@@ -150,23 +150,18 @@ impl<T: InterruptManager> DeviceInterruptManager<T> {
     /// If the interrupt manager is still in DISABLED mode when DeviceInterruptManager::enable() is
     /// called, it will be put into LEGACY mode if LEGACY mode is supported.
     pub fn enable(&mut self) -> Result<()> {
-        println!("enable");
         if self.activated {
             return Ok(());
         }
 
         // Enter Legacy mode by default if Legacy mode is supported.
         if self.mode == DeviceInterruptMode::Disabled
-            && self.mode2idx[DeviceInterruptMode::GenericMsiIrq as usize] != usize::MAX
+            && self.mode2idx[DeviceInterruptMode::LegacyIrq as usize] != usize::MAX
         {
-            self.set_working_mode(DeviceInterruptMode::GenericMsiIrq)?;
+            self.set_working_mode(DeviceInterruptMode::LegacyIrq)?;
         }
         if self.mode == DeviceInterruptMode::Disabled {
             return Err(Error::from_raw_os_error(libc::EINVAL));
-        }
-
-        if self.mode == DeviceInterruptMode::LegacyIrq {
-            println!("Still legacy");
         }
 
         self.intr_groups[self.current_idx].enable(self.get_configs(self.mode))?;
