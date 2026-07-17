@@ -74,6 +74,10 @@ impl LegacyIrq {
     pub(super) fn initialize_legacy(
         routes: &mut HashMap<u64, kvm_irq_routing_entry>,
     ) -> Result<()> {
+        if cfg!(feature = "split-legacy-irq") {
+            return Ok(());
+        }
+
         // Build routings for the master PIC
         for i in 0..8 {
             if i != 2 {
