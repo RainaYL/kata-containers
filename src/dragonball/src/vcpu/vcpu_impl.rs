@@ -570,6 +570,7 @@ impl Vcpu {
                         // TODO: Are we sure we want to finish running a vcpu upon
                         // receiving a vm exit that is not necessarily an error?
                         error!("Unexpected exit reason on vcpu run: {r:?}");
+                        println!("unexpected exit reason: {:?}", r);
                         Err(VcpuError::VcpuUnhandledKvmExit)
                     }
                 }
