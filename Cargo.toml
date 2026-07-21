@@ -75,12 +75,12 @@ exclude = [
 [workspace.dependencies]
 # Rust-VMM crates
 event-manager = "0.4.0"
-kvm-bindings = "0.14.0"
-kvm-ioctls = "0.24.0"
+kvm-bindings = { git = "https://github.com/RainaYL/kvm", branch = "tdx-v2" }
+kvm-ioctls = { git = "https://github.com/RainaYL/kvm", branch = "tdx-v2" }
 linux-loader = "0.13.0"
 seccompiler = "0.5.0"
-vfio-bindings = "0.6.2"
-vfio-ioctls = "0.6.0"
+vfio-bindings = { git = "https://github.com/RainaYL/vfio", branch = "0.6.0-test" }
+vfio-ioctls = { git = "https://github.com/RainaYL/vfio", branch = "0.6.0-test" }
 virtio-bindings = "0.2.0"
 virtio-queue = "0.17.0"
 vm-fdt = "0.3.0"
@@ -184,7 +184,7 @@ slog-stdlog = "4.0.0"
 slog-term = "2.9.0"
 strum = { version = "0.24.0", features = ["derive"] }
 strum_macros = "0.26.2"
-tdx = "0.1.1"
+tdx = { git = "https://github.com/RainaYL/tdx" }
 tempfile = "3.19.1"
 thiserror = "1.0.26"
 tokio = "1.46.1"

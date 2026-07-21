@@ -2791,7 +2791,7 @@ dependencies = [
  "httpdate",
  "itoa",
  "pin-project-lite",
- "socket2 0.4.10",
+ "socket2 0.5.10",
  "tokio",
  "tower-service",
  "tracing",
@@ -3836,18 +3836,16 @@ dependencies = [
 
 [[package]]
 name = "kvm-bindings"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b3c06ff73c7ce03e780887ec2389d62d2a2a9ddf471ab05c2ff69207cd3f3b4"
+version = "0.14.1"
+source = "git+https://github.com/RainaYL/kvm?branch=tdx-v2#4bc315f44c5e8204f5ac75abe5891f4b5b601a84"
 dependencies = [
  "vmm-sys-util 0.15.0",
 ]
 
 [[package]]
 name = "kvm-ioctls"
-version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "333f77a20344a448f3f70664918135fddeb804e938f28a99d685bd92926e0b19"
+version = "0.25.0"
+source = "git+https://github.com/RainaYL/kvm?branch=tdx-v2#4bc315f44c5e8204f5ac75abe5891f4b5b601a84"
 dependencies = [
  "bitflags 2.11.1",
  "kvm-bindings",
@@ -7695,8 +7693,7 @@ dependencies = [
 [[package]]
 name = "tdx"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83943e37cf46979f711ad11489c641fa058fd0fae92c122d1fc26a664e82acab"
+source = "git+https://github.com/RainaYL/tdx#133b26599c7a6b43eb30d07785e97ad78b4007eb"
 dependencies = [
  "bitflags 2.11.1",
  "iocuddle",
@@ -8603,14 +8600,12 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "vfio-bindings"
 version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "188dac3057a0cbc94470085204c84b82ff7ec5dac629a514323cd133d1f9abe0"
+source = "git+https://github.com/RainaYL/vfio?branch=0.6.0-test#c8cef9eef0637f21392faf0726f3afe162cbbf91"
 
 [[package]]
 name = "vfio-ioctls"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4b1d98dff7f0d219278e406323e7eda4d426447bd203c7828189baf0d8c07b7"
+source = "git+https://github.com/RainaYL/vfio?branch=0.6.0-test#c8cef9eef0637f21392faf0726f3afe162cbbf91"
 dependencies = [
  "byteorder",
  "kvm-bindings",
