@@ -565,6 +565,9 @@ impl Vcpu {
                             Err(VcpuError::VcpuUnhandledKvmExit)
                         }
                     }
+                    VcpuExit::Tdx {flags: flags, exit: exit} => {
+                        Ok(VcpuEmulation::Handled)
+                    }
                     r => {
                         self.metrics.failures.inc();
                         // TODO: Are we sure we want to finish running a vcpu upon
