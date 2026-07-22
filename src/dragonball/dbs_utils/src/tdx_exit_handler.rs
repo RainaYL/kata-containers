@@ -230,6 +230,8 @@ impl TdxExitHandler {
         quote_generation_socket: String,
         mem: GuestMemoryMmap,
     ) {
+        println!("threaded_get_quote");
+
         match Self::generate_quote(buf_len, report_data, quote_generation_socket) {
             Ok(quote) => {
                 if mem
@@ -259,6 +261,8 @@ impl TdxExitHandler {
         report_data: Vec<u8>,
         quote_generation_socket: String,
     ) -> Result<Vec<u8>, u64> {
+        println!("generate quote");
+
         let req_size = (core::mem::size_of::<QgsMessageGetQuoteReq>() + report_data.len()) as u32;
         let req_message = QgsMessageGetQuoteReq {
             header: QgsMessageHeader {
