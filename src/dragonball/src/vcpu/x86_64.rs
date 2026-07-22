@@ -15,6 +15,7 @@ use dbs_boot::FirmwareType;
 use dbs_interrupt::InterruptManager;
 use dbs_utils::metric::IncMetric;
 use dbs_utils::time::TimestampUs;
+use dbs_utils::tdx_exit_handler::TdxExitHandler;
 use kvm_bindings::CpuId;
 use kvm_ioctls::{VcpuFd, VmFd};
 use log::error;
@@ -65,6 +66,7 @@ impl Vcpu {
         create_ts: TimestampUs,
         support_immediate_exit: bool,
         irq_manager: Arc<Box<dyn InterruptManager>>,
+        tdx_exit_handler: Option<Arc<TdxExitHandler>>,
     ) -> Result<Self> {
         let (event_sender, event_receiver) = channel();
         let (response_sender, response_receiver) = channel();
@@ -86,6 +88,7 @@ impl Vcpu {
             metrics: Arc::new(VcpuMetrics::default()),
             cpuid,
             irq_manager,
+            tdx_exit_handler,
         })
     }
 

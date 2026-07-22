@@ -1651,14 +1651,19 @@ version = "0.2.1"
 dependencies = [
  "anyhow",
  "event-manager",
+ "kvm-bindings",
+ "kvm-ioctls",
  "libc",
  "log",
  "nix 0.26.4",
  "serde",
  "serde_json",
+ "tdx",
  "test-utils",
  "thiserror 1.0.69",
+ "threadpool",
  "timerfd",
+ "vm-memory",
  "vmm-sys-util 0.15.0",
 ]
 
@@ -3837,7 +3842,7 @@ dependencies = [
 [[package]]
 name = "kvm-bindings"
 version = "0.14.1"
-source = "git+https://github.com/RainaYL/kvm?branch=tdx-v2#4bc315f44c5e8204f5ac75abe5891f4b5b601a84"
+source = "git+https://github.com/RainaYL/kvm?branch=tdx-v2#c3a6de9342445fb42484bbba61b372d9089386d6"
 dependencies = [
  "vmm-sys-util 0.15.0",
 ]
@@ -3845,7 +3850,7 @@ dependencies = [
 [[package]]
 name = "kvm-ioctls"
 version = "0.25.0"
-source = "git+https://github.com/RainaYL/kvm?branch=tdx-v2#4bc315f44c5e8204f5ac75abe5891f4b5b601a84"
+source = "git+https://github.com/RainaYL/kvm?branch=tdx-v2#c3a6de9342445fb42484bbba61b372d9089386d6"
 dependencies = [
  "bitflags 2.11.1",
  "kvm-bindings",

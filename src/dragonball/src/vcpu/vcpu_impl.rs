@@ -18,11 +18,12 @@ use std::thread;
 #[cfg(target_arch = "x86_64")]
 use dbs_interrupt::{InterruptManager, IOAPIC_BASE, IOAPIC_SIZE};
 use dbs_utils::metric::IncMetric;
+use dbs_utils::tdx_exit_handler::TdxExitHandler;
 use dbs_utils::time::TimestampUs;
 #[cfg(target_arch = "x86_64")]
 use kvm_bindings::{kvm_memory_attributes, KVM_MEMORY_ATTRIBUTE_PRIVATE};
 use kvm_bindings::{KVM_SYSTEM_EVENT_RESET, KVM_SYSTEM_EVENT_SHUTDOWN};
-use kvm_ioctls::{VcpuExit, VcpuFd, VmFd};
+use kvm_ioctls::{TdxExit, VcpuExit, VcpuFd, VmFd};
 use libc::{c_int, c_void, siginfo_t};
 use log::{error, info};
 use seccompiler::{apply_filter, BpfProgram, Error as SecError};
@@ -333,6 +334,8 @@ pub struct Vcpu {
     // IOAPIC is used.
     #[cfg(target_arch = "x86_64")]
     irq_manager: Arc<Box<dyn InterruptManager>>,
+
+    tdx_exit_handler: Option<Arc<TdxExitHandler>>,
 }
 
 // Using this for easier explicit type-casting to help IDEs interpret the code.
@@ -565,7 +568,34 @@ impl Vcpu {
                             Err(VcpuError::VcpuUnhandledKvmExit)
                         }
                     }
-                    VcpuExit::Tdx {flags: flags, exit: exit} => {
+                    VcpuExit::Tdx {
+                        flags: _,
+                        exit: exit,
+                    } => {
+                        if self.tdx_exit_handler.is_none() {
+                            return Err(VcpuError::VcpuUnhandledKvmExit);
+                        }
+                        let tdx_exit_handler = self.tdx_exit_handler.as_ref().unwrap().clone();
+                        match exit {
+                            TdxExit::GetTdVmcallInfo {
+                                ret: ret,
+                                leaf: leaf,
+                                r11: r11,
+                                r12: r12,
+                                r13: r13,
+                                r14: r14,
+                            } => {
+                                tdx_exit_handler
+                                    .handle_get_tdvmcall_info(ret, leaf, r11, r12, r13, r14);
+                            }
+                            TdxExit::SetupEventNotify {
+                                ret: ret,
+                                vector: vector,
+                            } => {
+                                tdx_exit_handler.handle_setup_event_notify_interrupt(ret, vector);
+                            }
+                            _ => return Err(VcpuError::VcpuUnhandledKvmExit),
+                        }
                         Ok(VcpuEmulation::Handled)
                     }
                     r => {
@@ -930,6 +960,7 @@ pub mod tests {
             time_stamp,
             false,
             irq_manager,
+            None,
         )
         .unwrap();
 

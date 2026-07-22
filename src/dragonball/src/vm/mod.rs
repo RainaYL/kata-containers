@@ -222,7 +222,7 @@ pub struct Vm {
     #[cfg(target_arch = "x86_64")]
     tdx_launcher: Option<Launcher>,
     #[cfg(target_arch = "x86_64")]
-    tdx_capabilities: Option<TdxCapabilities>,
+    tdx_capabilities: Option<Arc<TdxCapabilities>>,
 }
 
 impl Vm {
@@ -270,8 +270,7 @@ impl Vm {
         let (tdx_launcher, tdx_capabilities) = if tdx_enabled {
             let mut launcher = Launcher::new(vm_fd.as_raw_fd());
             let capabilities = launcher.get_capabilities().map_err(Error::TdxError)?;
-            println!("capabilities: {:?}", capabilities);
-            (Some(launcher), Some(capabilities))
+            (Some(launcher), Some(Arc::new(capabilities)))
         } else {
             (None, None)
         };
@@ -485,6 +484,7 @@ impl Vm {
             self.epoll_manager.clone(),
             #[cfg(target_arch = "x86_64")]
             self.device_manager.irq_manager(),
+            self.tdx_capabilities.clone()
         )?;
         self.vcpu_manager = Some(vcpu_manager);
 

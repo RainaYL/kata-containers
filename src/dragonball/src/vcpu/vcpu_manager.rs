@@ -10,6 +10,7 @@
 
 //! vCPU manager to enable bootstrap and CPU hotplug.
 use std::io;
+use std::ops::Deref;
 use std::os::unix::io::AsRawFd;
 use std::sync::mpsc::{channel, Receiver, RecvError, RecvTimeoutError, Sender};
 use std::sync::{Arc, Barrier, Mutex, RwLock};
@@ -22,11 +23,13 @@ use dbs_interrupt::InterruptManager;
 #[cfg(all(feature = "hotplug", feature = "dbs-upcall"))]
 use dbs_upcall::{DevMgrService, UpcallClient};
 use dbs_utils::epoll_manager::{EpollManager, EventOps, EventSet, Events, MutEventSubscriber};
+use dbs_utils::tdx_exit_handler::TdxExitHandler;
 use dbs_utils::time::TimestampUs;
 use kvm_ioctls::{Cap, VcpuFd, VmFd};
 use log::{debug, error, info};
 use seccompiler::{apply_filter, BpfProgram, Error as SecError};
-use vm_memory::GuestAddress;
+use tdx::launch::TdxCapabilities;
+use vm_memory::{GuestAddress, GuestAddressSpace};
 use vmm_sys_util::eventfd::EventFd;
 
 use crate::address_space_manager::GuestAddressSpaceImpl;
@@ -243,6 +246,8 @@ pub struct VcpuManager {
 
     #[cfg(target_arch = "x86_64")]
     irq_manager: Arc<Box<dyn InterruptManager>>,
+
+    tdx_exit_handler: Option<Arc<TdxExitHandler>>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -258,6 +263,7 @@ impl VcpuManager {
         io_manager: IoManagerCached,
         epoll_manager: EpollManager,
         #[cfg(target_arch = "x86_64")] irq_manager: Arc<Box<dyn InterruptManager>>,
+        tdx_capabilities: Option<Arc<TdxCapabilities>>,
     ) -> Result<Arc<Mutex<Self>>> {
         let support_immediate_exit = kvm_context.kvm().check_extension(Cap::ImmediateExit);
         let max_vcpu_count = vm_config_info.max_vcpu_count;
@@ -317,6 +323,17 @@ impl VcpuManager {
             _ => VpmuFeatureLevel::Disabled,
         };
 
+        let tdx_exit_handler = if tdx_capabilities.is_some() {
+            Some(Arc::new(TdxExitHandler::new(
+                vm_fd.clone(),
+                Some("/var/run/tdx-qgs/qgs.socket".to_string()),
+                tdx_capabilities.as_ref().unwrap().clone(),
+                vm_as.memory().deref(),
+            )))
+        } else {
+            None
+        };
+
         let vcpu_manager = Arc::new(Mutex::new(VcpuManager {
             vcpu_infos,
             vcpu_config: VcpuConfig {
@@ -345,6 +362,7 @@ impl VcpuManager {
             supported_cpuid,
             #[cfg(target_arch = "x86_64")]
             irq_manager,
+            tdx_exit_handler,
         }));
 
         let handler = Box::new(VcpuEpollHandler {
@@ -814,6 +832,7 @@ impl VcpuManager {
             request_ts,
             self.support_immediate_exit,
             self.irq_manager.clone(),
+            self.tdx_exit_handler.clone(),
         )
         .map_err(VcpuManagerError::Vcpu)
     }
