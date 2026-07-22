@@ -1,8 +1,8 @@
 #![allow(missing_docs)]
 
-use std::sync::{Arc, RwLock};
-use std::os::unix::net::UnixStream;
 use std::io::{Read, Write};
+use std::os::unix::net::UnixStream;
+use std::sync::{Arc, RwLock};
 
 use kvm_ioctls::VmFd;
 use log::*;
@@ -279,8 +279,10 @@ impl TdxExitHandler {
         // Length prefix
         let req_header = encode_header(req_size);
 
-        let mut stream = UnixStream::connect(quote_generation_socket)
-            .map_err(|_| TDX_VP_GET_QUOTE_QGS_UNAVAILABLE)?;
+        let mut stream = UnixStream::connect(quote_generation_socket).map_err(|e| {
+            println!("error connecting to socket: {:?}", e);
+            TDX_VP_GET_QUOTE_QGS_UNAVAILABLE
+        })?;
 
         println!("stream connected");
 
