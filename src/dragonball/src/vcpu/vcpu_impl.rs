@@ -568,31 +568,28 @@ impl Vcpu {
                             Err(VcpuError::VcpuUnhandledKvmExit)
                         }
                     }
-                    VcpuExit::Tdx {
-                        flags: _,
-                        exit: exit,
-                    } => {
+                    VcpuExit::Tdx { flags: _, exit } => {
                         if self.tdx_exit_handler.is_none() {
                             return Err(VcpuError::VcpuUnhandledKvmExit);
                         }
                         let tdx_exit_handler = self.tdx_exit_handler.as_ref().unwrap().clone();
                         match exit {
                             TdxExit::GetTdVmcallInfo {
-                                ret: ret,
-                                leaf: leaf,
-                                r11: r11,
-                                r12: r12,
-                                r13: r13,
-                                r14: r14,
+                                ret,
+                                leaf,
+                                r11,
+                                r12,
+                                r13,
+                                r14,
                             } => {
                                 tdx_exit_handler
                                     .handle_get_tdvmcall_info(ret, leaf, r11, r12, r13, r14);
                             }
-                            TdxExit::SetupEventNotify {
-                                ret: ret,
-                                vector: vector,
-                            } => {
+                            TdxExit::SetupEventNotify { ret, vector } => {
                                 tdx_exit_handler.handle_setup_event_notify_interrupt(ret, vector);
+                            }
+                            TdxExit::GetQuote { ret, gpa, size } => {
+                                tdx_exit_handler.handle_get_quote(ret, gpa, size);
                             }
                             _ => return Err(VcpuError::VcpuUnhandledKvmExit),
                         }
