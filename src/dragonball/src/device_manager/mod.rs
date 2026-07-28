@@ -689,6 +689,7 @@ impl DeviceManager {
         #[cfg(target_arch = "x86_64")]
         let irq_manager: Arc<Box<dyn InterruptManager>> =
             if shared_info.read().unwrap().split_irqchip() {
+                println!("split irq");
                 Arc::new(Box::new(
                     SplitIrqManager::new(vm_fd.clone())
                         .map_err(DeviceMgrError::SplitIrqManagerError)?,
