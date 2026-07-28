@@ -58,6 +58,7 @@ impl InterruptManager for SplitIrqManager {
         base: InterruptIndex,
         count: u32,
     ) -> Result<Arc<Box<dyn InterruptSourceGroup>>> {
+        println!("create group");
         #[allow(unreachable_patterns)]
         let group = match ty {
             #[cfg(feature = "split-legacy-irq")]
