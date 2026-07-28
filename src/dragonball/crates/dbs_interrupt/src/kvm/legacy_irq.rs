@@ -34,6 +34,7 @@ impl LegacyIrq {
         vmfd: Arc<VmFd>,
         _routes: Arc<KvmIrqRouting>,
     ) -> Result<Self> {
+        println!("kvm create legacy");
         if count != 1 {
             return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
         }

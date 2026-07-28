@@ -169,6 +169,7 @@ impl InterruptManager for UserspaceIoapicManager {
         let group = match ty {
             #[cfg(feature = "userspace-legacy-irq")]
             InterruptSourceType::LegacyIrq => {
+                println!("user create legacy");
                 if count != 1 {
                     return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
                 }

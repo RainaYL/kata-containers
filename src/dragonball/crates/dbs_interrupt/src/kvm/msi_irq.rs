@@ -27,7 +27,7 @@ impl MsiIrq {
         vmfd: Arc<VmFd>,
         irq_routing: Arc<KvmIrqRouting>,
     ) -> Result<Self> {
-        println!("create MSI");
+        println!("kvm create MSI");
         if count > max_msi_irqs || base >= MAX_IRQS || base + count > MAX_IRQS {
             return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
         }
