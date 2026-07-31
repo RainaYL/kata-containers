@@ -705,10 +705,8 @@ impl Aml for VfioDeviceMgr {
     fn to_aml_bytes(&self, sink: &mut dyn acpi_tables::AmlSink) {
         println!("writing dsdt aml");
 
-        let pci_root = &self.pci_system_manager.lock().unwrap().pci_root;
-        println!("locked");
-        let pci_root_bus = &self.pci_system_manager.lock().unwrap().pci_root_bus;
-        println!("locked");
+        let guard = self.pci_system_manager.lock().unwrap();
+        let pci_root_bus = &guard.pci_root_bus;
         let bus_id = pci_root_bus.bus_id();
 
         let mut pci_dsdt_inner_data: Vec<&dyn Aml> = Vec::new();
@@ -742,7 +740,7 @@ impl Aml for VfioDeviceMgr {
         println!("write bus number");
 
         #[cfg(target_arch = "x86_64")]
-        let ioport_base = pci_root.ioport_base();
+        let ioport_base = guard.pci_root.ioport_base();
         #[cfg(target_arch = "x86_64")]
         let io_entry = aml::IO::new(ioport_base, ioport_base, 1, 0x8);
         #[cfg(target_arch = "x86_64")]
