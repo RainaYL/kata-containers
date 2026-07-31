@@ -178,16 +178,6 @@ impl PciRootDevice {
     pub fn ioport_base(&self) -> u16 {
         self.ioport_base
     }
-
-    /// Get MMIO base
-    pub fn mmio_base(&self) -> u64 {
-        self.mmio_base
-    }
-
-    /// Get MMIO size
-    pub fn mmio_size(&self) -> u64 {
-        self.mmio_size
-    }
 }
 
 impl DeviceIo for PciRootDevice {

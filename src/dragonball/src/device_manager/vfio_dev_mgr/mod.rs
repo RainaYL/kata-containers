@@ -703,12 +703,9 @@ impl VfioDeviceMgr {
 
 impl Aml for VfioDeviceMgr {
     fn to_aml_bytes(&self, sink: &mut dyn acpi_tables::AmlSink) {
-        let bus_id = self
-            .pci_system_manager
-            .lock()
-            .unwrap()
-            .pci_root_bus
-            .bus_id();
+        let pci_root = &self.pci_system_manager.lock().unwrap().pci_root;
+        let pci_root_bus = &self.pci_system_manager.lock().unwrap().pci_root_bus;
+        let bus_id = pci_root_bus.bus_id();
 
         let mut pci_dsdt_inner_data: Vec<&dyn Aml> = Vec::new();
         let hid = aml::Name::new("_HID".into(), &aml::EISAName::new("PNP0A08"));
@@ -729,52 +726,47 @@ impl Aml for VfioDeviceMgr {
         let pci_dsm = PciDsmMethod {};
         pci_dsdt_inner_data.push(&pci_dsm);
 
-        let pci_root = &self.pci_system_manager.lock().unwrap().pci_root;
+        let mut children: Vec<&dyn Aml> = Vec::new();
+        let bus_number_entry =
+            aml::AddressSpace::new_bus_number(PCI_BUS_DEFAULT as u16, PCI_BUS_DEFAULT as u16);
+        children.push(&bus_number_entry);
+
         #[cfg(target_arch = "x86_64")]
         let ioport_base = pci_root.ioport_base();
-        let mmio_base = pci_root.mmio_base();
-        let mmio_size = pci_root.mmio_size();
-        let crs = if bus_id == 0 {
-            aml::Name::new(
-                "_CRS".into(),
-                &aml::ResourceTemplate::new(vec![
-                    &aml::AddressSpace::new_bus_number(
-                        PCI_BUS_DEFAULT as u16,
-                        PCI_BUS_DEFAULT as u16,
-                    ),
-                    #[cfg(target_arch = "x86_64")]
-                    &aml::IO::new(ioport_base, ioport_base, 1, 0x8),
-                    &aml::AddressSpace::new_memory(
-                        aml::AddressSpaceCacheable::NotCacheable,
-                        true,
-                        mmio_base,
-                        mmio_base + mmio_size - 1,
-                        None,
-                    ),
-                    #[cfg(target_arch = "x86_64")]
-                    &aml::AddressSpace::new_io(0u16, ioport_base - 1, None),
-                    #[cfg(target_arch = "x86_64")]
-                    &aml::AddressSpace::new_io(ioport_base + 8, u16::MAX, None),
-                ]),
-            )
-        } else {
-            aml::Name::new(
-                "_CRS".into(),
-                &aml::ResourceTemplate::new(vec![
-                    &aml::AddressSpace::new_bus_number(
-                        PCI_BUS_DEFAULT as u16,
-                        PCI_BUS_DEFAULT as u16,
-                    ),
-                    &aml::AddressSpace::new_memory(
-                        aml::AddressSpaceCacheable::NotCacheable,
-                        true,
-                        mmio_base,
-                        mmio_base + mmio_size - 1,
-                        None,
-                    ),
-                ]),
-            )
-        };
+        #[cfg(target_arch = "x86_64")]
+        let io_entry = aml::IO::new(ioport_base, ioport_base, 1, 0x8);
+        #[cfg(target_arch = "x86_64")]
+        if bus_id == 0 {
+            children.push(&io_entry);
+        }
+
+        let mmio_entries: Vec<aml::AddressSpace<u64>> = pci_root_bus
+            .get_device_resources()
+            .get_mmio_address_ranges()
+            .iter()
+            .map(|(base, size)| {
+                aml::AddressSpace::new_memory(
+                    aml::AddressSpaceCacheable::NotCacheable,
+                    true,
+                    *base,
+                    *base + (*size - 1),
+                    None,
+                )
+            })
+            .collect();
+        mmio_entries.iter().for_each(|e| children.push(e));
+
+        #[cfg(target_arch = "x86_64")]
+        let pio_entries = [
+            aml::AddressSpace::new_io(0u16, ioport_base - 1, None),
+            aml::AddressSpace::new_io(ioport_base + 8, u16::MAX, None),
+        ];
+        #[cfg(target_arch = "x86_64")]
+        if bus_id == 0 {
+            pio_entries.iter().for_each(|e| children.push(e));
+        }
+
+        let crs = aml::Name::new("_CRS".into(), &aml::ResourceTemplate::new(children));
         pci_dsdt_inner_data.push(&crs);
 
         let mut pci_devices = Vec::new();
@@ -795,7 +787,7 @@ impl Aml for VfioDeviceMgr {
             .iter()
             .map(|(id, irq)| (((((*id as u32) & 0x1fu32) << 16) | 0xffffu32), *irq as u32))
             .collect();
-         let prt_package_list: Vec<aml::Package> = prt_package_list
+        let prt_package_list: Vec<aml::Package> = prt_package_list
             .iter()
             .map(|(bdf, irq)| aml::Package::new(vec![bdf, &0u8, &0u8, irq]))
             .collect();
