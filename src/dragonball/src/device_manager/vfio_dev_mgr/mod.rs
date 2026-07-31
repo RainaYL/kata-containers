@@ -703,6 +703,8 @@ impl VfioDeviceMgr {
 
 impl Aml for VfioDeviceMgr {
     fn to_aml_bytes(&self, sink: &mut dyn acpi_tables::AmlSink) {
+        println!("writing dsdt aml");
+
         let pci_root = &self.pci_system_manager.lock().unwrap().pci_root;
         let pci_root_bus = &self.pci_system_manager.lock().unwrap().pci_root_bus;
         let bus_id = pci_root_bus.bus_id();
