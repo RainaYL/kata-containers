@@ -725,13 +725,19 @@ impl Aml for VfioDeviceMgr {
         let supp = aml::Name::new("SUPP".into(), &aml::ZERO);
         pci_dsdt_inner_data.push(&supp);
 
+        println!("Write headers");
+
         let pci_dsm = PciDsmMethod {};
         pci_dsdt_inner_data.push(&pci_dsm);
+
+        println!("Write dsm");
 
         let mut children: Vec<&dyn Aml> = Vec::new();
         let bus_number_entry =
             aml::AddressSpace::new_bus_number(PCI_BUS_DEFAULT as u16, PCI_BUS_DEFAULT as u16);
         children.push(&bus_number_entry);
+
+        println!("write bus number");
 
         #[cfg(target_arch = "x86_64")]
         let ioport_base = pci_root.ioport_base();
@@ -741,6 +747,8 @@ impl Aml for VfioDeviceMgr {
         if bus_id == 0 {
             children.push(&io_entry);
         }
+
+        println!("write io");
 
         let mmio_entries: Vec<aml::AddressSpace<u64>> = pci_root_bus
             .get_device_resources()
@@ -758,6 +766,8 @@ impl Aml for VfioDeviceMgr {
             .collect();
         mmio_entries.iter().for_each(|e| children.push(e));
 
+        println!("write mmio");
+
         #[cfg(target_arch = "x86_64")]
         let pio_entries = [
             aml::AddressSpace::new_io(0u16, ioport_base - 1, None),
@@ -768,8 +778,12 @@ impl Aml for VfioDeviceMgr {
             pio_entries.iter().for_each(|e| children.push(e));
         }
 
+        println!("write pio");
+
         let crs = aml::Name::new("_CRS".into(), &aml::ResourceTemplate::new(children));
         pci_dsdt_inner_data.push(&crs);
+
+        println!("write prs");
 
         let mut pci_devices = Vec::new();
         for device_id in 0..MAX_PCI_SLOTS {
@@ -782,6 +796,8 @@ impl Aml for VfioDeviceMgr {
 
         let pci_device_methods = PciDevSlotMethods {};
         pci_dsdt_inner_data.push(&pci_device_methods);
+
+        println!("write device slots");
 
         let empty_irqs = HashMap::new();
         let pci_legacy_irqs = self.pci_legacy_irqs.as_ref().unwrap_or(&empty_irqs);
@@ -800,11 +816,15 @@ impl Aml for VfioDeviceMgr {
         let prt = aml::Name::new("_PRT".into(), &aml::Package::new(prt_package_list));
         pci_dsdt_inner_data.push(&prt);
 
+        println!("write irq");
+
         aml::Device::new(
             format!("_SB_.PC{:02X}", bus_id).as_str().into(),
             pci_dsdt_inner_data,
         )
         .to_aml_bytes(sink);
+
+        println!("finished");
     }
 }
 
