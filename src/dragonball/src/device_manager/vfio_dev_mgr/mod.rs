@@ -706,7 +706,9 @@ impl Aml for VfioDeviceMgr {
         println!("writing dsdt aml");
 
         let pci_root = &self.pci_system_manager.lock().unwrap().pci_root;
+        println!("locked");
         let pci_root_bus = &self.pci_system_manager.lock().unwrap().pci_root_bus;
+        println!("locked");
         let bus_id = pci_root_bus.bus_id();
 
         let mut pci_dsdt_inner_data: Vec<&dyn Aml> = Vec::new();
