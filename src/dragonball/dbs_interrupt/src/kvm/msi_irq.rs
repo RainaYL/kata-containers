@@ -146,7 +146,6 @@ impl InterruptSourceGroup for MsiIrq {
             return Err(std::io::Error::from_raw_os_error(libc::EINVAL));
         }
         let msi_config = &self.msi_configs[index as usize];
-        println!("msi trigger");
         msi_config.irqfd.write(1)
     }
 
